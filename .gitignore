@@ -35,7 +35,6 @@ Ankh.NoLoad
 #the build output directory
 ipch/
 obj/
-[Ll]ib
 [Bb]in
 [Dd]ebug*/
 [Rr]elease*/

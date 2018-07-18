@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <windows.h>
-#include "thunderagent.tlh"
+#include "thunderagent.hpp"
 
 extern "C"
 bool WINAPI 
