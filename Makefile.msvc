@@ -1,0 +1,86 @@
+# nmake -f Makefile.msvc
+
+CC       = cl.exe
+CPP	 = cl.exe
+MSVC_CRT =
+
+VFLAGS   = /nologo /MT /W3 /WX- /wd4996 /wd4819 /O2 /Zi /Gd /fp:precise \
+           /D "_CRT_SECURE_NO_WARNINGS" /D "_USING_V110_SDK71_" /D "_UNICODE" /D "UNICODE" /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 $(DEBUG_L)
+LD       = link.exe
+
+!if "$(PLATFORM)"=="X64" || "$(TARGET_CPU)"=="x64" || "$(VSCMD_ARG_HOST_ARCH)"=="x64"
+PLATFORM = X64
+BITS	 = 64
+CFLAGS   = $(VFLAGS) /TC /D "WIN64" /D "_WIN64" /favor:blend
+CXXFLAGS = $(VFLAGS) /TP /D "WIN64" /D "_WIN64" /favor:blend
+ASMFLAGS = -fwin64 -O2 -DWINDOWS -Worphan-labels
+!else
+PLATFORM = X86
+BITS	 = 32
+CFLAGS   = $(VFLAGS) /TC
+CXXFLAGS = $(VFLAGS) /TP
+ASMFLAGS = -fwin32 -O2 -DWINDOWS -D__i386__ -DWIN32 -DMSVC -Worphan-labels
+!endif
+
+MD       = @mkdir
+CP	 = copy
+RM	 = @del /q
+RMDIR    = @rmdir /s /q
+SRC      = src
+MIN_INC  = $(SRC)/libcurl/include /I$(SRC)/liblzma/include
+DEP      = .dep
+RC       = rc.exe
+RCFLAGS  = /nologo /D "_UNICODE" /D "UNICODE"
+CHI_LIBS = /LIBPATH:$(SRC)/libcurl/lib /LIBPATH:$(SRC)/liblzma/lib
+CRTFLAGS = $(CHI_LIBS)
+OBJS     = $(DEP)\upcheck.obj $(DEP)\urlcode.obj $(DEP)\spinlock.obj $(DEP)\7zc.obj $(DEP)\progressui.obj \
+           $(DEP)\updates.obj $(DEP)\unzip.obj $(DEP)\thunderagent.obj $(DEP)\xml.obj \
+	   $(DEP)\sqlite3.obj $(DEP)\cookies.obj $(DEP)\resource.res
+
+WINXP    = /subsystem:console,5.01
+RELEASE  = /D "NDEBUG"
+DEBUG_L  = /D "DEBUG_LOG"
+HIDE     = /subsystem:windows
+CFLAGS   = $(CFLAGS) /I$(MIN_INC)
+LDFLAGS  = /NOLOGO /DEBUG /opt:ref /opt:icf /LARGEADDRESSAWARE /MACHINE:$(PLATFORM) $(HIDE) /NODEFAULTLIB:MSVCRT /ENTRY:wmainCRTStartup
+
+DISTDIR	 = Release
+OUT	 = $(DISTDIR)\upcheck.exe
+EXEC	 = \
+	@echo runing nmake -f Makefile.msvc.  && \
+	@if not exist $(DISTDIR) $(MD) $(DISTDIR) 2>NUL 1>NUL && \
+	@if not exist $(DEP) $(MD) $(DEP) 2>NUL 1>NUL \
+
+all                     : $(OUT)
+
+$(OUT)			: $(OBJS)
+	$(LD) /OUT:"$@" $(OBJS) $(LDFLAGS) $(CRTFLAGS)
+$(DEP)\upcheck.obj        : $(SRC)\upcheck.c $(SRC)\upcheck.h
+	$(EXEC)
+	$(CC) $(CFLAGS) /c $(SRC)\upcheck.c /Fo$@
+$(DEP)\urlcode.obj        : $(SRC)\urlcode.c $(SRC)\urlcode.h
+	$(CC) $(CFLAGS) /c $(SRC)\urlcode.c /Fo$@
+$(DEP)\spinlock.obj       : $(SRC)\spinlock.c $(SRC)\spinlock.h
+	$(CC) $(CFLAGS) /c $(SRC)\spinlock.c /Fo$@
+$(DEP)\7zc.obj            : $(SRC)\7zc.c $(SRC)\7zc.h
+	$(CC) $(CFLAGS) /c $(SRC)\7zc.c /Fo$@
+$(DEP)\unzip.obj            : $(SRC)\unzip.c $(SRC)\unzip.h
+	$(CC) $(CFLAGS) /c $(SRC)\unzip.c /Fo$@
+$(DEP)\progressui.obj     : $(SRC)\progressui.c $(SRC)\progressui.h
+	$(CC) $(CFLAGS) /c $(SRC)\progressui.c /Fo$@
+$(DEP)\updates.obj        : $(SRC)\updates.c $(SRC)\updates.h
+	$(CC) $(CFLAGS) /c $(SRC)\updates.c /Fo$@
+$(DEP)\xml.obj            : $(SRC)\xml.c $(SRC)\xml.h
+	$(CC) $(CFLAGS) /c $(SRC)\xml.c /Fo$@
+$(DEP)\sqlite3.obj        : $(SRC)\sqlite3.c $(SRC)\sqlite3.h
+	$(CC) $(CFLAGS) /c $(SRC)\sqlite3.c /Fo$@
+$(DEP)\cookies.obj        : $(SRC)\cookies.c $(SRC)\cookies.h
+	$(CC) $(CFLAGS) /c $(SRC)\cookies.c /Fo$@
+$(DEP)\thunderagent.obj   : $(SRC)\thunderagent.cc $(SRC)\thunderagent.h
+	$(CC) $(CXXFLAGS) /c $(SRC)\thunderagent.cc /Fo$@
+$(DEP)\resource.res       : $(SRC)\resource.rc
+	$(RC) $(RCFLAGS)  /fo$@ $(SRC)\resource.rc
+
+.PHONY		        : clean
+clean                   : 
+	-$(RMDIR) $(DISTDIR) $(DEP) 2>NUL 1>NUL

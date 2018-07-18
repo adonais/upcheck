@@ -1,0 +1,22 @@
+HOW TO BUILD upcheck source code?
+=================
+
+System requirements
+------------------
+
+    - C compiler 
+
+     Microsoft Visual Studio 2013 or above .
+
+Build!
+--------------------
+
+nmake -f Makefile.msvc clean
+nmake -f Makefile.msvc
+
+--------------------
+
+about upcheck:
+
+Detect your current Iceweasel browser and checks if it is up to date.
+At the same time, it is also a download manager.
