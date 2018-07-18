@@ -34,7 +34,7 @@
 
 static int64_t downloaded_size;
 static int64_t total_size;
-static LOCK_MUTEXT g_mutex; // 锁变量
+static LOCK_MUTEXT g_mutex;
 
 extern bool ice_build;
 file_info_t file_info;
@@ -63,7 +63,7 @@ get_moz_hwnd(void)
 {
     HWND hwnd = NULL;
     int  i = 10;
-    while (!hwnd && i--)    /* 等待主窗口并获取句柄,增加线程退出倒计时8s */
+    while (!hwnd && i--)
     {
         bool  m_loop = false;
         DWORD dwProcessId = 0;
@@ -244,7 +244,6 @@ curl_set_cookies(CURL *curl)
     {
         char cookies[COOKE_LEN+1] = {0};
         char m_agent[] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36";
-        // LPCSTR m_agent = "aria2/1.34.0";
         curl_easy_setopt(curl, CURLOPT_USERAGENT, m_agent);
         curl_easy_setopt(curl, CURLOPT_REFERER, file_info.referer);
         if (!parse_baidu_cookies(cookies, COOKE_LEN))
@@ -368,7 +367,6 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     if (strlen(dnld_params->remote_fname) > 1)
     {
         wnsprintfA(file_info.remote_names, MAX_PATH, "%s", dnld_params->remote_fname);
-        // printf("we found remote filename : %s\n", file_info.remote_names);
     }
     else
     {
@@ -555,8 +553,6 @@ get_file_lenth(const char *url, int64_t *file_len)
     curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 5);
     // 设置301、302跳转跟随location
     curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
-    // 一个空字符串,libcurl会根据返回解压支持的所有编码格式
-    // curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, " ");
     curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, curl_header_parse);
     curl_easy_setopt(handle, CURLOPT_HEADERDATA, &dnld_params);
 
