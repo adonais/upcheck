@@ -951,7 +951,7 @@ static void msg_tips(void)
     SYS_FREE(msg);
 }
 
-static void logs_update(void)
+static void logs_update(bool res)
 {
     uint64_t diff = 3600*24;
     uint64_t m_time1 = (uint64_t)time(NULL);
@@ -964,6 +964,10 @@ static void logs_update(void)
         {
             printf("WritePrivateProfileStringW return false.\n");
         }
+    }
+    if (res)
+    {
+        WritePrivateProfileStringW(L"update", L"be_ready", L"1", file_info.ini);
     }
 }
 
@@ -1146,11 +1150,7 @@ wmain(int argc, WCHAR **wargv)
     }
     if (!file_info.up && wcslen(file_info.ini) > 1)
     {
-        logs_update();
-    }
-    if (result && wcslen(file_info.ini) > 1)
-    {
-        WritePrivateProfileStringW(L"update", L"be_ready", L"1", file_info.ini);
+        logs_update(result);
     }
     if (wcslen(file_info.process) > 1 && sum_buid_id())
     {

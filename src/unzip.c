@@ -1,5 +1,3 @@
-// cl -O2  -utf-8 unzip.c -D_UNICODE -DUNICODE -Ilibzlib\include -link -out:unzip.exe -libpath:libzlib\lib
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,14 +34,6 @@
 /* compile with -Dlocal if your debugger can't find static symbols */
 #ifndef local
 #  define local static
-#endif
-
-extern void __cdecl logmsg(const char *format, ...);
-
-#if defined(NDEBUG)
-#define printf(...) ((void)0)
-#elif defined(DEBUG_LOG)
-#define printf logmsg
 #endif
 
 #ifndef CASESENSITIVITYDEFAULT_NO
@@ -2529,24 +2519,7 @@ local void write_log(FILE* pf, const char* names)
     fwrite(L"\r\n", sizeof(WCHAR), 2, pf);
 }
 
-local void 
-wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
-{
-    LPWSTR   lp = NULL;
-    intptr_t pos;
-    do
-    {
-        lp =  StrChrW(path,L'/');
-        if (lp)
-        {
-            pos = lp-path;
-            path[pos] = L'\\';
-        }
-    } while (lp!=NULL);
-    return;
-}
-
-static bool
+local bool
 path_combine_cur(LPWSTR lpfile, int len)
 {
 #define SIZE 128

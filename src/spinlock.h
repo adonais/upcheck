@@ -72,6 +72,7 @@ extern int  WINAPI get_cpu_works(void);
 extern int  read(int fd, void *buffer, unsigned int count);
 extern bool WINAPI get_file_md5(LPCWSTR path, char* md5_str);
 extern bool WINAPI path_combine(LPWSTR lpfile, int len);
+extern void WINAPI wchr_replace(LPWSTR path);
 extern bool WINAPI create_dir(LPCWSTR dir);
 extern bool WINAPI exists_dir(LPCWSTR path);
 extern void __cdecl logmsg(const char *format, ...);

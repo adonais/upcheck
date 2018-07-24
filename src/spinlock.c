@@ -54,6 +54,23 @@ init_logs(void)
 }
 #endif
 
+void WINAPI 
+wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
+{
+    LPWSTR   lp = NULL;
+    intptr_t pos;
+    do
+    {
+        lp =  StrChrW(path,L'/');
+        if (lp)
+        {
+            pos = lp-path;
+            path[pos] = L'\\';
+        }
+    } while (lp!=NULL);
+    return;
+}
+
 bool WINAPI 
 exists_dir(LPCWSTR path) 
 {

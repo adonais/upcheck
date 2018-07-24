@@ -32,23 +32,6 @@ wstr_replace(LPWSTR in,size_t in_size,LPCWSTR pattern,LPCWSTR by)
 }
 
 static void 
-wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
-{
-    LPWSTR   lp = NULL;
-    intptr_t pos;
-    do
-    {
-        lp =  StrChrW(path,L'/');
-        if (lp)
-        {
-            pos = lp-path;
-            path[pos] = L'\\';
-        }
-    } while (lp!=NULL);
-    return;
-}
-
-static void 
 remove_dir(LPCWSTR parent)
 {
     HANDLE h_file = NULL;
