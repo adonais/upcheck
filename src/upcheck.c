@@ -243,8 +243,7 @@ curl_set_cookies(CURL *curl)
     if (strlen(file_info.referer) > 1)
     {
         char cookies[COOKE_LEN+1] = {0};
-        char m_agent[] = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36";
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, m_agent);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36");
         curl_easy_setopt(curl, CURLOPT_REFERER, file_info.referer);
         if (!parse_baidu_cookies(cookies, COOKE_LEN))
         {
@@ -258,6 +257,7 @@ curl_set_cookies(CURL *curl)
     }
     else
     {
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.34.0");
         curl_easy_setopt(curl, CURLOPT_COOKIEFILE, " ");
     }
 } 
@@ -414,7 +414,7 @@ download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
 
         if (fseek(node->fp, node->startidx, SEEK_SET) != 0)
         {
-            printf("fseek error!\n");
+            ;
         }
         else
         {
@@ -424,6 +424,10 @@ download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
         downloaded_size += real_size;
     }
     leave_spinLock();
+    if (total_size > 0)
+    {
+        update_ranges(node->tid, node->startidx, downloaded_size);
+    }
     return written;
 }
 
@@ -446,7 +450,6 @@ unsigned WINAPI
 run_thread(void *pdata)
 {
     int i = 0;
-    check_node check = {0};
     curl_node *pnode = (curl_node *)pdata;
     do
     {
@@ -455,8 +458,6 @@ run_thread(void *pdata)
         {
             CURLcode res = CURLE_OK;
             char m_ranges[FILE_LEN+1] = {0};
-            check.curl = curl;
-            check.tid = pnode->tid;
             curl_easy_setopt(curl, CURLOPT_URL, pnode->url);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
             if (total_size > 0)
@@ -483,8 +484,7 @@ run_thread(void *pdata)
             curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
             curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
             res = curl_easy_perform(curl);
-            // 重新实现curl_easy_cleanup,跟踪可能出现的崩溃
-            curl_easy_cleanup_t(curl, &check);
+            curl_easy_cleanup(curl);
             if (res == CURLE_WRITE_ERROR)
             {
                 printf("\nerror:failed writing received data to disk\n");
@@ -517,17 +517,9 @@ run_thread(void *pdata)
             }
         }
     } while (file_info.re_bind && i++ < URL_ITERATIONS);
-    if (check.mem)
+    if (!pnode->error && total_size > 0)
     {
-        printf("free check.mem[0x%p] = %s\n", check.mem, check.mem);
-        if (_msize(check.mem) > FILE_LEN)
-        {
-            printf("check.mem dowrd shoot!\n");
-        }
-        else
-        {
-            free(check.mem);
-        }
+        update_status(pnode->tid, 1);
     }
     return (1);
 }
@@ -550,7 +542,7 @@ get_file_lenth(const char *url, int64_t *file_len)
     curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, 0L);
     // 设置重定向的最大次数
-    curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 5);
+    curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 3);
     // 设置301、302跳转跟随location
     curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, curl_header_parse);
@@ -591,80 +583,234 @@ block_url()
     return res;
 }
 
-bool
-init_download(const char *url, uint64_t length)
+static bool
+fill_file_name(const char *url)
+{
+    char   code_names[MAX_PATH+1] = {0};
+    int    len = 0;
+    if (strcmp(file_info.remote_names, "a.zip") == 0)
+    {
+        if (get_name_from_url(url, file_info.remote_names))
+        {
+            return false;
+        }
+        wnsprintfA(code_names, MAX_PATH, "%s", file_info.remote_names);
+        if (!url_decode_t(code_names))
+        {
+            return false;
+        }
+        printf("\ndiscode_names: %s\n", code_names);
+        if (strcmp(code_names, file_info.remote_names) != 0)
+        {
+            wnsprintfA(file_info.remote_names, MAX_PATH, "%s", code_names);
+        }
+    }
+    else if (strchr(file_info.remote_names, '%'))
+    {
+        wnsprintfA(code_names, MAX_PATH, "%s", file_info.remote_names);
+        if (!url_decode_t(code_names))
+        {
+            return false;
+        }
+        printf("\ndiscode_names: %s\n", code_names);
+        if (strcmp(code_names, file_info.remote_names) != 0)
+        {
+            wnsprintfA(file_info.remote_names, MAX_PATH, "%s", code_names);
+        }
+    }
+    if ((len = (int)wcslen(file_info.names)) < 2)
+    {
+        len = MultiByteToWideChar(CP_UTF8, 0, file_info.remote_names, -1, file_info.names, sizeof(file_info.names)); 
+        if (!len)
+        {
+            printf("MultiByteToWideChar to file_info.names false\n");
+            return false;
+        }
+    }
+    else if (file_info.names[len-1] == L'\\')
+    {
+        WCHAR tmp[MAX_PATH+1] = {0};
+        len = MultiByteToWideChar(CP_UTF8, 0, file_info.remote_names, -1, tmp, sizeof(tmp)); 
+        if (!len)
+        {
+            printf("MultiByteToWideChar to file_info.names false\n");
+            return false;
+        }
+        wcsncat(file_info.names, tmp, MAX_PATH);
+    }
+    return true;
+}
+
+static bool
+init_resume(const char *url, int64_t length)
+{
+    FILE     *fp = NULL;
+    int      num = 0;
+    bool     res = true;
+    sql_node s_node[MAX_THREAD];
+    CURLSH   *share = NULL;
+    num = get_ranges(s_node);
+    if (!num)
+    {
+        printf("get_ranges() return 0\n");
+        return false;
+    }
+    if (!get_down_size(&downloaded_size))
+    {
+        printf("get_down_size() return false\n");
+        return false;
+    }
+    do
+    {
+        int i = 0;
+        curl_node m_node[MAX_THREAD];
+        HANDLE m_handle[MAX_THREAD] = { 0 };
+        if ((fp = _wfopen(file_info.names, L"rb+")) == NULL)
+        {
+            printf("fopen error in init_resume()!\n");
+            res = false;
+            break;
+        }
+        if ((share = curl_share_init()) == NULL)
+        {
+            printf("curl_share_init error in init_resume().\n");
+            res = false;
+            break;
+        }
+        total_size = length;
+        downloaded_size -= num;
+        file_info.thread_num = num;
+        curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+        curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+        curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+        curl_share_setopt(share, CURLSHOPT_LOCKFUNC, lock_cb);
+        curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, unlock_cb);
+        for (i = 0; i < file_info.thread_num; i++)
+        {
+            m_node[i].fp = fp;
+            m_node[i].startidx = s_node[i].startidx;
+            m_node[i].endidx = s_node[i].endidx;
+            m_node[i].share = share;
+            m_node[i].tid = s_node[i].thread;
+            m_node[i].url = url;
+            m_node[i].error = false;
+            m_handle[i] = (HANDLE) _beginthreadex(NULL, 0, run_thread, &m_node[i], 0, NULL);
+            if (m_handle[i] == NULL)
+            {
+                printf("_beginthreadex false, error: %lu\n", GetLastError());
+                res = false;
+                break;
+            }
+        }
+        for (i = 0; i < file_info.thread_num; i++)
+        {
+            if ((WaitForSingleObject(m_handle[i], INFINITE) == WAIT_OBJECT_0))
+            {
+                CloseHandle(m_handle[i]);
+                m_handle[i] = NULL;
+                if (m_node[i].error)
+                {
+                    res = false;
+                }
+            }
+        }
+    }while (0);
+    if (fp)
+    {
+        fclose(fp);
+    }
+    if (share)
+    {
+        curl_share_cleanup(share);
+    }
+    return res;
+}
+
+static bool
+resume_download(const char *url, int64_t length, LPCWSTR path)
+{
+    bool fn = false;
+    do
+    {
+        int64_t size = 0;
+        fn = init_sql_logs(path);
+        if (!fn)
+        {
+            break;
+        }
+        fn = check_status(&size);
+        if (!fn)
+        {
+            break;
+        }
+        if (size != length)
+        {
+            printf("file size different, not resume download.\n");
+            break;
+        }
+        fn = init_resume(url, length);
+        if (fn)
+        {
+            printf("\nresume download succed......\n");
+        }
+        else
+        {
+            printf("\nresume download failed......\n");
+            DeleteFileW(file_info.names);
+        }
+    }while (0);
+    clean_sql_logs();
+    if (*path != '\0')
+    {
+        DeleteFileW(path);
+    }
+    return fn;
+}
+
+static bool
+init_download(const char *url, int64_t length)
 {
     int i = 0;
     FILE *fp = NULL;
     bool m_error = false;
-    wchar_t out_name[MAX_PATH] = { 0 };
+    wchar_t sql_name[MAX_PATH] = { 0 };
     CURLSH  *share = NULL;
     do
     {
         curl_node m_node[MAX_THREAD];
         HANDLE    m_handle[MAX_THREAD] = { 0 };
-        size_t    len = 0;
         int64_t   gap = 0;
         if (length == 0 || length >= INT64_MAX)
         {
             printf("get the file size error...\n");
             length = 0;
         }
-        if (strcmp(file_info.remote_names, "a.zip") == 0)
+        if (fill_file_name(url) && length)
         {
-            char code_names[MAX_PATH+1] = {0};
-            if (get_name_from_url(url, file_info.remote_names))
+            wnsprintfW(sql_name, MAX_PATH, L"%ls%ls", file_info.names, L".sinfo");
+            if (PathFileExistsW(sql_name))
             {
-                return false;
+                if (!PathFileExistsW(file_info.names))
+                {
+                    DeleteFileW(sql_name);
+                }  // 存在日志记录文件,准备续传
+                else
+                {
+                    return resume_download(url, length, sql_name);
+                }
             }
-            wnsprintfA(code_names, MAX_PATH, "%s", file_info.remote_names);
-            if (!url_decode_t(code_names))
-            {
-                return false;
-            }
-            printf("\ndiscode_names: %s\n", code_names);
-            if (strcmp(code_names, file_info.remote_names) != 0)
-            {
-                wnsprintfA(file_info.remote_names, MAX_PATH, "%s", code_names);
-            }
-        }
-        else if (strchr(file_info.remote_names, '%'))
+        } // 长度未知时,不启用sql日志文件
+        if (!length || init_sql_logs(sql_name))
         {
-            char code_names[MAX_PATH+1] = {0};
-            wnsprintfA(code_names, MAX_PATH, "%s", file_info.remote_names);
-            if (!url_decode_t(code_names))
-            {
-                return false;
-            }
-            printf("\ndiscode_names: %s\n", code_names);
-            if (strcmp(code_names, file_info.remote_names) != 0)
-            {
-                wnsprintfA(file_info.remote_names, MAX_PATH, "%s", code_names);
-            }
-        }
-        if ((len = wcslen(file_info.names)) < 2)
-        {
-            MultiByteToWideChar(CP_UTF8, 0, file_info.remote_names, -1, file_info.names, sizeof(file_info.names)); 
-        }
-        else if (file_info.names[len-1] == L'\\')
-        {
-            WCHAR tmp[MAX_PATH+1] = {0};
-            MultiByteToWideChar(CP_UTF8, 0, file_info.remote_names, -1, tmp, sizeof(tmp)); 
-            wcsncat(file_info.names, tmp, MAX_PATH);
-        }
-        if (true)
-        {
-            wnsprintfW(out_name, MAX_PATH, L"%ls", file_info.names);
-            wcsncat(out_name, L".dl", MAX_PATH);
-            fp = _wfopen(out_name, L"wb");
+            fp = _wfopen(file_info.names, L"wb");
         }
         if (NULL == fp)
         {
             printf("fopen error!\n");
             m_error = true;
             break;
-        }
-        if (!length || block_url())     /* 没有提前获取文件长度,不使用多线程下载 */
+        } // 没有提前获取文件长度,不使用多线程下载
+        if (!length || block_url())     
         {
             memset(&m_node[0], 0, sizeof(curl_node));
             m_node[0].fp = fp;
@@ -729,6 +875,12 @@ init_download(const char *url, uint64_t length)
                 m_error = true;
                 break;
             }
+            else if (!thread_insert(url, m_node[i].startidx, m_node[i].endidx, 0, total_size, m_node[i].tid, GetCurrentProcessId(), 0))
+            {
+                printf("thread_insert() false.\n");
+                m_error = true;
+                break;
+            }
         }
         for (i = 0; i < file_info.thread_num; i++)
         {
@@ -746,6 +898,7 @@ init_download(const char *url, uint64_t length)
     if (fp != NULL)
     {
         fclose(fp);
+        clean_sql_logs();
     }
     if (share != NULL)
     {
@@ -754,12 +907,19 @@ init_download(const char *url, uint64_t length)
     if (m_error)
     {
         printf("download failed......\n");
-        DeleteFileW(out_name);
+        DeleteFileW(file_info.names);
+        if (*sql_name != '\0')
+        {
+            DeleteFileW(sql_name);
+        }
     }
     else
     {
         printf("\ndownload succed......\n");
-        MoveFileExW(out_name, file_info.names, MOVEFILE_REPLACE_EXISTING);
+        if (*sql_name != '\0')
+        {
+            DeleteFileW(sql_name);
+        }
     }
     return (!m_error);
 }

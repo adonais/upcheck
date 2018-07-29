@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <shlwapi.h>
 #include "spinlock.h"
 
@@ -404,4 +405,65 @@ get_file_md5(LPCWSTR path, char* md5_str)
         SYS_FREE(pbHash);
     }
     return res;
+}
+
+bool WINAPI
+merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name)
+{
+    int rc1,rc2;
+    FILE *fp1 = NULL, *fp2 = NULL, *fp3 = NULL;
+    bool res = false;
+    unsigned char buf[BUFSIZE];
+    do
+    {
+        fp1 = _wfopen(path1, L"rb");
+        if (fp1 == NULL)
+        {
+            break;
+        }
+        fp2 = _wfopen(path2, L"rb");
+        if (fp2 == NULL)
+        {
+            break;
+        }
+        fp3 = _wfopen(name, L"wb");
+        if (fp3 == NULL)
+        {
+            break;
+        }
+        while((rc1 = fread(buf, 1, BUFSIZE, fp1)) != 0)
+        {
+            fwrite(buf, 1, rc1, fp3);
+        } 
+        while((rc2 = fread(buf, 1, BUFSIZE, fp2)) != 0)
+        {
+            fwrite(buf, 1, rc2, fp3);
+        }
+        res = true;
+    }while (0);
+    if (fp1)
+    {
+        fclose(fp1);
+    }
+    if (fp2)
+    {
+        fclose(fp2);
+    }
+    if (fp3)
+    {
+        fclose(fp3);
+    }
+    return res;
+}
+
+bool WINAPI
+get_files_lenth(LPCWSTR path, int64_t *psize)
+{
+    struct _stati64 statbuf;
+    if (_wstati64(path,&statbuf))
+    {
+        return false;
+    }
+    *psize = statbuf.st_size;
+    return true;
 }

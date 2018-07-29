@@ -59,12 +59,20 @@ typedef struct _file_info_t
     char   md5[MD5_LEN+1];
     char   url[URL_LEN+1];
     int    thread_num;
+    void   *sql;
     bool   use_thunder;
     bool   extract;
     bool   re_bind;
     DWORD  pid;
     bool   up;
 } file_info_t;
+
+typedef struct _sql_node
+{
+    int64_t    startidx;
+    int64_t    endidx;
+    uint32_t   thread;
+} sql_node;
 
 extern int __argc;
 extern WCHAR **__wargv;
@@ -83,6 +91,8 @@ extern bool WINAPI read_appkey(LPCWSTR, LPCWSTR, LPWSTR, DWORD, LPCWSTR);
 extern uint64_t WINAPI read_appint(LPCWSTR cat,LPCWSTR name, LPCWSTR ini);
 extern bool WINAPI init_file_strings(LPCWSTR names, WCHAR *out_path);
 extern bool WINAPI find_local_str(char *result, int len);
+extern bool WINAPI merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name);
+extern bool WINAPI get_files_lenth(LPCWSTR path, int64_t *psize);
 
 #ifdef __cplusplus
 }

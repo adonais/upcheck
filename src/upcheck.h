@@ -25,13 +25,13 @@ extern "C" {
 
 typedef struct _curl_node
 {
-    FILE *fp;
-    int64_t startidx;
-    int64_t endidx;
-    CURLSH *share;
-    uint32_t tid;
+    FILE       *fp;
+    int64_t    startidx;
+    int64_t    endidx;
+    CURLSH     *share;
+    uint32_t   tid;
     const char *url;
-    bool error;
+    bool       error;
 } curl_node;
 
 typedef struct _dnld_params_t
