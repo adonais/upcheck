@@ -5,7 +5,7 @@ CPP	 = cl.exe
 MSVC_CRT =
 
 VFLAGS   = /nologo /MT /W3 /WX- /wd4996 /wd4819 /O2 /Zi /Gd /fp:precise \
-           /D "_CRT_SECURE_NO_WARNINGS" /D "_USING_V110_SDK71_" /D "_UNICODE" /D "UNICODE" /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 $(DEBUG_L)
+           /D "_CRT_SECURE_NO_WARNINGS" /D "_USING_V110_SDK71_" /D "_UNICODE" /D "UNICODE" /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 $(DEBUG_L) /D "USE_ARES"
 LD       = link.exe
 
 !if "$(PLATFORM)"=="X64" || "$(TARGET_CPU)"=="x64" || "$(VSCMD_ARG_HOST_ARCH)"=="x64"
@@ -84,3 +84,4 @@ $(DEP)\resource.res       : $(SRC)\resource.rc
 .PHONY		        : clean
 clean                   : 
 	-$(RMDIR) $(DISTDIR) $(DEP) 2>NUL 1>NUL
+	-$(RM) *.pdb 2>NUL 1>NUL

@@ -240,10 +240,11 @@ init_command_data(void)
 static void
 curl_set_cookies(CURL *curl)
 {
+    LPCSTR agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36";
     if (strlen(file_info.referer) > 1)
     {
         char cookies[COOKE_LEN+1] = {0};
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36");
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
         curl_easy_setopt(curl, CURLOPT_REFERER, file_info.referer);
         if (!parse_baidu_cookies(cookies, COOKE_LEN))
         {
@@ -253,6 +254,7 @@ curl_set_cookies(CURL *curl)
     }
     else if (strlen(file_info.cookies) > 1)
     {
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
         curl_easy_setopt(curl, CURLOPT_COOKIEFILE, file_info.cookies);
     }
     else
@@ -471,8 +473,12 @@ run_thread(void *pdata)
             // 设置重定向的最大次数,301、302跳转跟随location
             curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        #if defined(USE_ARES)
+            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+        #else
             // 禁用掉alarm信号，防止多线程中使用超时崩溃 
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        #endif
             // 关掉CLOSE_WAIT
             curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
@@ -499,7 +505,7 @@ run_thread(void *pdata)
                 if (!file_info.re_bind)
                 {
                     file_info.re_bind = 1;
-                    i = URL_ITERATIONS-6;
+                    i = URL_ITERATIONS-9;
                 }
                 leave_spinLock();
             }
@@ -515,7 +521,7 @@ run_thread(void *pdata)
                 printf("\ndownload error: %s\n\nurl = %s\n", err_string, pnode->url);
                 pnode->error = true;
             }
-        }
+        } // 非严重错误时自动重试8次
     } while (file_info.re_bind && i++ < URL_ITERATIONS);
     if (!pnode->error && total_size > 0)
     {
@@ -538,6 +544,7 @@ get_file_lenth(const char *url, int64_t *file_len)
     curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, "GET");
     curl_easy_setopt(handle, CURLOPT_HEADER, 1); //只需要header头
     curl_easy_setopt(handle, CURLOPT_NOBODY, 1); //不需要body
+    curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 10L);
     curl_set_cookies(handle);
     curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -1116,6 +1123,12 @@ static void logs_update(bool res)
     uint64_t diff = 3600*24;
     uint64_t m_time1 = (uint64_t)time(NULL);
     uint64_t m_time2 = read_appint(L"update",L"last_check", file_info.ini);
+    uint64_t m_temp  = read_appint(L"update",L"last_id", file_info.ini);
+    if (!m_temp)
+    {
+        // 未链接上更新服务器,不更新日期
+        return;
+    }
     if (m_time1 - m_time2 > diff)
     {
         WCHAR s_time[FILE_LEN+1] = {0};

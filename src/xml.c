@@ -173,7 +173,6 @@ init_resolver(void)
     char url[MAX_PATH + 1];
     WCHAR wurl[MAX_PATH + 1];
     int res = 1;
-
     if (!GetTempPathW(sizeof(temp_path), temp_path))
     {
         return res;
@@ -199,15 +198,15 @@ init_resolver(void)
         printf("CreateFileW temp file return false\n");
         return res;
     }
-    if (init_process(url, &write_data, pfile) == CURLE_OK)
+    res = init_process(url, &write_data, pfile);
+    if (res != CURLE_OK)
     {
-        res = 0;
+        WritePrivateProfileStringW(L"update", L"last_id", NULL, file_info.ini);
     }
-    FlushFileBuffers(pfile);
-    if (!res && !ini_query(temp_names))
+    else
     {
-        printf("ini_query return false\n");
-        res = 1;
+        FlushFileBuffers(pfile);
+        res = !ini_query(temp_names);
     }
     CloseHandle(pfile);
     return res;

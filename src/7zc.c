@@ -26,7 +26,7 @@
 extern void __cdecl logmsg(const char *format, ...);
 
 #if defined(NDEBUG)
-#define PrintError(str) ((void)0)
+#define PrintError(...) ((void)0)
 #elif defined(DEBUG_LOG)
 #define PrintError logmsg
 #endif
