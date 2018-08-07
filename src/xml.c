@@ -173,7 +173,7 @@ init_resolver(void)
     char url[MAX_PATH + 1];
     WCHAR wurl[MAX_PATH + 1];
     int res = 1;
-    if (!GetTempPathW(sizeof(temp_path), temp_path))
+    if (!GetTempPathW(MAX_PATH, temp_path))
     {
         return res;
     }
@@ -195,6 +195,7 @@ init_resolver(void)
     pfile = CreateFileW(temp_names, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
     if (pfile == INVALID_HANDLE_VALUE)
     {
+        DeleteFileW(temp_names);
         printf("CreateFileW temp file return false\n");
         return res;
     }
