@@ -1123,12 +1123,6 @@ static void logs_update(bool res)
     uint64_t diff = 3600*24;
     uint64_t m_time1 = (uint64_t)time(NULL);
     uint64_t m_time2 = read_appint(L"update",L"last_check", file_info.ini);
-    uint64_t m_temp  = read_appint(L"update",L"last_id", file_info.ini);
-    if (!m_temp)
-    {
-        // 未链接上更新服务器,不更新日期
-        return;
-    }
     if (m_time1 - m_time2 > diff)
     {
         WCHAR s_time[FILE_LEN+1] = {0};
@@ -1277,15 +1271,22 @@ wmain(int argc, WCHAR **wargv)
         }
         if (wcslen(file_info.ini) > 1)                    // 下载并解析ini文件
         {
-            if (init_resolver() == 0)
+			int ups = init_resolver();
+            if (ups == 0)
             {
                 printf("init_resolver ok.\n");
             }
-            else
+            else if (ups > 0)
             {
-                printf("init_resolver return false.\n");
+                printf("init_resolver return 1.\n");
                 break;
             }
+            else
+            {
+                printf("init_resolver return -1.\n");
+				*file_info.ini = '\0';
+                break;
+            }			
         }
         if (strlen(file_info.url) < 2)                     // 没有下载任务
         {

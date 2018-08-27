@@ -119,21 +119,9 @@ ini_query(const WCHAR *ini)
         printf("init_file_strings application.ini return false\n");
         return false;
     }
-    if (true)
+    if ((dt_locale = read_appint(L"App", L"BuildID", app_ini)) > 0)
     {
-        dt_locale = read_appint(L"App", L"BuildID", app_ini);
         dt_remote = read_appint(L"updates", info, ini);
-    }
-    if (dt_locale >= dt_remote)
-    {
-        printf("dt_locale(%I64u) >= dt_remote(%I64u), do not update\n", dt_locale, dt_remote);
-        return false;
-    }
-    else
-    {
-        WCHAR wstr[66] = { 0 };
-        _ui64tow(dt_remote, wstr, 10);
-        WritePrivateProfileStringW(L"update", L"last_id", wstr, file_info.ini);
     }
     if (!read_appkey(info, L"url", url, sizeof(url), ini))
     {
@@ -157,10 +145,24 @@ ini_query(const WCHAR *ini)
         file_info.url[0] = '\0';
         return false;
     }
+    if (dt_locale >= dt_remote)
+    {
+        printf("dt_locale(%I64u) >= dt_remote(%I64u), do not update\n", dt_locale, dt_remote);
+        return false;
+    }
+    else
+    {
+        WCHAR wstr[66] = { 0 };
+        _ui64tow(dt_remote, wstr, 10);
+        WritePrivateProfileStringW(L"update", L"last_id", wstr, file_info.ini);
+    }		
     return true;
 #undef INFO_LEN
 }
 
+/* 连不上更新服务器或函数执行失败,返回-1 */
+/* 需要更新,返回0                        */
+/* 不需要更新,返回1                      */
 #ifdef _MSC_VER
 #pragma optimize("g", off)
 #endif
@@ -172,7 +174,7 @@ init_resolver(void)
     WCHAR temp_names[MAX_PATH];
     char url[MAX_PATH + 1];
     WCHAR wurl[MAX_PATH + 1];
-    int res = 1;
+    int res = -1;
     if (!GetTempPathW(MAX_PATH, temp_path))
     {
         return res;
@@ -203,6 +205,7 @@ init_resolver(void)
     if (res != CURLE_OK)
     {
         WritePrivateProfileStringW(L"update", L"last_id", NULL, file_info.ini);
+		res = -1;
     }
     else
     {
