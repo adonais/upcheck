@@ -18,7 +18,7 @@ static size_t
 write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 {
     DWORD written;
-    WriteFile(stream, ptr, size * nmemb, &written, NULL);
+    WriteFile(stream, ptr, (DWORD)(size * nmemb), &written, NULL);
     return written;
 }
 

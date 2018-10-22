@@ -100,7 +100,7 @@ parse_sqlite_cookies(void *hfile, int count, char **column, char **names)
         free(value);
     }
     DWORD written;
-    WriteFile(hfile, line, strlen(line), &written, NULL);
+    WriteFile(hfile, line, (DWORD)strlen(line), &written, NULL);
     return 0;
 }
 
@@ -163,7 +163,7 @@ dump_cookies(const wchar_t *sql_path)
         file_info.cookie_handle = NULL;
         return -1;
     }
-    WriteFile(file_info.cookie_handle, notes, strlen(notes), &written, NULL);
+    WriteFile(file_info.cookie_handle, notes, (DWORD)strlen(notes), &written, NULL);
     if (sqlite_txt(sql_path, file_info.cookie_handle) != SQLITE_OK)
     {
         CloseHandle(file_info.cookie_handle);
@@ -217,7 +217,7 @@ get_ranges(sql_node *node)
     {
         return 0;
     }
-    rc = sqlite3_prepare_v2(file_info.sql,m_sql,strlen(m_sql),&pstmt,&tail);
+    rc = sqlite3_prepare_v2(file_info.sql,m_sql,(int)strlen(m_sql),&pstmt,&tail);
     if (rc != SQLITE_OK)
     {
         printf("sqlite3_exec error in get_ranges(): %s\n", msg);

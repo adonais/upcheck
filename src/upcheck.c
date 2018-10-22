@@ -212,7 +212,7 @@ init_command_data(void)
         else if (_wcsicmp(pv[i], L"-h") == 0)
         {
             VERIFY(i+1 < __argc - 1);
-            file_info.handle = (HANDLE)_wtoi(pv[i+1]);
+            file_info.handle = (HANDLE)(uintptr_t)_wtoi(pv[i+1]);
         }
         else if (_wcsicmp(pv[i], L"-d") == 0)
         {
@@ -1109,7 +1109,7 @@ static void msg_tips(void)
     {
         return;
     }
-    if (read_appkey(L"update", L"msg", msg, num, file_info.ini))
+    if (read_appkey(L"update", L"msg", msg, (DWORD)num, file_info.ini))
     {
         fx = get_moz_hwnd();
         wstr_replace(msg, wcslen(msg), L"\\n", L"\n");

@@ -21,7 +21,6 @@
  * KIND, either express or implied.
  *
  ***************************************************************************/
-
 #ifdef  __cplusplus
 extern "C" {
 #endif
@@ -41,7 +40,6 @@ typedef struct _check_node
 } check_node;
 CURL_EXTERN void curl_easy_cleanup_t(CURL *curl, check_node *check);
 #endif
-
 /*
  * NAME curl_easy_getinfo()
  *

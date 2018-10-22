@@ -216,7 +216,7 @@ memstr(char *full_data, int full_data_len, const char *substr)
         return NULL;
     }
 
-    int sublen = strlen(substr);
+    int sublen = (int)strlen(substr);
 
     int i;
     char *cur = full_data;
@@ -410,7 +410,7 @@ get_file_md5(LPCWSTR path, char* md5_str)
 bool WINAPI
 merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name)
 {
-    int rc1,rc2;
+    size_t rc1,rc2;
     FILE *fp1 = NULL, *fp2 = NULL, *fp3 = NULL;
     bool res = false;
     unsigned char buf[BUFSIZE];

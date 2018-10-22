@@ -20,15 +20,15 @@ url_encode_t(char* str)
 {
     int j = 0;
     char ch;
-    int strSize=strlen(str);
+    int m_size=(int)strlen(str);
 
-    char *result = (char *)malloc(3*strSize);
-    if ((str==NULL) || (result==NULL) || (strSize==0) ) {
+    char *result = (char *)malloc(3*m_size);
+    if ((str==NULL) || (result==NULL) || (m_size==0) ) {
         free(result);
         return NULL;
     }
     int i;
-    for (i=0; i<strSize; ++i) {
+    for (i=0; i<m_size; ++i) {
         ch = str[i];
         if (((ch>='A') && (ch<'Z')) ||
             ((ch>='a') && (ch<'z')) ||
@@ -59,22 +59,22 @@ url_decode_t(char* str)
     int i;
     int j = 0;
 
-    int strSize = strlen(str);
+    int m_size = (int)strlen(str);
 
-    char* result = (char*)malloc(strSize);
-    if ((str==NULL) || (result==NULL) || (strSize<=0) ) {
+    char* result = (char*)malloc(m_size);
+    if ((str==NULL) || (result==NULL) || (m_size<=0) ) {
         free(result);
         return 0;
     }
 
-    for ( i=0; i<strSize; ++i) {
+    for ( i=0; i<m_size; ++i) {
         ch = str[i];
         switch (ch) {
         case '+':
             result[j++] = ' ';
             break;
         case '%':
-            if (i+2<strSize) {
+            if (i+2<m_size) {
                 ch1 = hex2num(str[i+1]);//高4位
                 ch2 = hex2num(str[i+2]);//低4位
                 if ((ch1!='0') && (ch2!='0'))
@@ -112,7 +112,7 @@ utf8_to_utf16(const char *filename_utf8, wchar_t *out_utf16, size_t len)
         return (0);
     }
     MultiByteToWideChar(CP_UTF8, 0, filename_utf8, -1, filename_w, num_chars);
-    wnsprintfW(out_utf16, len, L"%ls", filename_w);
+    wnsprintfW(out_utf16, (int)len, L"%ls", filename_w);
     free(filename_w);
     return (1);
 }

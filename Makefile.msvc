@@ -14,13 +14,14 @@ BITS	 = 64
 CFLAGS   = $(VFLAGS) /TC /D "WIN64" /D "_WIN64" /favor:blend
 CXXFLAGS = $(VFLAGS) /TP /D "WIN64" /D "_WIN64" /favor:blend
 ASMFLAGS = -fwin64 -O2 -DWINDOWS -Worphan-labels
-!ERROR Doesn't support the project's platform, you can build the libcurl for x64.
+CHI_LIBS = /LIBPATH:$(SRC)/libcurl/lib /LIBPATH:$(SRC)/liblzma/lib
 !else
 PLATFORM = X86
 BITS	 = 32
 CFLAGS   = $(VFLAGS) /TC
 CXXFLAGS = $(VFLAGS) /TP
 ASMFLAGS = -fwin32 -O2 -DWINDOWS -D__i386__ -DWIN32 -DMSVC -Worphan-labels
+CHI_LIBS = /LIBPATH:$(SRC)/libcurl/lib32 /LIBPATH:$(SRC)/liblzma/lib32
 !endif
 
 MD       = @mkdir
@@ -32,7 +33,6 @@ MIN_INC  = $(SRC)/libcurl/include /I$(SRC)/liblzma/include
 DEP      = .dep
 RC       = rc.exe
 RCFLAGS  = /nologo /D "_UNICODE" /D "UNICODE"
-CHI_LIBS = /LIBPATH:$(SRC)/libcurl/lib /LIBPATH:$(SRC)/liblzma/lib
 CRTFLAGS = $(CHI_LIBS)
 OBJS     = $(DEP)\upcheck.obj $(DEP)\urlcode.obj $(DEP)\spinlock.obj $(DEP)\7zc.obj $(DEP)\progressui.obj \
            $(DEP)\updates.obj $(DEP)\unzip.obj $(DEP)\thunderagent.obj $(DEP)\xml.obj \
