@@ -1248,7 +1248,7 @@ wmain(int argc, WCHAR **wargv)
 #endif
     if (argc < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
-        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.2\n", 
+        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.3\n", 
                "upcheck.exe");
         return -1;
     }

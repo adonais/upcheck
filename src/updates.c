@@ -37,7 +37,6 @@ remove_dir(LPCWSTR parent)
     HANDLE h_file = NULL;
     WIN32_FIND_DATAW fd = {0};
     WCHAR path_name[MAX_PATH] = {0};
-    WCHAR tmp[MAX_PATH] = {0};
     WCHAR sub[MAX_PATH] = {0};
     if( parent[wcslen(parent) -1] != '\\' )
     {
@@ -60,18 +59,64 @@ remove_dir(LPCWSTR parent)
         }
         else if(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
-             wnsprintfW(sub,MAX_PATH, L"%s\\%s",parent, fd.cFileName);
-             if (PathIsDirectoryEmptyW(sub))
-             {
-                 RemoveDirectoryW(sub);
-             }
-             else
+            wnsprintfW(sub,MAX_PATH, L"%s\\%s",parent, fd.cFileName);
+            if (PathIsDirectoryEmptyW(sub))
             {
-                 remove_dir(sub);
+                RemoveDirectoryW(sub);
+            }
+            else
+            {
+                remove_dir(sub);
             }
         }
     } while(FindNextFileW(h_file, &fd) != 0);
     FindClose(h_file); 
+    h_file = NULL;
+}
+
+static void 
+erase_dir(LPCWSTR parent)
+{
+    HANDLE h_file = NULL;
+    WIN32_FIND_DATAW fd = {0};
+    WCHAR path_name[MAX_PATH] = {0};
+    WCHAR sub[MAX_PATH] = {0};
+    BOOL  finded = TRUE;
+    if( parent[wcslen(parent) -1] != '\\' )
+    {
+        wnsprintfW(path_name,MAX_PATH, L"%ls\\*.*", parent);
+    }
+    else
+    {
+        wnsprintfW(path_name,MAX_PATH, L"%ls*.*", parent);
+    }
+    h_file = FindFirstFileW(path_name, &fd);
+    if(h_file == INVALID_HANDLE_VALUE)
+    {
+        return;
+    }
+    while(finded) 
+    {
+        finded = FindNextFileW(h_file, &fd);
+        if(wcscmp(fd.cFileName, L".") && wcscmp(fd.cFileName, L".."))
+        {
+            wnsprintfW(sub,MAX_PATH, L"%s\\%s",parent, fd.cFileName);
+            if(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+                if (_wcsicmp(fd.cFileName,L"plugins") == 0)
+                {
+                    continue;
+                }
+                erase_dir(sub);
+            }
+            else
+            {
+                DeleteFileW(sub);
+            }            
+        }
+    }
+    FindClose(h_file); 
+    RemoveDirectoryW(parent); 
     h_file = NULL;
 }
 
@@ -378,8 +423,12 @@ unsigned WINAPI update_thread(void *p)
 {
     // 准备复制更新文件到file_info.process所在目录
     WCHAR dst[MAX_PATH+1] = {0};
+    WCHAR chrome[MAX_PATH+1] = {0};
     wcsncpy(dst, file_info.process, MAX_PATH);
     PathRemoveFileSpecW(dst);
+    wnsprintfW(chrome,MAX_PATH, L"%ls\\browser", dst);
+    // 删除browser子目录
+    erase_dir(chrome);
     if (do_update(file_info.unzip_dir, dst))
     {
         printf("do_update false!\n");

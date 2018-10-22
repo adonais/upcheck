@@ -60,8 +60,8 @@ STRINGTABLE
 //
 
 1 VERSIONINFO
-FILEVERSION     1,0,2,200
-PRODUCTVERSION  1,0,2,200
+FILEVERSION     1,0,3,200
+PRODUCTVERSION  1,0,3,200
 FILEFLAGSMASK   0x3fL
 BEGIN
   BLOCK "StringFileInfo"
@@ -70,12 +70,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "ZH_CN NetWork"
       VALUE "FileDescription", "Checks to see if an update for the Iceweasel is available."
-      VALUE "FileVersion", "1.0.2"
+      VALUE "FileVersion", "1.0.3"
       VALUE "InternalName", "upcheck"
       VALUE "LegalCopyright", L" (C) \x534E\x306Eblog , \x4FDD\x7559\x6240\x6709\x6743\x5229\x3002\0"
       VALUE "OriginalFilename", "upcheck.exe"
       VALUE "ProductName", "upcheck"
-      VALUE "ProductVersion", "1.0.2"
+      VALUE "ProductVersion", "1.0.3"
     END
   END
 
