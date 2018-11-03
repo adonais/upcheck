@@ -3,7 +3,9 @@
 #include <windows.h>
 #include "thunderagent.hpp"
 
+#ifdef __cplusplus
 extern "C"
+#endif
 bool WINAPI 
 thunder_download(char *b_url, char *b_refer, char *b_cookies)
 {

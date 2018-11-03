@@ -48,20 +48,24 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
     return (int) res;
 }
 
-static bool
-is_64bits(void)
+/* 主进程是64位, 函数返回64 */
+/* 主进程是32位, 函数返回32 */
+/* 主进程已退出, 函数返回0  */
+static int
+get_file_bits(void)
 {
     bool x86 = false;
-    int wow64 = 0;
+    int  bits = 0;
     HANDLE hProcess = NULL;
 #ifndef _WIN64
     x86 = GetProcAddress(GetModuleHandleW(L"ntdll"), "NtWow64DebuggerCall") == NULL ? true : false;
 #endif
     do
     {
+        int wow64 = 0;
         if (x86)
         {
-            wow64 = 1;
+            bits = 32;
             break;
         }
         if ((hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, false, file_info.pid)) == NULL)
@@ -74,12 +78,20 @@ is_64bits(void)
             printf("IsWow64Processreturn false\n");
             break;
         }
+        if (wow64)
+        {
+            bits = 32;
+        }
+        else
+        {
+            bits = 64;
+        }
     } while (0);
     if (hProcess)
     {
         CloseHandle(hProcess);
     }
-    return !wow64;
+    return bits;
 }
 
 static bool
@@ -93,15 +105,21 @@ ini_query(const WCHAR *ini)
     WCHAR app_ini[MAX_PATH + 1] = { 0 };
     WCHAR url[MAX_PATH + 1] = { 0 };
     WCHAR c_md5[MD5_LEN + 1] = { 0 };
-    if (is_64bits())
+    int   bits = get_file_bits();
+    if (bits == 64)
     {
         printf("is_64bits\n");
         wcsncpy(info, L"win64.", INFO_LEN);
     }
-    else
+    else if (bits == 32)
     {
         printf("is_32bits\n");
         wcsncpy(info, L"win32.", INFO_LEN);
+    }
+    else
+    {
+        printf("unknown platform\n");
+        return false;
     }
     if (find_local_str(result, 5) && strcmp(result, "zh-CN") == 0)
     {

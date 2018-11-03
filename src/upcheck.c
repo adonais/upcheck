@@ -1016,7 +1016,7 @@ create_new(LPCWSTR wcmd, const LPCWSTR pcd, int flags, DWORD *opid)
     return pi.hProcess;
 }
 
-static bool down_thunder(void)
+static bool thunder_lookup(void)
 {
     bool m_down = false;
     if (strlen(file_info.referer) > 1)
@@ -1248,7 +1248,7 @@ wmain(int argc, WCHAR **wargv)
 #endif
     if (argc < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
-        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.3\n", 
+        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.4\n", 
                "upcheck.exe");
         return -1;
     }
@@ -1257,7 +1257,7 @@ wmain(int argc, WCHAR **wargv)
         memset(&file_info, 0, sizeof(file_info));
         init_command_data();
     }
-    if (file_info.use_thunder && down_thunder())          // 优先调用迅雷下载
+    if (file_info.use_thunder && thunder_lookup())        // 优先调用迅雷下载
     {
         return 0;
     }
