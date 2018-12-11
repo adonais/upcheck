@@ -36,7 +36,6 @@ static int64_t downloaded_size;
 static int64_t total_size;
 static LOCK_MUTEXT g_mutex;
 
-extern bool ice_build;
 file_info_t file_info;
 
 static bool
@@ -970,7 +969,7 @@ create_new(LPCWSTR wcmd, const LPCWSTR pcd, int flags, DWORD *opid)
     WCHAR  my_cmd[MAX_PATH+1] = {0};
     wcsncpy(my_cmd, wcmd, MAX_PATH);
 
-    if (ice_build)
+    if (unknown_builds())
     {
         PathRemoveFileSpecW(my_cmd);
         remove_files(my_cmd);

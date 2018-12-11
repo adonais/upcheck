@@ -1,11 +1,11 @@
 # nmake -f Makefile.msvc
 
-CC       = cl.exe
+CC   = cl.exe
 CPP	 = cl.exe
 MSVC_CRT =
 
 VFLAGS   = /nologo /MT /W3 /WX- /wd4996 /wd4819 /O2 /Zi /Gd /fp:precise \
-           /D "_CRT_SECURE_NO_WARNINGS" /D "_USING_V110_SDK71_" /D "_UNICODE" /D "UNICODE" /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 $(RELEASE) /D "USE_ARES"
+           /D "_CRT_SECURE_NO_WARNINGS" /D "_UNICODE" /D "UNICODE" /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 $(RELEASE) /D "USE_ARES"
 LD       = link.exe
 
 !if "$(PLATFORM)"=="X64" || "$(TARGET_CPU)"=="x64" || "$(VSCMD_ARG_HOST_ARCH)"=="x64"
@@ -25,8 +25,8 @@ CHI_LIBS = /LIBPATH:$(SRC)/libcurl/lib32 /LIBPATH:$(SRC)/liblzma/lib32
 !endif
 
 MD       = @mkdir
-CP	 = copy
-RM	 = @del /q
+CP	     = copy
+RM	     = @del /q
 RMDIR    = @rmdir /s /q
 SRC      = src
 MIN_INC  = $(SRC)/libcurl/include /I$(SRC)/liblzma/include
@@ -38,7 +38,8 @@ OBJS     = $(DEP)\upcheck.obj $(DEP)\urlcode.obj $(DEP)\spinlock.obj $(DEP)\7zc.
            $(DEP)\updates.obj $(DEP)\unzip.obj $(DEP)\thunderagent.obj $(DEP)\xml.obj \
 	   $(DEP)\sqlite3.obj $(DEP)\cookies.obj $(DEP)\resource.res
 
-WINXP    = /subsystem:console,5.01
+XPCFLAGS = /D "_USING_V110_SDK71_"	   
+XPLFALGS = /subsystem:console,5.01
 RELEASE  = /D "NDEBUG"
 DEBUG_L  = /D "DEBUG_LOG"
 HIDE     = /subsystem:windows
@@ -52,7 +53,7 @@ EXEC	 = \
 	@if not exist $(DISTDIR) $(MD) $(DISTDIR) 2>NUL 1>NUL && \
 	@if not exist $(DEP) $(MD) $(DEP) 2>NUL 1>NUL \
 
-all                     : $(OUT)
+all                       : $(OUT)
 
 $(OUT)			: $(OBJS)
 	$(LD) /OUT:"$@" $(OBJS) $(LDFLAGS) $(CRTFLAGS)
@@ -65,7 +66,7 @@ $(DEP)\spinlock.obj       : $(SRC)\spinlock.c $(SRC)\spinlock.h
 	$(CC) $(CFLAGS) /c $(SRC)\spinlock.c /Fo$@
 $(DEP)\7zc.obj            : $(SRC)\7zc.c $(SRC)\7zc.h
 	$(CC) $(CFLAGS) /c $(SRC)\7zc.c /Fo$@
-$(DEP)\unzip.obj            : $(SRC)\unzip.c $(SRC)\unzip.h
+$(DEP)\unzip.obj          : $(SRC)\unzip.c $(SRC)\unzip.h
 	$(CC) $(CFLAGS) /c $(SRC)\unzip.c /Fo$@
 $(DEP)\progressui.obj     : $(SRC)\progressui.c $(SRC)\progressui.h
 	$(CC) $(CFLAGS) /c $(SRC)\progressui.c /Fo$@
@@ -82,7 +83,7 @@ $(DEP)\thunderagent.obj   : $(SRC)\thunderagent.cc $(SRC)\thunderagent.h
 $(DEP)\resource.res       : $(SRC)\resource.rc
 	$(RC) $(RCFLAGS)  /fo$@ $(SRC)\resource.rc
 
-.PHONY		        : clean
-clean                   : 
+.PHONY		              : clean
+clean                     : 
 	-$(RMDIR) $(DISTDIR) $(DEP) 2>NUL 1>NUL
 	-$(RM) *.pdb 2>NUL 1>NUL

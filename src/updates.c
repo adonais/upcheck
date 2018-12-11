@@ -9,7 +9,10 @@
 #define PROGRESS_EXECUTE_SIZE 99.0f
 #define PROGRESS_FINISH_SIZE   1.0f
 extern  file_info_t file_info;
-bool    ice_build = false;
+static  bool fn_chrome;
+static  bool fn_openmp;
+static  bool fx_browser;
+static  bool ice_build;
 
 LPWSTR WINAPI
 wstr_replace(LPWSTR in,size_t in_size,LPCWSTR pattern,LPCWSTR by)
@@ -159,6 +162,14 @@ exist_root_dir(LPCWSTR wlog, LPWSTR root_path)
         {
             ice_build = true;
         }
+        if (wcsstr(buf, L"/browser/omni.ja"))
+        {
+            fn_chrome = true;
+        }
+        if (wcsstr(buf, L"libomp"))
+        {
+            fn_openmp = true;
+        }        
         if ((pos = wcsrchr(buf, L'\r')) != NULL)
         {
             *pos = L'\0';
@@ -322,8 +333,8 @@ getw_cwd(LPWSTR lpstrName, DWORD wlen)
     return (i>0 && i<(int)wlen);
 }
 
-static 
-bool is_ice(void)
+static bool 
+is_ice(void)
 {
     WCHAR ini[MAX_PATH+1] = {0};
     WCHAR names[32] = {0};
@@ -341,13 +352,11 @@ bool is_ice(void)
 static int
 do_update(LPCWSTR src0, LPCWSTR dst0)
 {
-    int res = 1;
+    int res = -1;
     if (!src0 || !dst0)
     {
         return res;
     }
-    bool  ice_official = false;
-    bool  ice_unofficial = false;
     WCHAR dst[MAX_PATH+1] = {0};
     WCHAR root[MAX_PATH+1] = {0};
     WCHAR wlog[MAX_PATH+1] = {0};
@@ -368,6 +377,24 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
         printf("exist_root_dir return error\n");
         return res;
     }
+    if (fn_chrome)
+    {
+        WCHAR chrome[MAX_PATH+1] = {0};
+        wcsncpy(chrome, file_info.process, MAX_PATH);
+        PathRemoveFileSpecW(chrome);
+        PathAppendW(chrome,L"browser");
+        // 删除browser子目录
+        erase_dir(chrome);
+    }
+    if (fn_openmp)
+    {
+        WCHAR libomp[MAX_PATH+1] = {0};
+        wcsncpy(libomp, file_info.process, MAX_PATH);
+        PathRemoveFileSpecW(libomp);
+        PathAppendW(libomp,L"vcomp140.dll");
+        // 删除重复的libomp
+        DeleteFileW(libomp);
+    }    
     if (res > 0)
     {
         printf("yes, path Is root Director\n");
@@ -375,61 +402,54 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
         PathStripPathW(strip);
         if (is_ice())
         {
-            ice_build = false;
-            if (_wcsicmp(strip, L"App") == 0)
+            if (ice_build && (_wcsicmp(strip, L"App") == 0))
             {
-                ice_official = true;
+                // iceweasel official package
+                PathRemoveFileSpecW(dst);
+                if (move_form_src(wlog, dst, root, NULL))
+                {
+                    return 0;
+                }                    
             }
-            else
+            else if (ice_build && (_wcsicmp(strip, L"App") != 0))
             {
-                ice_unofficial = true;
-            }
-        }
-        else if (ice_build)
-        {
-            ice_unofficial = true;
-        }
-        if (ice_official || ice_unofficial)
-        {
-            PathRemoveFileSpecW(dst);
-        }
-        if (ice_unofficial)
-        {
-            if (move_form_src(wlog, dst, root, strip))
-            {
-                return 0;
-            }
+                PathRemoveFileSpecW(dst);
+                if (move_form_src(wlog, dst, root, strip))
+                {
+                    return 0;
+                }                
+            }          
         }
         else
         {
-            if (move_form_src(wlog, dst, root, NULL))
-            {
-                return 0;
-            }
+            fx_browser = true;
         }
-    }
-    else
-    {
-        printf("not exist root director\n");
         if (move_form_src(wlog, dst, root, NULL))
         {
             return 0;
         }
     }
-    return 1;
+    else
+    {
+        printf("not exist root director\n");
+    }
+    return res;
 }
 
-unsigned WINAPI update_thread(void *p)
+bool WINAPI 
+unknown_builds(void)
+{
+    return (fx_browser && ice_build);
+}
+
+unsigned WINAPI
+update_thread(void *p)
 {
     // 准备复制更新文件到file_info.process所在目录
     WCHAR dst[MAX_PATH+1] = {0};
-    WCHAR chrome[MAX_PATH+1] = {0};
     wcsncpy(dst, file_info.process, MAX_PATH);
     PathRemoveFileSpecW(dst);
-    wnsprintfW(chrome,MAX_PATH, L"%ls\\browser", dst);
-    // 删除browser子目录
-    erase_dir(chrome);
-    if (do_update(file_info.unzip_dir, dst))
+    if (do_update(file_info.unzip_dir, dst) != 0)
     {
         printf("do_update false!\n");
     }
