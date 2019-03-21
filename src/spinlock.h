@@ -93,6 +93,8 @@ extern bool WINAPI init_file_strings(LPCWSTR names, WCHAR *out_path);
 extern bool WINAPI find_local_str(char *result, int len);
 extern bool WINAPI merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name);
 extern bool WINAPI get_files_lenth(LPCWSTR path, int64_t *psize);
+extern wchar_t* WINAPI utf8_to_utf16(const char *filename);
+extern char* WINAPI utf16_to_utf8(const wchar_t *filename);
 
 #ifdef __cplusplus
 }

@@ -94,12 +94,12 @@ path_parsing(LPCWSTR save_path)
     }
     if (PathFindExtensionW(save_path)[0] == L'.')
     {
-        wnsprintfW(file_info.names, MAX_PATH, L"%ls", save_path);
+        _snwprintf(file_info.names, MAX_PATH, L"%ls", save_path);
     }
     else if (!PathIsFileSpecW(save_path) && save_path[1] == L':')
     {
         size_t len = 0;
-        wnsprintfW(file_info.names, MAX_PATH, L"%ls", save_path);
+        _snwprintf(file_info.names, MAX_PATH, L"%ls", save_path);
         len = wcslen(file_info.names);
         if (file_info.names[len - 1] != L'\\')
         {
@@ -112,15 +112,15 @@ path_parsing(LPCWSTR save_path)
     {
         // is file
         WCHAR tmp_path[MAX_PATH + 1] = { 0 };
-        wnsprintfW(tmp_path, MAX_PATH, L"%ls\\%ls", save_path, file_info.names);
+        _snwprintf(tmp_path, MAX_PATH, L"%ls\\%ls", save_path, file_info.names);
         path_combine(tmp_path, MAX_PATH);
-        wnsprintfW(file_info.names, MAX_PATH, L"%ls", tmp_path);
+        _snwprintf(file_info.names, MAX_PATH, L"%ls", tmp_path);
     }
     if (true)
     {
         // creator dir
         WCHAR path[MAX_PATH + 1] = { 0 };
-        wnsprintfW(path, MAX_PATH, L"%ls", file_info.names);
+        _snwprintf(path, MAX_PATH, L"%ls", file_info.names);
         if (PathRemoveFileSpecW(path))
         {
             create_dir(path);
@@ -140,7 +140,7 @@ init_command_data(void)
         {
             VERIFY(i + 1 < __argc - 1);
             WCHAR tmp[URL_LEN + 1] = { 0 };
-            wnsprintfW(tmp, URL_LEN, L"%ls", pv[i + 1]);
+            _snwprintf(tmp, URL_LEN, L"%ls", pv[i + 1]);
             if (wcscmp(tmp, L"auto") == 0 && init_parser(file_info.ini, MAX_PATH))
             {
                 // 自动分析ini文件下载
@@ -152,7 +152,7 @@ init_command_data(void)
             }
             else if (strstr(file_info.url, "pcs.baidu.com") || strstr(file_info.url, "www.baidupcs.com"))
             {
-                wnsprintfA(file_info.referer, VALUE_LEN, "https://pan.baidu.com/disk/home");
+                _snprintf(file_info.referer, VALUE_LEN, "https://pan.baidu.com/disk/home");
             }
         } // 下载目录
         else if (_wcsicmp(pv[i], L"-o") == 0)
@@ -181,7 +181,7 @@ init_command_data(void)
             VERIFY(i + 1 < __argc - 1);
             WCHAR *dot = NULL;
             WCHAR cookies[VALUE_LEN + 1] = { 0 };
-            wnsprintfW(cookies, VALUE_LEN, L"%ls", pv[i + 1]);
+            _snwprintf(cookies, VALUE_LEN, L"%ls", pv[i + 1]);
             dot = wcsrchr(cookies, L'.');
             if (dot && wcsicmp(dot + 1, L"sqlite") == 0)
             {
@@ -198,13 +198,13 @@ init_command_data(void)
         {
             file_info.extract = true;
             VERIFY(i + 1 < __argc - 1);
-            wnsprintfW(file_info.unzip_dir, MAX_PATH, L"%ls", pv[i + 1]);
+            _snwprintf(file_info.unzip_dir, MAX_PATH, L"%ls", pv[i + 1]);
         } // 更新完毕后启动的进程名
         else if (_wcsicmp(pv[i], L"-s") == 0)
         {
             VERIFY(i + 1 < __argc - 1);
             init_parser(file_info.ini, MAX_PATH);
-            wnsprintfW(file_info.process, MAX_PATH, L"%ls", pv[i + 1]);
+            _snwprintf(file_info.process, MAX_PATH, L"%ls", pv[i + 1]);
         }
         else if (_wcsicmp(pv[i], L"-u") == 0)
         {
@@ -219,7 +219,7 @@ init_command_data(void)
         else if (_wcsicmp(pv[i], L"-d") == 0)
         {
             VERIFY(i + 1 < __argc - 1);
-            wnsprintfW(file_info.del, VALUE_LEN, L"%ls", pv[i + 1]);
+            _snwprintf(file_info.del, VALUE_LEN, L"%ls", pv[i + 1]);
         }
         else if (_wcsicmp(pv[i], L"-m") == 0)
         {
@@ -250,7 +250,7 @@ curl_set_cookies(CURL *curl)
         curl_easy_setopt(curl, CURLOPT_REFERER, file_info.referer);
         if (!parse_baidu_cookies(cookies, COOKE_LEN))
         {
-            wnsprintfA(file_info.cookies, COOKE_LEN, "%s", cookies);
+            _snprintf(file_info.cookies, COOKE_LEN, "%s", cookies);
             curl_easy_setopt(curl, CURLOPT_COOKIE, file_info.cookies);
         }
     }
@@ -368,11 +368,11 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     }
     if (strlen(dnld_params->remote_fname) > 1)
     {
-        wnsprintfA(file_info.remote_names, MAX_PATH, "%s", dnld_params->remote_fname);
+        _snprintf(file_info.remote_names, MAX_PATH, "%s", dnld_params->remote_fname);
     }
     else
     {
-        wnsprintfA(file_info.remote_names, MAX_PATH, "%s", "a.zip");
+        _snprintf(file_info.remote_names, MAX_PATH, "%s", "a.zip");
     }
     return cb;
 }
@@ -459,16 +459,24 @@ run_thread(void *pdata)
         if (curl)
         {
             CURLcode res = CURLE_OK;
-            char m_ranges[FILE_LEN + 1] = { 0 };
+            char *m_ranges = NULL;
             curl_easy_setopt(curl, CURLOPT_URL, pnode->url);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
             if (total_size > 0)
             {
-                wnsprintfA(m_ranges, FILE_LEN, "%I64d-%I64d", pnode->startidx, pnode->endidx);
+                if ((m_ranges = SYS_MALLOC(FILE_LEN)) == NULL)
+                {
+                    break;
+                }
+                _snprintf(m_ranges, FILE_LEN, "%I64d-%I64d", pnode->startidx, pnode->endidx);
                 curl_easy_setopt(curl, CURLOPT_RANGE, m_ranges);
                 printf("\n[%s] setup \n", m_ranges);
                 curl_set_cookies(curl);
                 curl_easy_setopt(curl, CURLOPT_SHARE, pnode->share);
+            }
+            if (m_ranges)
+            {
+                SYS_FREE(m_ranges);
             }
             // 设置重定向的最大次数,301、302跳转跟随location
             curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5);
@@ -489,6 +497,7 @@ run_thread(void *pdata)
             curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
             curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
             curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
+            curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
             res = curl_easy_perform(curl);
             curl_easy_cleanup(curl);
             if (res == CURLE_WRITE_ERROR)
@@ -512,7 +521,6 @@ run_thread(void *pdata)
             else if (res == CURLE_OK)
             {
                 pnode->error = false;
-                printf("[%s] thread exit\n", strlen(m_ranges) > 1 ? m_ranges : "all");
                 break;
             }
             else
@@ -601,7 +609,7 @@ fill_file_name(const char *url)
         {
             return false;
         }
-        wnsprintfA(code_names, MAX_PATH, "%s", file_info.remote_names);
+        _snprintf(code_names, MAX_PATH, "%s", file_info.remote_names);
         if (!url_decode_t(code_names))
         {
             return false;
@@ -609,12 +617,12 @@ fill_file_name(const char *url)
         printf("\ndiscode_names: %s\n", code_names);
         if (strcmp(code_names, file_info.remote_names) != 0)
         {
-            wnsprintfA(file_info.remote_names, MAX_PATH, "%s", code_names);
+            _snprintf(file_info.remote_names, MAX_PATH, "%s", code_names);
         }
     }
     else if (strchr(file_info.remote_names, '%'))
     {
-        wnsprintfA(code_names, MAX_PATH, "%s", file_info.remote_names);
+        _snprintf(code_names, MAX_PATH, "%s", file_info.remote_names);
         if (!url_decode_t(code_names))
         {
             return false;
@@ -622,7 +630,7 @@ fill_file_name(const char *url)
         printf("\ndiscode_names: %s\n", code_names);
         if (strcmp(code_names, file_info.remote_names) != 0)
         {
-            wnsprintfA(file_info.remote_names, MAX_PATH, "%s", code_names);
+            _snprintf(file_info.remote_names, MAX_PATH, "%s", code_names);
         }
     }
     if ((len = (int) wcslen(file_info.names)) < 2)
@@ -794,7 +802,7 @@ init_download(const char *url, int64_t length)
         }
         if (fill_file_name(url) && length)
         {
-            wnsprintfW(sql_name, MAX_PATH, L"%ls%ls", file_info.names, L".sinfo");
+            _snwprintf(sql_name, MAX_PATH, L"%ls%ls", file_info.names, L".sinfo");
             if (PathFileExistsW(sql_name))
             {
                 if (!PathFileExistsW(file_info.names))
@@ -955,7 +963,7 @@ remove_files(LPCWSTR dir)
     int i = sizeof(moz_processes) / sizeof(moz_processes[0]);
     for (num = 0; num < i; num++)
     {
-        wnsprintfW(list[num], VALUE_LEN, L"%ls\\%ls", dir, moz_processes[num]);
+        _snwprintf(list[num], VALUE_LEN, L"%ls\\%ls", dir, moz_processes[num]);
         DeleteFileW(list[num]);
     }
 #undef EXE_NUM
@@ -1124,7 +1132,7 @@ logs_update(bool res)
     uint64_t m_time2 = read_appint(L"update", L"last_check", file_info.ini);
     if (m_time1 - m_time2 > diff)
     {
-        WCHAR s_time[FILE_LEN + 1] = { 0 };
+        WCHAR s_time[FILE_LEN] = { 0 };
         _ui64tow(m_time1, s_time, 10);
         if (!WritePrivateProfileStringW(L"update", L"last_check", s_time, file_info.ini))
         {
@@ -1168,7 +1176,7 @@ update_task(void)
                 uint64_t numb;
                 GetModuleFileNameW(NULL, self, MAX_PATH);
                 numb = (uint64_t) _time64(NULL);
-                wnsprintfW(sz_clone, MAX_PATH, L"%ls_%I64u%ls", self, numb, L".exe");
+                _snwprintf(sz_clone, MAX_PATH, L"%ls_%I64u%ls", self, numb, L".exe");
                 DeleteFileW(sz_clone);
                 if (_wrename(self, sz_clone))
                 {
@@ -1213,7 +1221,7 @@ update_task(void)
                 {
                     printf("OpenProcess(%S) false\n", self);
                 }
-                wnsprintfW(sz_cmdLine, MAX_PATH, L"%ls -h %lu -d %ls", self, h_self, sz_clone);
+                _snwprintf(sz_cmdLine, MAX_PATH, L"%ls -h %zu -d %ls", self, (uintptr_t)h_self, sz_clone);
                 ZeroMemory(&si, sizeof(si));
                 si.cb = sizeof(si);
                 CreateProcessW(NULL, sz_cmdLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
@@ -1296,6 +1304,7 @@ wmain(int argc, WCHAR **wargv)
         if (!get_file_lenth(file_info.url, &length)) // 获取远程文件大小
         {
             printf("get_file_lenth return false\n");
+            *file_info.ini = '\0';
             break;
         }
         if ((result = curl_task(length)) == false) // 开始下载任务

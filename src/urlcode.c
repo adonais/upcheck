@@ -94,25 +94,3 @@ url_decode_t(char* str)
     free(result);
     return str;
 }
-
-int WINAPI
-utf8_to_utf16(const char *filename_utf8, wchar_t *out_utf16, size_t len)
-{
-    int num_chars;
-    wchar_t *filename_w;
-    /* convert UTF-8 to wide chars */
-    num_chars = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, filename_utf8, -1, NULL, 0);
-    if (num_chars <= 0)
-    {
-        return (0);
-    }
-    filename_w = (wchar_t *)malloc(sizeof(wchar_t) * num_chars);
-    if (!filename_w)
-    {
-        return (0);
-    }
-    MultiByteToWideChar(CP_UTF8, 0, filename_utf8, -1, filename_w, num_chars);
-    wnsprintfW(out_utf16, (int)len, L"%ls", filename_w);
-    free(filename_w);
-    return (1);
-}

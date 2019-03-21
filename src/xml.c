@@ -190,7 +190,7 @@ init_resolver(void)
     HANDLE pfile;
     WCHAR temp_path[MAX_PATH];
     WCHAR temp_names[MAX_PATH];
-    char url[MAX_PATH + 1];
+    char* url = NULL;
     WCHAR wurl[MAX_PATH + 1];
     int res = -1;
     if (!GetTempPathW(MAX_PATH, temp_path))
@@ -207,7 +207,7 @@ init_resolver(void)
         printf("read_appkey portable.ini update return false\n");
         return res;
     }
-    if (!WideCharToMultiByte(CP_UTF8, 0, wurl, -1, url, sizeof(url), NULL, NULL))
+    if ((url = utf16_to_utf8(wurl)) == NULL)
     {
         printf("WideCharToMultiByte wurl->url return false\n");
         return res;
@@ -215,7 +215,7 @@ init_resolver(void)
     pfile = CreateFileW(temp_names, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
     if (pfile == INVALID_HANDLE_VALUE)
     {
-        DeleteFileW(temp_names);
+        SYS_FREE(url);
         printf("CreateFileW temp file return false\n");
         return res;
     }
@@ -230,6 +230,7 @@ init_resolver(void)
         FlushFileBuffers(pfile);
         res = !ini_query(temp_names);
     }
+    SYS_FREE(url);
     CloseHandle(pfile);
     return res;
 }

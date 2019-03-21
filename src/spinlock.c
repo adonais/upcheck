@@ -467,3 +467,52 @@ get_files_lenth(LPCWSTR path, int64_t *psize)
     *psize = statbuf.st_size;
     return true;
 }
+
+wchar_t* WINAPI
+utf8_to_utf16(const char *utf8)
+{
+    DWORD   size;
+    wchar_t *path = NULL;
+    /* convert UTF-8 to wide chars */
+    size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8, -1, NULL, 0);
+    if (!size)
+    {
+        return NULL;
+    }
+    if ((path = SYS_MALLOC(sizeof(wchar_t) * size)) == NULL)
+    {
+        return NULL;
+    }
+    size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, path, size);
+    if (size == 0) 
+    {
+        SYS_FREE(path);
+        return NULL;
+    }
+    return path;
+}
+
+char* WINAPI 
+utf16_to_utf8(const wchar_t *utf16)
+{
+    DWORD size;
+    char *utf8 = NULL;
+
+    size = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, NULL, 0, NULL, NULL);
+    if (!size)
+    {
+        return NULL;
+    }
+    utf8 = (char *)SYS_MALLOC(size);
+    if(NULL == utf8)
+    {
+        return NULL;
+    }
+    size = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, utf8, size, NULL, NULL);
+    if (size == 0)
+    {
+        SYS_FREE(utf8);
+        utf8 = NULL;
+    }
+    return utf8;
+}

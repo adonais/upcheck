@@ -5,7 +5,7 @@
 #include "spinlock.h"
 
 #define MAX_THREAD 32
-#define FILE_LEN 138
+#define FILE_LEN 256
 #define UINT_LEN 66
 #define URL_ITERATIONS 11235
 
