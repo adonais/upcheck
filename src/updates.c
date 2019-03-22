@@ -205,7 +205,7 @@ move_file(LPCWSTR src_path, LPCWSTR dst_path)
         SetFileAttributesW(dst_path, attrs);
 
     }
-    if (!MoveFileExW(src_path, dst_path, MOVEFILE_REPLACE_EXISTING))
+    if (!MoveFileExW(src_path, dst_path, MOVEFILE_COPY_ALLOWED|MOVEFILE_REPLACE_EXISTING))
     {
         printf("move file false, error[%lu]\n", GetLastError());
         return false;
