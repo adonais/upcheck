@@ -320,7 +320,7 @@ get_name_from_url(char const *url, char *oname)
     if ((p = strchr(u, '?')) != NULL || (p = strchr(u, '=')) != NULL || (p = strchr(u, '&')) != NULL)
     {
         /* 没有从重定向url得到正确文件名 */
-        snprintf(oname, MAX_PATH, "%s", "a.zip");
+        _snprintf(oname, MAX_PATH, "%s", "a.zip");
         return 0;
     }
     // Copy value as oname
@@ -558,7 +558,7 @@ get_file_lenth(const char *url, int64_t *file_len)
     curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, 0L);
     // 设置重定向的最大次数
-    curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 3);
+    curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 3L);
     // 设置301、302跳转跟随location
     curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, curl_header_parse);
@@ -1265,9 +1265,58 @@ wmain(int argc, WCHAR **wargv)
         memset(&file_info, 0, sizeof(file_info));
         init_command_data();
     }
-    if (file_info.use_thunder && thunder_lookup()) // 优先调用迅雷下载
+    if (file_info.use_thunder)
     {
-        return 0;
+        char* command = NULL;
+        WCHAR w_command[128] = {0};
+        WCHAR w_ini[128] = {0};
+        if (init_parser(w_ini,128) && read_appkey(L"player", L"command", w_command, sizeof(w_command), w_ini))
+        {
+            printf("we player\n");
+            command = utf16_to_utf8(w_command);
+            if (command != NULL)
+            {
+                char dl[1024] = {0};
+                char *p1 = NULL,*p2 = NULL;
+                const char *key = "%s";
+                int len_t = (int)strlen(key);
+                p1 = strstr(command, key);
+                if (p1)
+                {
+                    p1 += len_t;
+                    p2 = strstr(p1, key);
+                }
+                if (p1 && p2)
+                {
+                    p2 += len_t;
+                    if (p2[1]=='"')
+                    {
+                         p2[2] = '\0';
+                    }
+                    else
+                    {
+                        p2[1] = '\0';
+                    }
+                    _snprintf(dl, 1024, command, file_info.url, file_info.cookies);
+                }
+                else if (p1)
+                {
+                    _snprintf(dl, 1024, command, file_info.url);
+                }
+                else
+                {
+                    _snprintf(dl, 1024, command);
+                }                
+                free(command);
+                printf("dl_command: %s\n", dl);
+                exec_ppv(dl, NULL, 0);
+                return 0;
+            }
+        }
+        else if (thunder_lookup()) // 优先调用迅雷下载
+        {
+            return 0;
+        } 
     }
     do
     {

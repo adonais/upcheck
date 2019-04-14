@@ -35,7 +35,7 @@ wstr_replace(LPWSTR in,size_t in_size,LPCWSTR pattern,LPCWSTR by)
 }
 
 static void 
-remove_dir(LPCWSTR parent)
+remove_null_dir(LPCWSTR parent)
 {
     HANDLE h_file = NULL;
     WIN32_FIND_DATAW fd = {0};
@@ -69,7 +69,7 @@ remove_dir(LPCWSTR parent)
             }
             else
             {
-                remove_dir(sub);
+                remove_null_dir(sub);
             }
         }
     } while(FindNextFileW(h_file, &fd) != 0);
@@ -295,10 +295,10 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
         }
         else if (move_file(buf, dst_path))
         {
-            remove_dir(root);
+            remove_null_dir(root);
             if (RemoveDirectoryW(root))
             {
-                printf("haha ^_^\n");
+                printf("Update success ^_^\n");
             }
         }
         else

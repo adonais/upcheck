@@ -37,6 +37,7 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
     curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 10L);
+    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 15L);
 
     res = curl_easy_perform(curl_handle);
     if (res != CURLE_OK)

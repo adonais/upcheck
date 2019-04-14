@@ -516,3 +516,39 @@ utf16_to_utf8(const wchar_t *utf16)
     }
     return utf8;
 }
+
+void WINAPI 
+exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags)
+{
+    PROCESS_INFORMATION pi;
+    STARTUPINFOA si;
+    DWORD dwCreat = 0;
+    if (true)
+    {
+        memset(&si,0,sizeof(si));
+        si.cb = sizeof(si);
+        si.dwFlags = STARTF_USESHOWWINDOW;
+        if (!flags)
+        {
+            si.wShowWindow = SW_HIDE;
+            dwCreat |= CREATE_NEW_PROCESS_GROUP;
+        }
+        else
+        {
+            si.wShowWindow = SW_SHOWNOACTIVATE;
+        }
+        if(CreateProcessA(NULL,
+                          (LPSTR)wcmd,
+                          NULL,
+                          NULL,
+                          FALSE,
+                          dwCreat,
+                          NULL,
+                          pcd,   
+                          &si,&pi))
+        {
+            CloseHandle(pi.hProcess);
+        }
+    }
+    return;
+}
