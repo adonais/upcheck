@@ -1,7 +1,12 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <windows.h>
-#include "thunderagent.hpp"
+#include "spinlock.h"
+#ifdef _WIN64
+#include "thunderagent64.hpp"
+#else
+#include "thunderagent.hpp"	
+#endif
 
 #ifdef __cplusplus
 extern "C"
@@ -19,8 +24,8 @@ thunder_download(char *b_url, char *b_refer, char *b_cookies)
     hr = CoCreateInstance(__uuidof(ThunderAgentLib::Agent), NULL, CLSCTX_INPROC_SERVER, __uuidof(ThunderAgentLib::IAgent2), (void**)&pAgent);
     if (FAILED(hr))
     {
-        printf("CoCreateInstance error\n");
-	CoUninitialize();
+        printf("CoCreateInstance error, err=%lu\n", GetLastError());
+        CoUninitialize();
         return false;
     }
     _bstr_t url(b_url);

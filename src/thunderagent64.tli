@@ -1,9 +1,9 @@
-// Created by Microsoft (R) C/C++ Compiler Version 14.13.26132.0 (c72f43ec).
+// Created by Microsoft (R) C/C++ Compiler Version 14.13.26132.0 (00345f43).
 //
-// thunderagent.tli
+// thunderagent64.tli
 //
-// Wrapper implementations for Win32 type library ThunderAgent.dll
-// compiler-generated file created 07/07/18 at 05:24:42 - DO NOT EDIT!
+// Wrapper implementations for type library ThunderAgent64.dll
+// compiler-generated file created 04/15/19 at 01:55:17 - DO NOT EDIT!
 
 #pragma once
 
@@ -191,24 +191,4 @@ inline int IAgent10::CommitTasks10 ( int nThunderType, int nIsAsync ) {
     HRESULT _hr = raw_CommitTasks10(nThunderType, nIsAsync, &_result);
     if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
     return _result;
-}
-
-//
-// interface IAgent11 wrapper method implementations
-//
-
-inline HRESULT IAgent11::AddTask11 ( _bstr_t bstrUrl, _bstr_t bstrFileName, _bstr_t bstrPath, _bstr_t bstrComments, _bstr_t bstrReferUrl, _bstr_t bstrCharSet, int nStartMode, int nOnlyFromOrigin, int nOriginThreadCount, _bstr_t bstrCookie, _bstr_t bstrCID, _bstr_t bstrStatUrl, int nSocket, unsigned __int64 ulBeginAddressOfRecvData, int nRecvBytes, unsigned int unTaskOpt, _bstr_t bstrStatClick ) {
-    HRESULT _hr = raw_AddTask11(bstrUrl, bstrFileName, bstrPath, bstrComments, bstrReferUrl, bstrCharSet, nStartMode, nOnlyFromOrigin, nOriginThreadCount, bstrCookie, bstrCID, bstrStatUrl, nSocket, ulBeginAddressOfRecvData, nRecvBytes, unTaskOpt, bstrStatClick);
-    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
-    return _hr;
-}
-
-//
-// interface IAgent12 wrapper method implementations
-//
-
-inline HRESULT IAgent12::AddTask12 ( _bstr_t bstrUrl, _bstr_t bstrFileName, _bstr_t bstrPath, _bstr_t bstrComments, _bstr_t bstrReferUrl, _bstr_t bstrCharSet, int nStartMode, int nOnlyFromOrigin, int nOriginThreadCount, _bstr_t bstrCookie, _bstr_t bstrCID, _bstr_t bstrStatUrl, unsigned int unTaskOpt, _bstr_t bstrStatClick ) {
-    HRESULT _hr = raw_AddTask12(bstrUrl, bstrFileName, bstrPath, bstrComments, bstrReferUrl, bstrCharSet, nStartMode, nOnlyFromOrigin, nOriginThreadCount, bstrCookie, bstrCID, bstrStatUrl, unTaskOpt, bstrStatClick);
-    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
-    return _hr;
 }

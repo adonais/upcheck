@@ -1,9 +1,9 @@
-// Created by Microsoft (R) C/C++ Compiler Version 14.13.26132.0 (c72f43ec).
+// Created by Microsoft (R) C/C++ Compiler Version 14.13.26132.0 (00345f43).
 //
-// thunderagent.tlh
+// thunderagent64.tlh
 //
-// C++ source equivalent of Win32 type library ThunderAgent.dll
-// compiler-generated file created 07/07/18 at 05:24:42 - DO NOT EDIT!
+// C++ source equivalent of Win32 type library ThunderAgent64.dll
+// compiler-generated file created 04/15/19 at 01:55:17 - DO NOT EDIT!
 
 #pragma once
 #pragma pack(push, 8)
@@ -16,7 +16,7 @@ namespace ThunderAgentLib {
 // Forward references and typedefs
 //
 
-struct __declspec(uuid("26d657ae-a466-4f44-ab1d-5cfffadbed97"))
+struct __declspec(uuid("01560f06-cee2-46ff-8997-308a366175e9"))
 /* LIBID */ __ThunderAgentLib;
 struct /* coclass */ Agent;
 struct __declspec(uuid("1622f56a-0c55-464c-b472-377845def21d"))
@@ -42,10 +42,6 @@ struct __declspec(uuid("152bb689-43e0-4167-b557-cdc0e57c03ea"))
 /* dual interface */ IAgent9;
 struct __declspec(uuid("e6edfd5a-86f5-4af6-9fab-0a30be6c4b7f"))
 /* dual interface */ IAgent10;
-struct __declspec(uuid("0b5a8ac8-fea6-448c-8d4c-1a9d069ac32c"))
-/* dual interface */ IAgent11;
-struct __declspec(uuid("c04bfc88-9a69-486f-ab36-e42396a89589"))
-/* dual interface */ IAgent12;
 
 //
 // Smart pointer typedef declarations
@@ -62,14 +58,12 @@ _COM_SMARTPTR_TYPEDEF(IAgentExternal, __uuidof(IAgentExternal));
 _COM_SMARTPTR_TYPEDEF(IAgent8, __uuidof(IAgent8));
 _COM_SMARTPTR_TYPEDEF(IAgent9, __uuidof(IAgent9));
 _COM_SMARTPTR_TYPEDEF(IAgent10, __uuidof(IAgent10));
-_COM_SMARTPTR_TYPEDEF(IAgent11, __uuidof(IAgent11));
-_COM_SMARTPTR_TYPEDEF(IAgent12, __uuidof(IAgent12));
 
 //
 // Type library items
 //
 
-struct __declspec(uuid("485463b7-8fb2-4b3b-b29b-8b919b0eacce"))
+struct __declspec(uuid("002ae4f2-96ab-4dfa-ae2e-605217f8a84c"))
 Agent;
     // [ default ] interface IAgent
     // interface IAgent2
@@ -82,8 +76,6 @@ Agent;
     // interface IAgent8
     // interface IAgent9
     // interface IAgent10
-    // interface IAgent11
-    // interface IAgent12
 
 struct __declspec(uuid("1622f56a-0c55-464c-b472-377845def21d"))
 IAgent : IDispatch
@@ -485,105 +477,11 @@ IAgent10 : IAgent9
         /*[out,retval]*/ int * pResult ) = 0;
 };
 
-struct __declspec(uuid("0b5a8ac8-fea6-448c-8d4c-1a9d069ac32c"))
-IAgent11 : IAgent10
-{
-    //
-    // Wrapper methods for error-handling
-    //
-
-    HRESULT AddTask11 (
-        _bstr_t bstrUrl,
-        _bstr_t bstrFileName,
-        _bstr_t bstrPath,
-        _bstr_t bstrComments,
-        _bstr_t bstrReferUrl,
-        _bstr_t bstrCharSet,
-        int nStartMode,
-        int nOnlyFromOrigin,
-        int nOriginThreadCount,
-        _bstr_t bstrCookie,
-        _bstr_t bstrCID,
-        _bstr_t bstrStatUrl,
-        int nSocket,
-        unsigned __int64 ulBeginAddressOfRecvData,
-        int nRecvBytes,
-        unsigned int unTaskOpt,
-        _bstr_t bstrStatClick );
-
-    //
-    // Raw methods provided by interface
-    //
-
-      virtual HRESULT __stdcall raw_AddTask11 (
-        /*[in]*/ BSTR bstrUrl,
-        /*[in]*/ BSTR bstrFileName,
-        /*[in]*/ BSTR bstrPath,
-        /*[in]*/ BSTR bstrComments,
-        /*[in]*/ BSTR bstrReferUrl,
-        /*[in]*/ BSTR bstrCharSet,
-        /*[in]*/ int nStartMode,
-        /*[in]*/ int nOnlyFromOrigin,
-        /*[in]*/ int nOriginThreadCount,
-        /*[in]*/ BSTR bstrCookie,
-        /*[in]*/ BSTR bstrCID,
-        /*[in]*/ BSTR bstrStatUrl,
-        /*[in]*/ int nSocket,
-        /*[in]*/ unsigned __int64 ulBeginAddressOfRecvData,
-        /*[in]*/ int nRecvBytes,
-        /*[in]*/ unsigned int unTaskOpt,
-        /*[in]*/ BSTR bstrStatClick ) = 0;
-};
-
-struct __declspec(uuid("c04bfc88-9a69-486f-ab36-e42396a89589"))
-IAgent12 : IAgent11
-{
-    //
-    // Wrapper methods for error-handling
-    //
-
-    HRESULT AddTask12 (
-        _bstr_t bstrUrl,
-        _bstr_t bstrFileName,
-        _bstr_t bstrPath,
-        _bstr_t bstrComments,
-        _bstr_t bstrReferUrl,
-        _bstr_t bstrCharSet,
-        int nStartMode,
-        int nOnlyFromOrigin,
-        int nOriginThreadCount,
-        _bstr_t bstrCookie,
-        _bstr_t bstrCID,
-        _bstr_t bstrStatUrl,
-        unsigned int unTaskOpt,
-        _bstr_t bstrStatClick );
-
-    //
-    // Raw methods provided by interface
-    //
-
-      virtual HRESULT __stdcall raw_AddTask12 (
-        /*[in]*/ BSTR bstrUrl,
-        /*[in]*/ BSTR bstrFileName,
-        /*[in]*/ BSTR bstrPath,
-        /*[in]*/ BSTR bstrComments,
-        /*[in]*/ BSTR bstrReferUrl,
-        /*[in]*/ BSTR bstrCharSet,
-        /*[in]*/ int nStartMode,
-        /*[in]*/ int nOnlyFromOrigin,
-        /*[in]*/ int nOriginThreadCount,
-        /*[in]*/ BSTR bstrCookie,
-        /*[in]*/ BSTR bstrCID,
-        /*[in]*/ BSTR bstrStatUrl,
-        /*[in]*/ unsigned int unTaskOpt,
-        /*[in]*/ BSTR bstrStatClick ) = 0;
-};
-
 //
 // Wrapper method implementations
 //
 
-#include "thunderagent.tli"
+#include "thunderagent64.tli"
 
 } // namespace ThunderAgentLib
 
