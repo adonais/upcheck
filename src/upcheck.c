@@ -1272,7 +1272,7 @@ wmain(int argc, WCHAR **wargv)
         WCHAR w_ini[128] = {0};
         if (init_parser(w_ini,128) && read_appkey(L"player", L"command", w_command, sizeof(w_command), w_ini))
         {
-            printf("we player\n");
+            // 优先调用命令行参数
             command = utf16_to_utf8(w_command);
             if (command != NULL)
             {
@@ -1309,11 +1309,13 @@ wmain(int argc, WCHAR **wargv)
                 }                
                 free(command);
                 printf("dl_command: %s\n", dl);
-                exec_ppv(dl, NULL, 0);
-                return 0;
+                if(exec_ppv(dl, NULL, 0))
+                {
+                    return 0;
+                }
             }
         }
-        else if (thunder_lookup()) // 优先调用迅雷下载
+        if (thunder_lookup()) // 调用迅雷下载
         {
             return 0;
         } 

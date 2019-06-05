@@ -517,7 +517,7 @@ utf16_to_utf8(const wchar_t *utf16)
     return utf8;
 }
 
-void WINAPI 
+bool WINAPI 
 exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags)
 {
     PROCESS_INFORMATION pi;
@@ -537,7 +537,7 @@ exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags)
         {
             si.wShowWindow = SW_SHOWNOACTIVATE;
         }
-        if(CreateProcessA(NULL,
+        if(!CreateProcessA(NULL,
                           (LPSTR)wcmd,
                           NULL,
                           NULL,
@@ -547,8 +547,10 @@ exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags)
                           pcd,   
                           &si,&pi))
         {
-            CloseHandle(pi.hProcess);
+            printf("CreateProcessA error %lu\n", GetLastError());
+            return false;
         }
     }
-    return;
+    CloseHandle(pi.hProcess);
+    return true;
 }
