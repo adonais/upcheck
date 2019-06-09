@@ -338,7 +338,7 @@ is_ice(void)
 {
     WCHAR ini[MAX_PATH+1] = {0};
     WCHAR names[32] = {0};
-    if (init_file_strings(L"application.ini", ini) < 0)
+    if (!init_file_strings(L"application.ini", ini))
     {
         return false;
     }
