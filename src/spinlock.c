@@ -46,11 +46,6 @@ init_logs(void)
     {
         strncat(logfile_buf,"\\",MAX_PATH);
         strncat(logfile_buf,"upcheck.log",MAX_PATH);
-        FILE *pfile = fopen(logfile_buf, "w");
-        if (pfile)
-        {
-            fclose(pfile);
-        }
     }
 }
 #endif

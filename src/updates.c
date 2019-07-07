@@ -13,6 +13,7 @@ static  bool fn_chrome;
 static  bool fn_openmp;
 static  bool fx_browser;
 static  bool ice_build;
+static  bool fn_erase;
 
 LPWSTR WINAPI
 wstr_replace(LPWSTR in,size_t in_size,LPCWSTR pattern,LPCWSTR by)
@@ -106,7 +107,7 @@ erase_dir(LPCWSTR parent)
             wnsprintfW(sub,MAX_PATH, L"%s\\%s",parent, fd.cFileName);
             if(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
-                if (_wcsicmp(fd.cFileName,L"plugins") == 0)
+                if (_wcsicmp(fd.cFileName, L"plugins") == 0)
                 {
                     continue;
                 }
@@ -169,7 +170,11 @@ exist_root_dir(LPCWSTR wlog, LPWSTR root_path)
         if (wcsstr(buf, L"libomp"))
         {
             fn_openmp = true;
-        }        
+        }    
+        if (wcsstr(buf, L"erased_lists.bat"))
+        {
+            fn_erase = true;
+        }         
         if ((pos = wcsrchr(buf, L'\r')) != NULL)
         {
             *pos = L'\0';
@@ -452,6 +457,22 @@ update_thread(void *p)
     if (do_update(file_info.unzip_dir, dst) != 0)
     {
         printf("do_update false!\n");
+    } // 自定义erased_lists.bat文件,用于清理多余配置.
+    else if (fn_erase)
+    {
+        FILE* fp = NULL;
+        WCHAR r_list[MAX_PATH+1] = {0};
+        wcsncpy(r_list, dst, MAX_PATH);
+        if (ice_build)
+        {
+            PathRemoveFileSpecW(r_list);
+            wcsncpy(dst, r_list, MAX_PATH);
+        }
+        if (PathAppendW(r_list,L"erased_lists.bat") && PathFileExistsW(r_list) && SetCurrentDirectoryW(dst))
+        {
+            exec_ppv("cmd.exe /c erased_lists.bat", NULL, 0);
+            Sleep(2000);
+        }
     }
     return (1);
 }
