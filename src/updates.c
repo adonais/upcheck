@@ -460,7 +460,6 @@ update_thread(void *p)
     } // 自定义erased_lists.bat文件,用于清理多余配置.
     else if (fn_erase)
     {
-        FILE* fp = NULL;
         WCHAR r_list[MAX_PATH+1] = {0};
         wcsncpy(r_list, dst, MAX_PATH);
         if (ice_build)
