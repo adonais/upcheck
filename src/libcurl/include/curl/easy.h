@@ -30,16 +30,6 @@ CURL_EXTERN CURLcode curl_easy_setopt(CURL *curl, CURLoption option, ...);
 CURL_EXTERN CURLcode curl_easy_perform(CURL *curl);
 CURL_EXTERN void curl_easy_cleanup(CURL *curl);
 
-#if defined(_MSC_VER) && _MSC_VER > 1500
-#include <stdint.h>
-typedef struct _check_node
-{
-    void *curl;
-    char *mem;
-    uint32_t tid;
-} check_node;
-CURL_EXTERN void curl_easy_cleanup_t(CURL *curl, check_node *check);
-#endif
 /*
  * NAME curl_easy_getinfo()
  *

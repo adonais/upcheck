@@ -18,7 +18,7 @@
 #include "thunderagent.h"
 
 #if defined(CURL_STATICLIB) && defined(_MSC_VER)
-#pragma comment(lib, "libcurl_a.lib")
+#pragma comment(lib, "libcurl.lib")
 #if defined(USE_ARES)
 #pragma comment(lib, "libcares.lib")
 #endif

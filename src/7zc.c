@@ -20,7 +20,7 @@
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "advapi32.lib")
-#pragma comment(lib, "7z.lib")
+#pragma comment(lib, "lib7z.lib")
 #endif
 
 extern void __cdecl logmsg(const char *format, ...);
@@ -228,7 +228,7 @@ ConvertFileTimeToString(const CNtfsFileTime *nt, char *s)
 }
 
 static void
-GetAttribString(UInt32 wa, Bool isDir, char *s)
+GetAttribString(UInt32 wa, bool isDir, char *s)
 {
     s[0] = (char) (((wa & FILE_ATTRIBUTE_DIRECTORY) != 0 || isDir) ? 'D' : '.');
     s[1] = (char) (((wa & FILE_ATTRIBUTE_READONLY) != 0) ? 'R' : '.');

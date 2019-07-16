@@ -11,8 +11,8 @@ System requirements
 Build!
 --------------------
 
-nmake -f Makefile.msvc clean
-nmake -f Makefile.msvc
+nmake clean
+nmake
 
 --------------------
 
