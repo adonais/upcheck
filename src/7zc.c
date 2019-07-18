@@ -15,7 +15,6 @@
 #include <shlwapi.h>
 
 #ifdef _MSC_VER
-#pragma comment(lib, "oleaut32.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "user32.lib")

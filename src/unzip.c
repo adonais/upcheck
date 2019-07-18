@@ -2506,7 +2506,7 @@ void change_file_date(const char *filename,uLong dosdate,tm_unz tmu_date)
 local void write_log(FILE* pf, const char* names)
 {
     WCHAR temp[MAX_PATH] = {0};
-    if (!MultiByteToWideChar(CP_ACP, 0, names, -1, temp, sizeof(temp)))
+    if (!MultiByteToWideChar(CP_ACP, 0, names, -1, temp, MAX_PATH))
     {
         printf("MultiByteToWideChar CP_ACP to unicode error\n");
         return;
@@ -2584,7 +2584,7 @@ int do_extract_currentfile(unzFile uf, FILE* pf)
     if ((*filename_withoutpath)=='\0')
     {
         WCHAR path[MAX_PATH+1] = {0};
-        if (!MultiByteToWideChar(CP_ACP, 0, filename_inzip, -1, path, sizeof(path)))
+        if (!MultiByteToWideChar(CP_ACP, 0, filename_inzip, -1, path, MAX_PATH))
         {
             return 1;
         }

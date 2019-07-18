@@ -2,7 +2,7 @@ ROOT = ..
 !include "$(ROOT)\system.mak"
 
 CFLAGS=/nologo /MT /W3 /WX- /wd4996 /wd4819 /O2 /Zi /Gd /D "_CRT_SECURE_NO_WARNINGS"  \
-       /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 $(RELEASE) /D "USE_ARES" $(CFLAGS)
+       /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 $(RELEASE) /D "USE_ARES" $(CFLAGS) /D "COBJMACROS"
       
 CXXFLAGS = $(CFLAGS) /TP
 
@@ -33,12 +33,6 @@ OBJS = \
 
 .c{$(OBJD)}.obj:
     $(CC) $(CFLAGS) /Fd$(BIND)\upcheck.pdb /Fo$(OBJD)\ /c $<
-
-.cc{$(OBJD)}.obj:
-    $(CC) $(CXXFLAGS) /Fd$(BIND)\upcheck.pdb /Fo$(OBJD)\ /c $<
-
-.cpp{$(OBJD)}.obj:
-    $(CC) $(CXXFLAGS) /Fd$(BIND)\upcheck.pdb /Fo$(OBJD)\ /c $<
     
 .rc{$(OBJD)}.res:
     $(RC) $(RFLAGS) /Fo$@ $<
@@ -62,14 +56,14 @@ dirs:
 $(BIND)\upcheck.exe : $(OBJS) $(DEP)
     link /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
 
-$(OBJD)\upcheck.obj     : upcheck.c upcheck.h
+$(OBJD)\upcheck.obj     : upcheck.c *.h
 $(OBJD)\urlcode.obj     : urlcode.c urlcode.h
 $(OBJD)\spinlock.obj    : spinlock.c spinlock.h
 $(OBJD)\7zc.obj         : 7zc.c 7zc.h
 $(OBJD)\progressui.obj  : progressui.c progressui.h
 $(OBJD)\updates.obj     : updates.c updates.h
 $(OBJD)\unzip.obj       : unzip.c unzip.h
-$(OBJD)\thunderagent.obj: thunderagent.cc thunderagent.h thunderagent.tli thunderagent64.hpp thunderagent64.tli
+$(OBJD)\thunderagent.obj: thunderagent.c thunderagent.h
 $(OBJD)\xml.obj         : xml.c xml.h
 $(OBJD)\sqlite3.obj     : sqlite3.c sqlite3.h
 $(OBJD)\cookies.obj     : cookies.c cookies.h

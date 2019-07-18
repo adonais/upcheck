@@ -635,7 +635,7 @@ fill_file_name(const char *url)
     }
     if ((len = (int) wcslen(file_info.names)) < 2)
     {
-        len = MultiByteToWideChar(CP_UTF8, 0, file_info.remote_names, -1, file_info.names, sizeof(file_info.names));
+        len = MultiByteToWideChar(CP_UTF8, 0, file_info.remote_names, -1, file_info.names, MAX_PATH);
         if (!len)
         {
             printf("MultiByteToWideChar to file_info.names false\n");
@@ -645,7 +645,7 @@ fill_file_name(const char *url)
     else if (file_info.names[len - 1] == L'\\')
     {
         WCHAR tmp[MAX_PATH + 1] = { 0 };
-        len = MultiByteToWideChar(CP_UTF8, 0, file_info.remote_names, -1, tmp, sizeof(tmp));
+        len = MultiByteToWideChar(CP_UTF8, 0, file_info.remote_names, -1, tmp, MAX_PATH);
         if (!len)
         {
             printf("MultiByteToWideChar to file_info.names false\n");
