@@ -14,14 +14,6 @@
 #include "spinlock.h"
 #include <shlwapi.h>
 
-#ifdef _MSC_VER
-#pragma comment(lib, "ole32.lib")
-#pragma comment(lib, "shell32.lib")
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "advapi32.lib")
-#pragma comment(lib, "lib7z.lib")
-#endif
-
 extern void __cdecl logmsg(const char *format, ...);
 
 #if defined(NDEBUG)

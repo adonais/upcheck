@@ -84,143 +84,143 @@ RT_ERROR_CHECKING = /RTCsu
 # ----------------------------
 
 OBJS = \
-    $(OBJD)\file.obj          \
-    $(OBJD)\timeval.obj       \
-    $(OBJD)\base64.obj        \
-    $(OBJD)\hostip.obj        \
-    $(OBJD)\progress.obj      \
-    $(OBJD)\formdata.obj      \
-    $(OBJD)\cookie.obj        \
-    $(OBJD)\http.obj          \
-    $(OBJD)\sendf.obj         \
-    $(OBJD)\ftp.obj           \
-    $(OBJD)\url.obj           \
-    $(OBJD)\dict.obj          \
-    $(OBJD)\if2ip.obj         \
-    $(OBJD)\speedcheck.obj    \
-    $(OBJD)\ldap.obj          \
-    $(OBJD)\version.obj       \
-    $(OBJD)\getenv.obj        \
-    $(OBJD)\escape.obj        \
-    $(OBJD)\mprintf.obj       \
-    $(OBJD)\telnet.obj        \
-    $(OBJD)\netrc.obj         \
-    $(OBJD)\getinfo.obj       \
-    $(OBJD)\transfer.obj      \
-    $(OBJD)\strcase.obj       \
-    $(OBJD)\easy.obj          \
-    $(OBJD)\security.obj      \
-    $(OBJD)\curl_fnmatch.obj  \
-    $(OBJD)\fileinfo.obj      \
-    $(OBJD)\ftplistparser.obj \
-    $(OBJD)\wildcard.obj      \
-    $(OBJD)\krb5.obj          \
-    $(OBJD)\memdebug.obj      \
-    $(OBJD)\http_chunks.obj   \
-    $(OBJD)\strtok.obj        \
-    $(OBJD)\connect.obj       \
-    $(OBJD)\llist.obj         \
-    $(OBJD)\hash.obj          \
-    $(OBJD)\multi.obj         \
-    $(OBJD)\content_encoding.obj \
-    $(OBJD)\share.obj            \
-    $(OBJD)\http_digest.obj      \
-    $(OBJD)\md4.obj              \
-    $(OBJD)\md5.obj              \
-    $(OBJD)\http_negotiate.obj   \
-    $(OBJD)\inet_pton.obj        \
-    $(OBJD)\strtoofft.obj        \
-    $(OBJD)\strerror.obj         \
-    $(OBJD)\amigaos.obj          \
-    $(OBJD)\hostasyn.obj         \
-    $(OBJD)\hostip4.obj          \
-    $(OBJD)\hostip6.obj          \
-    $(OBJD)\hostsyn.obj          \
-    $(OBJD)\inet_ntop.obj        \
-    $(OBJD)\parsedate.obj        \
-    $(OBJD)\select.obj           \
-    $(OBJD)\tftp.obj             \
-    $(OBJD)\splay.obj            \
-    $(OBJD)\strdup.obj           \
-    $(OBJD)\socks.obj            \
-    $(OBJD)\ssh.obj              \
-    $(OBJD)\ssh-libssh.obj       \
-    $(OBJD)\curl_addrinfo.obj    \
-    $(OBJD)\socks_gssapi.obj     \
-    $(OBJD)\socks_sspi.obj       \
-    $(OBJD)\curl_sspi.obj        \
-    $(OBJD)\slist.obj            \
-    $(OBJD)\nonblock.obj         \
-    $(OBJD)\curl_memrchr.obj     \
-    $(OBJD)\imap.obj             \
-    $(OBJD)\pop3.obj             \
-    $(OBJD)\smtp.obj             \
-    $(OBJD)\pingpong.obj         \
-    $(OBJD)\rtsp.obj             \
-    $(OBJD)\curl_threads.obj     \
-    $(OBJD)\warnless.obj         \
-    $(OBJD)\hmac.obj             \
-    $(OBJD)\curl_rtmp.obj        \
-    $(OBJD)\openldap.obj         \
-    $(OBJD)\curl_gethostname.obj \
-    $(OBJD)\gopher.obj           \
-    $(OBJD)\idn_win32.obj        \
-    $(OBJD)\http_proxy.obj       \
-    $(OBJD)\non-ascii.obj        \
-    $(OBJD)\asyn-ares.obj        \
-    $(OBJD)\asyn-thread.obj      \
-    $(OBJD)\curl_gssapi.obj      \
-    $(OBJD)\http_ntlm.obj        \
-    $(OBJD)\curl_ntlm_wb.obj     \
-    $(OBJD)\curl_ntlm_core.obj   \
-    $(OBJD)\curl_sasl.obj        \
-    $(OBJD)\rand.obj             \
-    $(OBJD)\curl_multibyte.obj   \
-    $(OBJD)\hostcheck.obj        \
-    $(OBJD)\conncache.obj        \
-    $(OBJD)\dotdot.obj           \
-    $(OBJD)\x509asn1.obj         \
-    $(OBJD)\http2.obj            \
-    $(OBJD)\smb.obj              \
-    $(OBJD)\curl_endian.obj      \
-    $(OBJD)\curl_des.obj         \
-    $(OBJD)\system_win32.obj     \
-    $(OBJD)\mime.obj             \
-    $(OBJD)\sha256.obj           \
-    $(OBJD)\setopt.obj           \
-    $(OBJD)\curl_path.obj        \
-    $(OBJD)\curl_ctype.obj       \
-    $(OBJD)\curl_range.obj       \
-    $(OBJD)\psl.obj              \
-    $(OBJD)\doh.obj              \
-    $(OBJD)\urlapi.obj           \
-    $(OBJD)\curl_get_line.obj    \
-    $(OBJD)\altsvc.obj           \
-    $(OBJD)\vauth\vauth.obj      \
-    $(OBJD)\vauth\cleartext.obj  \
-    $(OBJD)\vauth\cram.obj       \
-    $(OBJD)\vauth\digest.obj     \
-    $(OBJD)\vauth\digest_sspi.obj   \
-    $(OBJD)\vauth\krb5_gssapi.obj   \
-    $(OBJD)\vauth\krb5_sspi.obj     \
-    $(OBJD)\vauth\ntlm.obj          \
-    $(OBJD)\vauth\ntlm_sspi.obj     \
-    $(OBJD)\vauth\oauth2.obj        \
-    $(OBJD)\vauth\spnego_gssapi.obj \
-    $(OBJD)\vauth\spnego_sspi.obj   \
-    $(OBJD)\vtls\openssl.obj        \
-    $(OBJD)\vtls\gtls.obj           \
-    $(OBJD)\vtls\vtls.obj           \
-    $(OBJD)\vtls\nss.obj            \
-    $(OBJD)\vtls\polarssl.obj       \
-    $(OBJD)\vtls\polarssl_threadlock.obj \
-    $(OBJD)\vtls\cyassl.obj              \
-    $(OBJD)\vtls\schannel.obj            \
-    $(OBJD)\vtls\schannel_verify.obj     \
-    $(OBJD)\vtls\sectransp.obj           \
-    $(OBJD)\vtls\gskit.obj               \
-    $(OBJD)\vtls\mbedtls.obj             \
-    $(OBJD)\vtls\mesalink.obj            \
+    $(OBJD)\libcurl\file.obj          \
+    $(OBJD)\libcurl\timeval.obj       \
+    $(OBJD)\libcurl\base64.obj        \
+    $(OBJD)\libcurl\hostip.obj        \
+    $(OBJD)\libcurl\progress.obj      \
+    $(OBJD)\libcurl\formdata.obj      \
+    $(OBJD)\libcurl\cookie.obj        \
+    $(OBJD)\libcurl\http.obj          \
+    $(OBJD)\libcurl\sendf.obj         \
+    $(OBJD)\libcurl\ftp.obj           \
+    $(OBJD)\libcurl\url.obj           \
+    $(OBJD)\libcurl\dict.obj          \
+    $(OBJD)\libcurl\if2ip.obj         \
+    $(OBJD)\libcurl\speedcheck.obj    \
+    $(OBJD)\libcurl\ldap.obj          \
+    $(OBJD)\libcurl\version.obj       \
+    $(OBJD)\libcurl\getenv.obj        \
+    $(OBJD)\libcurl\escape.obj        \
+    $(OBJD)\libcurl\mprintf.obj       \
+    $(OBJD)\libcurl\telnet.obj        \
+    $(OBJD)\libcurl\netrc.obj         \
+    $(OBJD)\libcurl\getinfo.obj       \
+    $(OBJD)\libcurl\transfer.obj      \
+    $(OBJD)\libcurl\strcase.obj       \
+    $(OBJD)\libcurl\easy.obj          \
+    $(OBJD)\libcurl\security.obj      \
+    $(OBJD)\libcurl\curl_fnmatch.obj  \
+    $(OBJD)\libcurl\fileinfo.obj      \
+    $(OBJD)\libcurl\ftplistparser.obj \
+    $(OBJD)\libcurl\wildcard.obj      \
+    $(OBJD)\libcurl\krb5.obj          \
+    $(OBJD)\libcurl\memdebug.obj      \
+    $(OBJD)\libcurl\http_chunks.obj   \
+    $(OBJD)\libcurl\strtok.obj        \
+    $(OBJD)\libcurl\connect.obj       \
+    $(OBJD)\libcurl\llist.obj         \
+    $(OBJD)\libcurl\hash.obj          \
+    $(OBJD)\libcurl\multi.obj         \
+    $(OBJD)\libcurl\content_encoding.obj \
+    $(OBJD)\libcurl\share.obj            \
+    $(OBJD)\libcurl\http_digest.obj      \
+    $(OBJD)\libcurl\md4.obj              \
+    $(OBJD)\libcurl\md5.obj              \
+    $(OBJD)\libcurl\http_negotiate.obj   \
+    $(OBJD)\libcurl\inet_pton.obj        \
+    $(OBJD)\libcurl\strtoofft.obj        \
+    $(OBJD)\libcurl\strerror.obj         \
+    $(OBJD)\libcurl\amigaos.obj          \
+    $(OBJD)\libcurl\hostasyn.obj         \
+    $(OBJD)\libcurl\hostip4.obj          \
+    $(OBJD)\libcurl\hostip6.obj          \
+    $(OBJD)\libcurl\hostsyn.obj          \
+    $(OBJD)\libcurl\inet_ntop.obj        \
+    $(OBJD)\libcurl\parsedate.obj        \
+    $(OBJD)\libcurl\select.obj           \
+    $(OBJD)\libcurl\tftp.obj             \
+    $(OBJD)\libcurl\splay.obj            \
+    $(OBJD)\libcurl\strdup.obj           \
+    $(OBJD)\libcurl\socks.obj            \
+    $(OBJD)\libcurl\ssh.obj              \
+    $(OBJD)\libcurl\ssh-libssh.obj       \
+    $(OBJD)\libcurl\curl_addrinfo.obj    \
+    $(OBJD)\libcurl\socks_gssapi.obj     \
+    $(OBJD)\libcurl\socks_sspi.obj       \
+    $(OBJD)\libcurl\curl_sspi.obj        \
+    $(OBJD)\libcurl\slist.obj            \
+    $(OBJD)\libcurl\nonblock.obj         \
+    $(OBJD)\libcurl\curl_memrchr.obj     \
+    $(OBJD)\libcurl\imap.obj             \
+    $(OBJD)\libcurl\pop3.obj             \
+    $(OBJD)\libcurl\smtp.obj             \
+    $(OBJD)\libcurl\pingpong.obj         \
+    $(OBJD)\libcurl\rtsp.obj             \
+    $(OBJD)\libcurl\curl_threads.obj     \
+    $(OBJD)\libcurl\warnless.obj         \
+    $(OBJD)\libcurl\hmac.obj             \
+    $(OBJD)\libcurl\curl_rtmp.obj        \
+    $(OBJD)\libcurl\openldap.obj         \
+    $(OBJD)\libcurl\curl_gethostname.obj \
+    $(OBJD)\libcurl\gopher.obj           \
+    $(OBJD)\libcurl\idn_win32.obj        \
+    $(OBJD)\libcurl\http_proxy.obj       \
+    $(OBJD)\libcurl\non-ascii.obj        \
+    $(OBJD)\libcurl\asyn-ares.obj        \
+    $(OBJD)\libcurl\asyn-thread.obj      \
+    $(OBJD)\libcurl\curl_gssapi.obj      \
+    $(OBJD)\libcurl\http_ntlm.obj        \
+    $(OBJD)\libcurl\curl_ntlm_wb.obj     \
+    $(OBJD)\libcurl\curl_ntlm_core.obj   \
+    $(OBJD)\libcurl\curl_sasl.obj        \
+    $(OBJD)\libcurl\rand.obj             \
+    $(OBJD)\libcurl\curl_multibyte.obj   \
+    $(OBJD)\libcurl\hostcheck.obj        \
+    $(OBJD)\libcurl\conncache.obj        \
+    $(OBJD)\libcurl\dotdot.obj           \
+    $(OBJD)\libcurl\x509asn1.obj         \
+    $(OBJD)\libcurl\http2.obj            \
+    $(OBJD)\libcurl\smb.obj              \
+    $(OBJD)\libcurl\curl_endian.obj      \
+    $(OBJD)\libcurl\curl_des.obj         \
+    $(OBJD)\libcurl\system_win32.obj     \
+    $(OBJD)\libcurl\mime.obj             \
+    $(OBJD)\libcurl\sha256.obj           \
+    $(OBJD)\libcurl\setopt.obj           \
+    $(OBJD)\libcurl\curl_path.obj        \
+    $(OBJD)\libcurl\curl_ctype.obj       \
+    $(OBJD)\libcurl\curl_range.obj       \
+    $(OBJD)\libcurl\psl.obj              \
+    $(OBJD)\libcurl\doh.obj              \
+    $(OBJD)\libcurl\urlapi.obj           \
+    $(OBJD)\libcurl\curl_get_line.obj    \
+    $(OBJD)\libcurl\altsvc.obj           \
+    $(OBJD)\libcurl\vauth\vauth.obj      \
+    $(OBJD)\libcurl\vauth\cleartext.obj  \
+    $(OBJD)\libcurl\vauth\cram.obj       \
+    $(OBJD)\libcurl\vauth\digest.obj     \
+    $(OBJD)\libcurl\vauth\digest_sspi.obj   \
+    $(OBJD)\libcurl\vauth\krb5_gssapi.obj   \
+    $(OBJD)\libcurl\vauth\krb5_sspi.obj     \
+    $(OBJD)\libcurl\vauth\ntlm.obj          \
+    $(OBJD)\libcurl\vauth\ntlm_sspi.obj     \
+    $(OBJD)\libcurl\vauth\oauth2.obj        \
+    $(OBJD)\libcurl\vauth\spnego_gssapi.obj \
+    $(OBJD)\libcurl\vauth\spnego_sspi.obj   \
+    $(OBJD)\libcurl\vtls\openssl.obj        \
+    $(OBJD)\libcurl\vtls\gtls.obj           \
+    $(OBJD)\libcurl\vtls\vtls.obj           \
+    $(OBJD)\libcurl\vtls\nss.obj            \
+    $(OBJD)\libcurl\vtls\polarssl.obj       \
+    $(OBJD)\libcurl\vtls\polarssl_threadlock.obj \
+    $(OBJD)\libcurl\vtls\wolfssl.obj              \
+    $(OBJD)\libcurl\vtls\schannel.obj            \
+    $(OBJD)\libcurl\vtls\schannel_verify.obj     \
+    $(OBJD)\libcurl\vtls\sectransp.obj           \
+    $(OBJD)\libcurl\vtls\gskit.obj               \
+    $(OBJD)\libcurl\vtls\mbedtls.obj             \
+    $(OBJD)\libcurl\vtls\mesalink.obj            \
 
 !INCLUDE ".\Makefile.inc"
   
@@ -231,16 +231,16 @@ OBJS = \
 .SUFFIXES:
 .SUFFIXES: .c .rc
 
-{$(SRCDIR)}.rc{$(OBJD)}.res:
+{$(SRCDIR)}.rc{$(OBJD)\libcurl}.res:
     $(RC_CMD) /Fo $@ $<
 
-{$(SRCDIR)}.c{$(OBJD)}.obj:
+{$(SRCDIR)}.c{$(OBJD)\libcurl}.obj:
     cl $(CFLAGS) /Fo$@ /c $<
     
-{$(SRCDIR)\vauth}.c{$(OBJD)\vauth}.obj:
+{$(SRCDIR)\vauth}.c{$(OBJD)\libcurl\vauth}.obj:
     cl $(CFLAGS) /Fo$@ /c $<
  
-{$(SRCDIR)\vtls}.c{$(OBJD)\vtls}.obj:
+{$(SRCDIR)\vtls}.c{$(OBJD)\libcurl\vtls}.obj:
     cl $(CFLAGS) /Fo$@ /c $<
         
 # ---------------------------------------------------------------------
@@ -252,9 +252,9 @@ all: dirs $(STATICLIB)      \
      
 dirs:
     @if not exist "$(BIND)" mkdir "$(BIND)" && echo.   Created $(BIND)
-    @if not exist "$(OBJD)"\vauth mkdir "$(OBJD)"\vauth && echo.   Created $(OBJD)\vauth
-    @if not exist "$(OBJD)"\vtls mkdir "$(OBJD)"\vtls && echo.   Created $(OBJD)\vtls    
-    @if not exist "$(OBJD)" mkdir "$(OBJD)" && echo.   Created $(OBJD)
+    @if not exist "$(OBJD)\libcurl" mkdir "$(OBJD)\libcurl" && echo.   Created $(OBJD)\libcurl
+    @if not exist "$(OBJD)\libcurl\vauth" mkdir "$(OBJD)\libcurl\vauth" && echo.   Created $(OBJD)\libcurl\vauth
+    @if not exist "$(OBJD)\libcurl\vtls" mkdir "$(OBJD)\libcurl\vtls" && echo.   Created $(OBJD)\libcurl\vtls
     @if not exist "$(INCD)" mkdir "$(INCD)" && echo.   Created $(INCD)
 
 $(STATICLIB): $(OBJS)
@@ -270,8 +270,8 @@ clean:
 	-del /q $(STATICLIB) 2>nul
 	-del /q $(BIND)\*.pdb 2>nul
 	-del /q $(BIND)\*.idb 2>nul
-	-del /q $(OBJD)\*.obj 2>nul
-	-del /q $(OBJD)\vauth\*.obj 2>nul
-	-del /q $(OBJD)\vtls\*.obj 2>nul
-	-del /q $(OBJD)\*.res 2>nul
+	-del /q $(OBJD)\libcurl\*.obj 2>nul
+	-del /q $(OBJD)\libcurl\vauth\*.obj 2>nul
+	-del /q $(OBJD)\libcurl\vtls\*.obj 2>nul
+	-del /q $(OBJD)\libcurl\*.res 2>nul
 	-rd  /s /q $(INCD)\curl 2>nul

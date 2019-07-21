@@ -41,8 +41,6 @@ all: dirs $(STATICLIB)      \
      
 dirs:
     @if not exist "$(BIND)" mkdir "$(BIND)" && echo.   Created $(BIND)
-    @if not exist "$(OBJD)"\vauth mkdir "$(OBJD)"\vauth && echo.   Created $(OBJD)\vauth
-    @if not exist "$(OBJD)"\vtls mkdir "$(OBJD)"\vtls && echo.   Created $(OBJD)\vtls    
     @if not exist "$(OBJD)" mkdir "$(OBJD)" && echo.   Created $(OBJD)
     @if not exist "$(INCD)" mkdir "$(INCD)" && echo.   Created $(INCD)
 

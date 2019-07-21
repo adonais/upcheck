@@ -15,7 +15,7 @@ ROOT = ..\..\..
 # --------------------------
 
 STATICLIB = $(BIND)\lib$(NAME).lib
-CFLAGS = /nologo /I. /W3 /EHsc /FD /DNDEBUG /O2 /Zi -Fd"$(BIND)\libc-ares" /DCARES_BUILDING_LIBRARY \
+CFLAGS = /nologo /I. /W3 /EHsc /FD /DNDEBUG /O2 /Zi -Fd"$(BIND)\libcares" /DCARES_BUILDING_LIBRARY \
          /DCARES_STATICLIB /D_WIN32_WINNT=0x0600 -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
 RC_CMD_REL = rc.exe /l 0x409 /d "NDEBUG"
 LINK_CMD_LIB = link.exe /lib /nologo

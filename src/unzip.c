@@ -10,8 +10,6 @@
 #include "zlib.h"
 #include "unzip.h"
 
-#pragma comment(lib, "zlib.lib")
-
 #undef NOUNCRYPT
 #define NOUNCRYPT
 

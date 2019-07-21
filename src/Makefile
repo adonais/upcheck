@@ -10,8 +10,8 @@ RFLAGS  = /nologo /D "_UNICODE" /D "UNICODE"
 
 LDFLAGS = /NOLOGO /DEBUG /opt:ref /opt:icf /LARGEADDRESSAWARE /MACHINE:$(PLATFORM) $(HIDE) /NODEFAULTLIB:MSVCRT /ENTRY:wmainCRTStartup
 
-DEP  = libcurl.lib  zlib.lib libcares.lib lib7z.lib
-LIBS = /LIBPATH:..\Release
+DEP  = $(BIND)\libcurl.lib  $(BIND)\zlib.lib $(BIND)\libcares.lib $(BIND)\lib7z.lib
+LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib
 
 OBJS = \
     $(OBJD)\upcheck.obj        \
@@ -56,8 +56,6 @@ dirs:
 $(BIND)\upcheck.exe : $(OBJS) $(DEP)
     link /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
     
-$(DEP) :    
-
 $(OBJD)\upcheck.obj     : upcheck.c *.h
 $(OBJD)\urlcode.obj     : urlcode.c urlcode.h
 $(OBJD)\spinlock.obj    : spinlock.c spinlock.h

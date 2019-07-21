@@ -17,23 +17,6 @@
 #include "cookies.h"
 #include "thunderagent.h"
 
-#if defined(CURL_STATICLIB) && defined(_MSC_VER)
-#pragma comment(lib, "libcurl.lib")
-#if defined(USE_ARES)
-#pragma comment(lib, "libcares.lib")
-#endif
-#pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "gdi32.lib")
-#pragma comment(lib, "crypt32.lib")
-#pragma comment(lib, "zlib.lib")
-#pragma comment(lib, "wldap32.lib")
-#pragma comment(lib, "shlwapi.lib")
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "advapi32.lib")
-#pragma comment(lib, "normaliz.lib")
-#pragma warning(disable : 4217)
-#endif // static
-
 static int64_t downloaded_size;
 static int64_t total_size;
 static LOCK_MUTEXT g_mutex;
