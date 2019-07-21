@@ -10,8 +10,8 @@ RFLAGS  = /nologo /D "_UNICODE" /D "UNICODE"
 
 LDFLAGS = /NOLOGO /DEBUG /opt:ref /opt:icf /LARGEADDRESSAWARE /MACHINE:$(PLATFORM) $(HIDE) /NODEFAULTLIB:MSVCRT /ENTRY:wmainCRTStartup
 
-DEP  = 
-LIBS = /LIBPATH:..\Release $(DEP)
+DEP  = libcurl.lib  zlib.lib libcares.lib lib7z.lib
+LIBS = /LIBPATH:..\Release
 
 OBJS = \
     $(OBJD)\upcheck.obj        \
@@ -55,6 +55,8 @@ dirs:
 
 $(BIND)\upcheck.exe : $(OBJS) $(DEP)
     link /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
+    
+$(DEP) :    
 
 $(OBJD)\upcheck.obj     : upcheck.c *.h
 $(OBJD)\urlcode.obj     : urlcode.c urlcode.h

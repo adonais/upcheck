@@ -239,15 +239,18 @@ static struct Curl_sh_entry *sh_addentry(struct curl_hash *sh,
   return check; /* things are good in sockhash land */
 }
 
-
+#ifdef _MSC_VER
+#pragma optimize("g", off)
+#endif
 /* delete the given socket + handle from the hash */
 static void sh_delentry(struct Curl_sh_entry *entry,
                         struct curl_hash *sh, curl_socket_t s)
 {
   struct curl_llist *list = &entry->list;
-  struct curl_llist_element *e;
+  struct curl_llist_element *e = NULL;
+  if (list == NULL) return;
   /* clear the list of transfers first */
-  for(e = list->head; e; e = list->head) {
+  for(e = list->head; e&&e->ptr; e = list->head) {
     struct Curl_easy *dta = e->ptr;
     Curl_llist_remove(&entry->list, e, NULL);
     dta->sh_entry = NULL;
@@ -266,6 +269,10 @@ static void sh_freeentry(void *freethis)
 
   free(p);
 }
+
+#ifdef _MSC_VER
+#pragma optimize("", on)
+#endif
 
 static size_t fd_key_compare(void *k1, size_t k1_len, void *k2, size_t k2_len)
 {
