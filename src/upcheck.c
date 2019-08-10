@@ -472,6 +472,7 @@ run_thread(void *pdata)
 #endif
             // 关掉CLOSE_WAIT
             curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
+            curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -532,6 +533,7 @@ get_file_lenth(const char *url, int64_t *file_len)
     CURL *handle = curl_easy_init();
     memset(&dnld_params, 0, sizeof(dnld_params));
     curl_easy_setopt(handle, CURLOPT_URL, url);
+    curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "gzip");
     curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, "GET");
     curl_easy_setopt(handle, CURLOPT_HEADER, 1); //只需要header头
     curl_easy_setopt(handle, CURLOPT_NOBODY, 1); //不需要body
@@ -1234,6 +1236,17 @@ int
 wmain(int argc, WCHAR **wargv)
 {
     bool result = false;
+	const HMODULE hlib = GetModuleHandleW(L"kernel32.dll");
+	SetDllDirectoryW(L"");
+	if (hlib)
+	{
+	    typedef BOOL (WINAPI * SSPM) (DWORD);
+	    const SSPM fnSetSearchPathMode = (SSPM)GetProcAddress (hlib, "SetSearchPathMode");
+	    if (fnSetSearchPathMode)
+	    {
+	  	    fnSetSearchPathMode(BASE_SEARCH_PATH_ENABLE_SAFE_SEARCHMODE | BASE_SEARCH_PATH_PERMANENT);
+	    }
+	}    
 #ifdef DEBUG_LOG
     init_logs();
 #endif

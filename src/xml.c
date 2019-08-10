@@ -29,6 +29,7 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
     CURL *curl_handle = curl_easy_init();
 
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+    curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, "gzip");
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, userdata);
     curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
