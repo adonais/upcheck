@@ -100,7 +100,7 @@ InitDialog(HWND hDlg)
     SetWindowTextW(GetDlgItem(hDlg, IDC_INFO), sUIStrings.info);
 
     // Set dialog icon
-    HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_DIALOG));
+    HICON hIcon = LoadIconW(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_DIALOG));
     if (hIcon)
         SendMessage(hDlg, WM_SETICON, ICON_BIG, (LPARAM) hIcon);
 
@@ -108,8 +108,8 @@ InitDialog(HWND hDlg)
     SendMessage(hWndPro, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
     if (sIndeterminate)
     {
-        LONG_PTR val = GetWindowLongPtr(hWndPro, GWL_STYLE);
-        SetWindowLongPtr(hWndPro, GWL_STYLE, val | PBS_MARQUEE);
+        LONG_PTR val = GetWindowLongPtrW(hWndPro, GWL_STYLE);
+        SetWindowLongPtrW(hWndPro, GWL_STYLE, val | PBS_MARQUEE);
         SendMessage(hWndPro, (UINT) PBM_SETMARQUEE, (WPARAM) TRUE, (LPARAM) 50);
     }
 
@@ -235,57 +235,19 @@ show_progress(void *p)
         if (sQuit || sProgress > 70.0f)
             return 0;
     }
-
-    // Don't load the UI if there's an <exe_name>.Local directory for redirection.
-    WCHAR appPath[MAX_PATH + 1] = { L'\0' };
-
     // Don't load the UI if the strings for the UI are not provided.
     if (show->initstrings && !set_ui_strings())
     {
         return 0;
     }
-
-    if (!GetModuleFileNameW(NULL, appPath, MAX_PATH))
-    {
-        return 0;
-    }
-
-    // Use an activation context that supports visual styles for the controls.
-    // C调用COM组件，最好的方法是使用Activation Context API加载指定清单.
-    ACTCTXW actx = { 0 };
-    actx.cbSize = sizeof(ACTCTXW);
-    actx.dwFlags = ACTCTX_FLAG_RESOURCE_NAME_VALID | ACTCTX_FLAG_HMODULE_VALID;
-    actx.hModule = GetModuleHandle(NULL); // Use the embedded manifest
-    // This is needed only for Win XP but doesn't cause a problem with other
-    // versions of Windows.
-    // 直接使用manifest文件时只设置这个就可以了
-    actx.lpSource = appPath;
-    actx.lpResourceName = MAKEINTRESOURCE(IDR_COMCTL32_MANIFEST);
-
-    HANDLE hactx = INVALID_HANDLE_VALUE;
-    hactx = CreateActCtxW(&actx);
-    ULONG_PTR actxCookie = 0;
-    if (hactx != INVALID_HANDLE_VALUE)
-    {
-        // Push the specified activation context to the top of the activation stack.
-        ActivateActCtx(hactx, &actxCookie);
-    }
     // 如果一个运行在 Windows XP 上的应用程序清单指定要
     // 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式
-    //则需要 InitCommonControlsEx()。否则，将无法创建窗口
+    // 则需要 InitCommonControlsEx()。否则，将无法创建窗口
     // ICC_PROGRESS_CLASS,注册Progress Bar类
     INITCOMMONCONTROLSEX icc = { sizeof(INITCOMMONCONTROLSEX), ICC_PROGRESS_CLASS };
     InitCommonControlsEx(&icc);
-
-    DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG), NULL, (DLGPROC) DialogProc);
-
-    if (hactx != INVALID_HANDLE_VALUE)
-    {
-        // Deactivate the context now that the comctl32.dll is loaded.
-        DeactivateActCtx(0, actxCookie);
-    }
-
-    return 1;
+    DialogBoxW(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG), NULL, (DLGPROC) DialogProc);
+    return (1);
 }
 
 void WINAPI

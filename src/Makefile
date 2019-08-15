@@ -67,4 +67,4 @@ $(OBJD)\thunderagent.obj: thunderagent.c thunderagent.h
 $(OBJD)\xml.obj         : xml.c xml.h
 $(OBJD)\sqlite3.obj     : sqlite3.c sqlite3.h
 $(OBJD)\cookies.obj     : cookies.c cookies.h
-$(OBJD)\resource.res    : resource.rc resource.h upcheck.exe.manifest upcheck.exe.comctl32.manifest
+$(OBJD)\resource.res    : resource.rc resource.h upcheck.exe.manifest

@@ -72,7 +72,7 @@ get_file_bits(void)
         }
         if ((hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, false, file_info.pid)) == NULL)
         {
-            printf("OpenProcess PROCESS_QUERY_INFORMATION return false\n");
+            printf("OpenProcess(%lu) failed, cause: %lu\n", file_info.pid, GetLastError());
             break;
         }
         if (!IsWow64Process(hProcess, &wow64))

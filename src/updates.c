@@ -212,7 +212,7 @@ move_file(LPCWSTR src_path, LPCWSTR dst_path)
     }
     if (!MoveFileExW(src_path, dst_path, MOVEFILE_COPY_ALLOWED|MOVEFILE_REPLACE_EXISTING))
     {
-        printf("move file false, error[%lu]\n", GetLastError());
+        printf("move %ls failed, error[%lu]\n", src_path, GetLastError());
         return false;
     }
     return true;

@@ -13,7 +13,6 @@
 #define TYPE_CERT                       512
 #define IDR_PRIMARY_CERT                1004
 #define IDR_BACKUP_CERT                 1005
-#define IDS_UPDATER_IDENTITY            1006
 #define IDR_XPCSHELL_CERT               1007
 #define IDR_COMCTL32_MANIFEST           17
 
