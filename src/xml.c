@@ -50,22 +50,31 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
     return (int) res;
 }
 
+static bool 
+is_64bit_os(void)
+{
+    SYSTEM_INFO info = {0};
+    GetNativeSystemInfo(&info);
+    if( info.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64 || info.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
+    {
+        return true;
+    }
+    return false;    
+}
+
 /* 主进程是64位, 函数返回64 */
 /* 主进程是32位, 函数返回32 */
 /* 主进程已退出, 函数返回0  */
 static int
 get_file_bits(void)
 {
-    bool x86 = false;
     int  bits = 0;
     HANDLE hProcess = NULL;
-#ifndef _WIN64
-    x86 = GetProcAddress(GetModuleHandleW(L"ntdll"), "NtWow64DebuggerCall") == NULL ? true : false;
-#endif
+    bool x64 = is_64bit_os();
     do
     {
         int wow64 = 0;
-        if (x86)
+        if (!x64)
         {
             bits = 32;
             break;
