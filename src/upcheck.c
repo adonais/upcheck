@@ -1326,7 +1326,15 @@ wmain(int argc, WCHAR **wargv)
         }
         if (wcslen(file_info.ini) > 1) // 下载并解析ini文件
         {
-            int ups = init_resolver();
+            int ups = -1;
+            WCHAR names[MAX_PATH] = {0};
+            if (get_name_self(names, MAX_PATH) && search_process(names))
+            {
+                printf("process with the same name exists, exit...\n");
+                *file_info.ini = '\0';
+                break;
+            }
+            ups = init_resolver();
             if (ups == 0)
             {
                 printf("init_resolver ok.\n");

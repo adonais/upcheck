@@ -62,6 +62,58 @@ is_64bit_os(void)
     return false;    
 }
 
+static int
+search_file_bits(const wchar_t* path)
+{
+    IMAGE_DOS_HEADER dos_header;
+    IMAGE_NT_HEADERS pe_header;
+    int  	ret = 0;
+    HANDLE	hFile = CreateFileW(path,GENERIC_READ,
+                                FILE_SHARE_READ,NULL,OPEN_EXISTING,
+                                FILE_ATTRIBUTE_NORMAL,NULL);
+    if( hFile == INVALID_HANDLE_VALUE )
+    {
+        return ret;
+    }
+    do
+    {
+        DWORD readed = 0;
+        DWORD m_ptr  = SetFilePointer( hFile,0,NULL,FILE_BEGIN );
+        if ( INVALID_SET_FILE_POINTER == m_ptr )
+        {
+            break;
+        }
+        ret = ReadFile( hFile,&dos_header,sizeof(IMAGE_DOS_HEADER),&readed,NULL );
+        if( ret && readed != sizeof(IMAGE_DOS_HEADER) && \
+            dos_header.e_magic != IMAGE_DOS_SIGNATURE )
+        {
+            break;
+        }
+        m_ptr = SetFilePointer( hFile,dos_header.e_lfanew,NULL,FILE_BEGIN );
+        if ( INVALID_SET_FILE_POINTER == m_ptr )
+        {
+            break;
+        }
+        ret = ReadFile( hFile,&pe_header,sizeof(IMAGE_NT_HEADERS),&readed,NULL );
+        if( ret && readed != sizeof(IMAGE_NT_HEADERS) )
+        {
+            break;
+        }
+        if (pe_header.FileHeader.Machine == IMAGE_FILE_MACHINE_I386)
+        {
+            ret = 32;
+            break;
+        }
+        if (pe_header.FileHeader.Machine == IMAGE_FILE_MACHINE_IA64 ||
+            pe_header.FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64)
+        {
+            ret = 64;
+        }
+    } while (0);
+    CloseHandle(hFile);
+    return ret;
+}
+
 /* 主进程是64位, 函数返回64 */
 /* 主进程是32位, 函数返回32 */
 /* 主进程已退出, 函数返回0  */
@@ -81,7 +133,17 @@ get_file_bits(void)
         }
         if ((hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, false, file_info.pid)) == NULL)
         {
+            WCHAR m_dll[MAX_PATH] = {0};
             printf("OpenProcess(%lu) failed, cause: %lu\n", file_info.pid, GetLastError());
+            if (!init_file_strings(L"mozglue.dll", m_dll))
+            {
+                printf("init_file_strings mozglue.dll return false\n");
+                break;
+            }
+            if ((bits = search_file_bits(m_dll)) == 0)
+            {
+                printf("search_file_bits mozglue.dll return false\n");
+            }
             break;
         }
         if (!IsWow64Process(hProcess, &wow64))

@@ -1,8 +1,9 @@
 ROOT = ..
+
 !include "$(ROOT)\system.mak"
 
 CFLAGS=/nologo /MT /W3 /WX- /wd4996 /wd4819 /O2 /Zi /Gd /D "_CRT_SECURE_NO_WARNINGS"  \
-       /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 $(RELEASE) /D "USE_ARES" $(CFLAGS) /D "COBJMACROS"
+       /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 /D "USE_ARES" $(CFLAGS) /D "COBJMACROS"
       
 CXXFLAGS = $(CFLAGS) /TP
 
@@ -12,6 +13,12 @@ LDFLAGS = /NOLOGO /DEBUG /opt:ref /opt:icf /LARGEADDRESSAWARE /MACHINE:$(PLATFOR
 
 DEP  = $(BIND)\libcurl.lib  $(BIND)\zlib.lib $(BIND)\libcares.lib $(BIND)\lib7z.lib
 LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib
+
+!if "$(MY_DEBUG)"=="1"
+CFLAGS = $(CFLAGS) $(DEBUG_L)
+!ELSE
+CFLAGS = $(CFLAGS) $(RELEASE)
+!ENDIF
 
 OBJS = \
     $(OBJD)\upcheck.obj        \

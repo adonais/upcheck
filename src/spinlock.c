@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <shlwapi.h>
+#include <tlhelp32.h>
 #include "spinlock.h"
 
 #pragma comment(lib, "advapi32.lib")
@@ -548,4 +549,52 @@ exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags)
     }
     CloseHandle(pi.hProcess);
     return true;
+}
+
+bool WINAPI
+get_name_self(LPWSTR lpstrName, DWORD wlen)
+{
+    int   i = 0;
+    WCHAR lpFullPath[MAX_PATH+1]= {0};
+    if (GetModuleFileNameW(NULL,lpFullPath,MAX_PATH)>0)
+    {
+        for(i=(int)wcslen(lpFullPath); i>0; i--)
+        {
+            if (lpFullPath[i] == L'\\')
+                break;
+        }
+        if (i > 0)
+        {
+            i = _snwprintf(lpstrName,wlen,L"%ls",lpFullPath+i+1);
+        }
+    }
+    return (i>0 && i<(int)wlen);
+}
+
+bool WINAPI
+search_process(LPCWSTR names)
+{
+    bool   ret = false;
+    PROCESSENTRY32W pe32 = {0};
+    HANDLE hSnapshot = INVALID_HANDLE_VALUE;
+    hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
+    if(hSnapshot == INVALID_HANDLE_VALUE)
+    {
+        return false;
+    }
+    pe32.dwSize=sizeof(pe32);
+    if (!Process32FirstW(hSnapshot,&pe32))
+    {
+        return false;
+    }        
+    do
+    {
+        if (!_wcsicmp(pe32.szExeFile, names) && pe32.th32ProcessID != GetCurrentProcessId())
+        {
+            ret = true;
+            break;
+        }
+    } while (Process32NextW(hSnapshot,&pe32));
+    CloseHandle(hSnapshot);
+    return ret;
 }
