@@ -95,9 +95,10 @@ extern bool WINAPI merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name);
 extern bool WINAPI get_files_lenth(LPCWSTR path, int64_t *psize);
 extern wchar_t* WINAPI utf8_to_utf16(const char *filename);
 extern char* WINAPI utf16_to_utf8(const wchar_t *filename);
-extern bool  WINAPI exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags);
+extern bool  WINAPI exec_ppv(LPSTR wcmd, LPCSTR pcd, int flags);
 extern bool  WINAPI get_name_self(LPWSTR lpstrName, DWORD wlen);
 extern bool  WINAPI search_process(LPCWSTR names);
+extern char* WINAPI url_decode(const char *input);
 
 #ifdef __cplusplus
 }

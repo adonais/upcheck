@@ -114,7 +114,8 @@ sqlite_txt(LPCWSTR cookie_path, HANDLE hfile)
     if (!WideCharToMultiByte(CP_UTF8, 0, cookie_path, -1, utf8, sizeof(utf8), NULL, NULL))
     {
         printf("WideCharToMultiByte cookie_path error: %lu\n", GetLastError());
-    }
+        return -1;
+    }       
     if ((rc = sqlite3_open(utf8, &db)) != SQLITE_OK)
     {
         printf("sqlite3_open false\n");

@@ -164,10 +164,18 @@ init_command_data(void)
             VERIFY(i + 1 < __argc - 1);
             WCHAR *dot = NULL;
             WCHAR cookies[VALUE_LEN + 1] = { 0 };
-            _snwprintf(cookies, VALUE_LEN, L"%ls", pv[i + 1]);
-            dot = wcsrchr(cookies, L'.');
-            if (dot && wcsicmp(dot + 1, L"sqlite") == 0)
+            char  un_cookies[MAX_PATH + 1] = { 0 };
+            WideCharToMultiByte(CP_UTF8, 0, pv[i + 1], -1, un_cookies, MAX_PATH, NULL, NULL);
+            char *u8_cookies = url_decode(un_cookies);
+            if (u8_cookies == NULL)
             {
+                continue;
+            }
+            MultiByteToWideChar(CP_UTF8, 0, u8_cookies, -1, cookies, VALUE_LEN);
+            SYS_FREE(u8_cookies);
+            dot = wcsrchr(cookies, L'.');
+            if (dot && _wcsicmp(dot + 1, L"sqlite") == 0)
+            {              
                 /* encode with sqlite3 */
                 if (dump_cookies(cookies))
                 {
@@ -1094,13 +1102,12 @@ static void
 msg_tips(void)
 {
     HWND fx = NULL;
-    size_t num = (MAX_PATH + 1) * sizeof(WCHAR);
-    WCHAR *msg = (WCHAR *) SYS_MALLOC(num);
+    WCHAR *msg = (WCHAR *) SYS_MALLOC(MAX_MESSAGE * sizeof(WCHAR));
     if (NULL == msg)
     {
         return;
     }
-    if (read_appkey(L"update", L"msg", msg, (DWORD) num, file_info.ini))
+    if (read_appkey(L"update", L"msg", msg, MAX_MESSAGE, file_info.ini))
     {
         fx = get_moz_hwnd();
         wstr_replace(msg, wcslen(msg), L"\\n", L"\n");
@@ -1252,7 +1259,7 @@ wmain(int argc, WCHAR **wargv)
 #endif
     if (argc < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
-        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.4\n",
+        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.6\n",
                "upcheck.exe");
         return -1;
     }
@@ -1263,16 +1270,14 @@ wmain(int argc, WCHAR **wargv)
     }
     if (file_info.use_thunder)
     {
-        char* command = NULL;
-        WCHAR w_command[128] = {0};
-        WCHAR w_ini[128] = {0};
-        if (init_parser(w_ini,128) && read_appkey(L"player", L"command", w_command, sizeof(w_command), w_ini))
-        {
-            // 优先调用命令行参数
-            command = utf16_to_utf8(w_command);
-            if (command != NULL)
+        char  *command = NULL;
+        WCHAR w_command[VALUE_LEN] = {0};
+        WCHAR w_ini[VALUE_LEN] = {0};
+        if (init_parser(w_ini, VALUE_LEN) && read_appkey(L"player", L"command", w_command, VALUE_LEN, w_ini))
+        {   // 优先调用命令行参数
+            if ((command = utf16_to_utf8(w_command)) != NULL)
             {
-                char dl[1024] = {0};
+                char dl[URL_LEN] = {0};
                 char *p1 = NULL,*p2 = NULL;
                 const char *key = "%s";
                 int len_t = (int)strlen(key);
@@ -1293,15 +1298,15 @@ wmain(int argc, WCHAR **wargv)
                     {
                         p2[1] = '\0';
                     }
-                    _snprintf(dl, 1024, command, file_info.url, file_info.cookies);
+                    _snprintf(dl, URL_LEN, command, file_info.url, file_info.cookies);
                 }
                 else if (p1)
                 {
-                    _snprintf(dl, 1024, command, file_info.url);
+                    _snprintf(dl, URL_LEN, command, file_info.url);
                 }
                 else
                 {
-                    _snprintf(dl, 1024, command);
+                    _snprintf(dl, URL_LEN, command);
                 }                
                 free(command);
                 printf("dl_command: %s\n", dl);

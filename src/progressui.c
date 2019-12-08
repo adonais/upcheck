@@ -197,11 +197,11 @@ set_ui_strings(void)
     {
         return false;
     }
-    if (!read_appkey(L"App", L"RemotingName", sUIStrings.title, sizeof(sUIStrings.title), ini))
+    if (!read_appkey(L"App", L"RemotingName", sUIStrings.title, MAX_PATH, ini))
     {
         return false;
     }
-    if (!read_appkey(L"App", L"RemotingName", sUIStrings.info, sizeof(sUIStrings.info), ini))
+    if (!read_appkey(L"App", L"RemotingName", sUIStrings.info, MAX_PATH, ini))
     {
         return false;
     }

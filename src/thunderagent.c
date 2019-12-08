@@ -480,6 +480,8 @@ extern "C"
 #endif
 
 #endif /* __ThunderAgentLib_LIBRARY_DEFINED__ */
+/* printf macro */
+#include "spinlock.h" 
 
 static BSTR
 str_bstr(LPCSTR str)
@@ -502,37 +504,61 @@ str_bstr(LPCSTR str)
 BOOL WINAPI
 thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
 {
-    HRESULT hr;
+    HRESULT hr = 1;
     IAgent2 *pAgent = NULL;
-    int ret = 0;
-    BSTR url, refer, cookies = NULL;
-    if (NULL == b_url || *b_url == 0)
+    BSTR url = NULL, refer = NULL, cookies = NULL;
+    if (NULL == b_url || *b_url == '\0')
     {
         return FALSE;
     }
-    CoInitialize(NULL);
-    hr = CoCreateInstance(&CLSID_Agent, NULL, CLSCTX_INPROC_SERVER, &IID_IAgent2, (void **) &pAgent);
-    if (FAILED(hr) || pAgent == NULL)
+	printf("url = %s\n", b_url);
+	do 
+	{
+	    int ret = 0;
+        CoInitialize(NULL);
+        hr = CoCreateInstance(&CLSID_Agent, NULL, CLSCTX_INPROC_SERVER, &IID_IAgent2, (void **) &pAgent);
+        if (FAILED(hr) || pAgent == NULL)
+        {
+            printf("CoCreateInstance error, err=%lu\n", GetLastError());
+            break;
+        }
+        url = str_bstr(b_url);
+        refer = str_bstr(b_refer);
+        cookies = str_bstr(b_cookies);
+        if (!(url && refer && cookies))
+        {
+            printf("str_bstr return null\n");
+            break;
+        }
+        hr = IAgent2_AddTask2(pAgent, url, NULL, NULL, NULL, refer, 1, 0, -1, cookies);
+        if (FAILED(hr))
+        {
+            printf("IAgent2_AddTask2 error, cause: %lu\n", GetLastError());
+            break;
+        }
+        hr = IAgent2_CommitTasks2(pAgent, 1, &ret);	    
+        if (FAILED(hr))
+        {
+            printf("IAgent2_CommitTasks2 error, cause: %lu\n", GetLastError());
+        }
+        printf("ret = %d\n", ret); 
+	} while(0);
+	if (url)
+	{
+	    SysFreeString(url);
+	}
+	if (refer)
+	{
+	    SysFreeString(refer);
+	}
+	if (cookies)
+	{
+	    SysFreeString(cookies);
+	}		    
+    if (pAgent)
     {
-        printf("CoCreateInstance error, err=%lu\n", GetLastError());
-        CoUninitialize();
-        return FALSE;
+        IAgent2_Release(pAgent);
     }
-    url = str_bstr(b_url);
-    refer = str_bstr(b_refer);
-    cookies = str_bstr(b_cookies);
-    if (!(url && refer && cookies))
-    {
-        printf("str_bstr return null\n");
-        CoUninitialize();
-        return FALSE;
-    }
-    IAgent2_AddTask2(pAgent, url, NULL, NULL, NULL, refer, 1, 0, -1, cookies);
-    IAgent2_CommitTasks2(pAgent, 1, &ret);
-    IAgent2_Release(pAgent);
     CoUninitialize();
-    SysFreeString(url);
-    SysFreeString(refer);
-    SysFreeString(cookies);
-    return TRUE;
+    return SUCCEEDED(hr);
 }

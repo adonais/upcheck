@@ -214,12 +214,12 @@ ini_query(const WCHAR *ini)
     {
         dt_remote = read_appint(L"updates", info, ini);
     }
-    if (!read_appkey(info, L"url", url, sizeof(url), ini))
+    if (!read_appkey(info, L"url", url, MAX_PATH, ini))
     {
         printf("read_appkey url return false\n");
         return false;
     }
-    if (!read_appkey(info, L"md5", c_md5, sizeof(c_md5), ini))
+    if (!read_appkey(info, L"md5", c_md5, MD5_LEN, ini))
     {
         printf("read_appkey md5 return false\n");
         return false;
@@ -275,7 +275,7 @@ init_resolver(void)
         printf("GetTempFileNameW return false\n");
         return res;
     }
-    if (!read_appkey(L"update", L"url", wurl, sizeof(wurl), file_info.ini))
+    if (!read_appkey(L"update", L"url", wurl, MAX_PATH, file_info.ini))
     {
         printf("read_appkey portable.ini update return false\n");
         return res;

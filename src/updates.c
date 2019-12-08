@@ -10,7 +10,6 @@
 #define PROGRESS_FINISH_SIZE   1.0f
 extern  file_info_t file_info;
 static  bool fn_chrome;
-static  bool fn_openmp;
 static  bool fx_browser;
 static  bool ice_build;
 static  bool fn_erase;
@@ -166,11 +165,7 @@ exist_root_dir(LPCWSTR wlog, LPWSTR root_path)
         if (wcsstr(buf, L"/browser/omni.ja"))
         {
             fn_chrome = true;
-        }
-        if (wcsstr(buf, L"libomp"))
-        {
-            fn_openmp = true;
-        }    
+        }   
         if (wcsstr(buf, L"erased_lists.bat"))
         {
             fn_erase = true;
@@ -347,7 +342,7 @@ is_ice(void)
     {
         return false;
     }
-    if (!read_appkey(L"App", L"RemotingName", names, sizeof(names), ini))
+    if (!read_appkey(L"App", L"RemotingName", names, 32, ini))
     {
         return false;
     }
@@ -391,15 +386,6 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
         // 删除browser子目录
         erase_dir(chrome);
     }
-    if (fn_openmp)
-    {
-        WCHAR libomp[MAX_PATH+1] = {0};
-        wcsncpy(libomp, file_info.process, MAX_PATH);
-        PathRemoveFileSpecW(libomp);
-        PathAppendW(libomp,L"vcomp140.dll");
-        // 删除重复的libomp
-        DeleteFileW(libomp);
-    }    
     if (res > 0)
     {
         printf("yes, path Is root Director\n");
@@ -470,7 +456,7 @@ update_thread(void *p)
         if (PathAppendW(r_list,L"erased_lists.bat") && PathFileExistsW(r_list) && SetCurrentDirectoryW(dst))
         {
             exec_ppv("cmd.exe /c erased_lists.bat", NULL, 0);
-            Sleep(2000);
+            Sleep(1000);
         }
     }
     return (1);

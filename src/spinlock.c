@@ -179,7 +179,7 @@ read_appkey(LPCWSTR lpappname,           /* 区段名 */
                                    bufsize, 
                                    filename);
     
-    if (res == 0 && GetLastError() != 0x0)
+    if ((res == 0 && GetLastError() != 0x0) || *prefstring == L'\0')
     {
         return false;
     }
@@ -191,7 +191,7 @@ uint64_t WINAPI
 read_appint(LPCWSTR cat, LPCWSTR name, LPCWSTR ini)
 {
     WCHAR buf[NAMES_LEN+1] = {0};
-    if (!read_appkey(cat, name, buf, sizeof(buf), ini))
+    if (!read_appkey(cat, name, buf, NAMES_LEN, ini))
     {
         return 0;
     }
@@ -514,7 +514,7 @@ utf16_to_utf8(const wchar_t *utf16)
 }
 
 bool WINAPI 
-exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags)
+exec_ppv(LPSTR cmd, LPCSTR pcd, int flags)
 {
     PROCESS_INFORMATION pi;
     STARTUPINFOA si;
@@ -534,7 +534,7 @@ exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags)
             si.wShowWindow = SW_SHOWNOACTIVATE;
         }
         if(!CreateProcessA(NULL,
-                          (LPSTR)wcmd,
+                          cmd,
                           NULL,
                           NULL,
                           FALSE,
@@ -545,6 +545,10 @@ exec_ppv(LPCSTR wcmd, const LPCSTR pcd, int flags)
         {
             printf("CreateProcessA error %lu\n", GetLastError());
             return false;
+        }
+        else
+        {
+            printf("run %s\n", cmd);
         }
     }
     CloseHandle(pi.hProcess);
@@ -597,4 +601,31 @@ search_process(LPCWSTR names)
     } while (Process32NextW(hSnapshot,&pe32));
     CloseHandle(hSnapshot);
     return ret;
+}
+
+char* WINAPI
+url_decode (const char *input)
+{
+	int input_length = (int)strlen(input);
+	size_t output_length = (input_length + 1);
+	char *working, *output;
+	if ((working = output = SYS_MALLOC(output_length)) == NULL)
+	{
+	    return NULL;
+	}
+	while(*input)
+	{
+		if(*input == '%')
+		{
+			char buffer[3] = { input[1], input[2], 0 };
+			*working++ = (char)strtol(buffer, NULL, 16);
+			input += 3;
+		}
+		else
+		{
+			*working++ = *input++;
+		}
+	}
+	*working = 0;  //null terminate
+	return output;
 }
