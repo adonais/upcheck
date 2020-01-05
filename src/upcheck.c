@@ -1048,7 +1048,7 @@ md5_sum(void)
     {
         res = false;
         DeleteFileW(file_info.names);
-        printf("package md5 sum error!\n");
+        printf("package md5[%s] sum error! cause file [%s]\n", md5_str, file_info.md5);
     }
     return res;
 }

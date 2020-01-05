@@ -219,12 +219,12 @@ ini_query(const WCHAR *ini)
         printf("read_appkey url return false\n");
         return false;
     }
-    if (!read_appkey(info, L"md5", c_md5, MD5_LEN, ini))
+    if (!read_appkey(info, L"md5", c_md5, MD5_LEN+1, ini))
     {
         printf("read_appkey md5 return false\n");
         return false;
     }
-    if (!WideCharToMultiByte(CP_UTF8, 0, c_md5, -1, file_info.md5, sizeof(file_info.md5), NULL, NULL))
+    if (!WideCharToMultiByte(CP_UTF8, 0, c_md5, -1, file_info.md5, MD5_LEN+1, NULL, NULL))
     {
         printf("WideCharToMultiByte c_md5 false\n");
         file_info.md5[0] = '\0';
