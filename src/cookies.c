@@ -81,7 +81,7 @@ parse_sqlite_cookies(void *hfile, int count, char **column, char **names)
         wnsprintfA(secure, LDOWRD, "TRUE");
     }
     {
-        LPCSTR host1 = "#HttpOnly_.nuomi.com";
+        LPCSTR host1 = "#HttpOnly_.baidu.com";
         LPCSTR host2 = "#HttpOnly_.pcs.baidu.com";
         LPCSTR key1 = "BDUSS";
         LPCSTR key2 = "pcsett";

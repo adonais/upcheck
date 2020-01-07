@@ -133,7 +133,7 @@ init_command_data(void)
             {
                 // 直接获得url参数, 转换成utf-8编码
             }
-            else if (strstr(file_info.url, "pcs.baidu.com") || strstr(file_info.url, "www.baidupcs.com"))
+            else if (strstr(file_info.url, "baidu.com") || strstr(file_info.url, "www.baidupcs.com"))
             {
                 _snprintf(file_info.referer, VALUE_LEN, "https://pan.baidu.com/disk/home");
             }
