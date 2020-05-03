@@ -173,6 +173,13 @@ BoolInt CPU_Is_InOrder()
   return True;
 }
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable:4996) /* warning C4996: 'GetVersionExW': was declared deprecated */
+#endif
 #if !defined(MY_CPU_AMD64) && defined(_WIN32)
 #include <windows.h>
 static BoolInt CPU_Sys_Is_SSE_Supported()
@@ -186,6 +193,11 @@ static BoolInt CPU_Sys_Is_SSE_Supported()
 #define CHECK_SYS_SSE_SUPPORT if (!CPU_Sys_Is_SSE_Supported()) return False;
 #else
 #define CHECK_SYS_SSE_SUPPORT
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
 #endif
 
 BoolInt CPU_Is_Aes_Supported()

@@ -241,12 +241,6 @@ ini_query(const WCHAR *ini)
         printf("dt_locale(%I64u) >= dt_remote(%I64u), do not update\n", dt_locale, dt_remote);
         return false;
     }
-    else
-    {
-        WCHAR wstr[66] = { 0 };
-        _ui64tow(dt_remote, wstr, 10);
-        WritePrivateProfileStringW(L"update", L"last_id", wstr, file_info.ini);
-    }		
     return true;
 #undef INFO_LEN
 }
@@ -254,8 +248,10 @@ ini_query(const WCHAR *ini)
 /* 连不上更新服务器或函数执行失败,返回-1 */
 /* 需要更新,返回0                        */
 /* 不需要更新,返回1                      */
-#ifdef _MSC_VER
-#pragma optimize("g", off)
+#if defined(__clang__)
+# pragma clang optimize off
+#elif defined(_MSC_VER)
+# pragma optimize("g", off)
 #endif
 int WINAPI
 init_resolver(void)
@@ -295,7 +291,6 @@ init_resolver(void)
     res = init_process(url, &write_data, pfile);
     if (res != CURLE_OK)
     {
-        WritePrivateProfileStringW(L"update", L"last_id", NULL, file_info.ini);
 		res = -1;
     }
     else
@@ -307,6 +302,8 @@ init_resolver(void)
     CloseHandle(pfile);
     return res;
 }
-#ifdef _MSC_VER
-#pragma optimize("", on)
+#if defined(__clang__)
+# pragma clang optimize on
+#elif defined(_MSC_VER)
+# pragma optimize("g", on)
 #endif

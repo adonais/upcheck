@@ -250,13 +250,13 @@ show_progress(void *p)
     return (1);
 }
 
-void WINAPI
+void
 quit_progress()
 {
     sQuit = TRUE;
 }
 
-void WINAPI
+void
 update_progress(float progress)
 {
     sProgress = progress; // 32-bit writes are atomic

@@ -11,7 +11,6 @@
 #include "unzip.h"
 
 #undef NOUNCRYPT
-#define NOUNCRYPT
 
 #define CASESENSITIVITY (0)
 #define WRITEBUFFERSIZE (8192)
@@ -123,8 +122,15 @@ typedef struct
     int encrypted;
 
     int isZip64;
-
+#    ifndef NOUNCRYPT
+    unsigned long keys[3];     /* keys defining the pseudo-random sequence */
+    const z_crc_t* pcrc_32_tab;
+#    endif
 } unz64_s;
+
+#ifndef NOUNCRYPT
+#include "unzip_crypt.h"
+#endif
 
 /* ioapi.c */
 
@@ -686,18 +692,6 @@ void fill_win32_filefunc64(zlib_filefunc64_def* pzlib_filefunc_def)
     pzlib_filefunc_def->opaque = NULL;
 }
 
-
-void fill_win32_filefunc64W(zlib_filefunc64_def* pzlib_filefunc_def)
-{
-    pzlib_filefunc_def->zopen64_file = win32_open64_file_func;
-    pzlib_filefunc_def->zread_file = win32_read_file_func;
-    pzlib_filefunc_def->zwrite_file = win32_write_file_func;
-    pzlib_filefunc_def->ztell64_file = win32_tell64_file_func;
-    pzlib_filefunc_def->zseek64_file = win32_seek64_file_func;
-    pzlib_filefunc_def->zclose_file = win32_close_file_func;
-    pzlib_filefunc_def->zerror_file = win32_error_file_func;
-    pzlib_filefunc_def->opaque = NULL;
-}
 /* iowin32.c end */
 
 /* ===========================================================================
@@ -1288,7 +1282,6 @@ unzFile ZEXPORT unzOpen2_64W (const WCHAR *wstr, zlib_filefunc64_def* pzlib_file
         zlib_filefunc64_32_def_fill.zfile_func64 = *pzlib_filefunc_def;
         zlib_filefunc64_32_def_fill.ztell32_file = NULL;
         zlib_filefunc64_32_def_fill.zseek32_file = NULL;
-        printf("unzOpenInternal(%s) runing\n", path);
         return unzOpenInternal(path, &zlib_filefunc64_32_def_fill, 1);
     }
     else
@@ -1950,7 +1943,7 @@ local int unz64local_CheckCurrentFileCoherencyHeader (unz64_s* s, uInt* piSizeVa
   Open for reading data the current file in the zipfile.
   If there is no error and the file is opened, the return value is UNZ_OK.
 */
-int ZEXPORT unzOpenCurrentFile3 (unzFile file, int* method,int* level, int raw)
+int ZEXPORT unzOpenCurrentFile3 (unzFile file, int* method,int* level, int raw, const char* password)
 {
     int err=UNZ_OK;
     uInt iSizeVar;
@@ -1958,6 +1951,12 @@ int ZEXPORT unzOpenCurrentFile3 (unzFile file, int* method,int* level, int raw)
     file_in_zip64_read_info_s* pfile_in_zip_read_info;
     ZPOS64_T offset_local_extrafield;  /* offset of the local extra field */
     uInt  size_local_extrafield;    /* size of the local extra field */
+#    ifndef NOUNCRYPT
+    char source[12];
+#    else
+    if (password != NULL)
+        return UNZ_PARAMERROR;
+#    endif
 
     if (file==NULL)
         return UNZ_PARAMERROR;
@@ -2004,6 +2003,9 @@ int ZEXPORT unzOpenCurrentFile3 (unzFile file, int* method,int* level, int raw)
     }
 
     if ((s->cur_file_info.compression_method!=0) &&
+#ifdef HAVE_BZIP2
+        (s->cur_file_info.compression_method!=Z_BZIP2ED) &&
+#endif
         (s->cur_file_info.compression_method!=Z_DEFLATED))
 
         err=UNZ_BADZIPFILE;
@@ -2057,18 +2059,45 @@ int ZEXPORT unzOpenCurrentFile3 (unzFile file, int* method,int* level, int raw)
     s->pfile_in_zip_read = pfile_in_zip_read_info;
                 s->encrypted = 0;
 
+#    ifndef NOUNCRYPT
+    if (password != NULL)
+    {
+        int i;
+        s->pcrc_32_tab = get_crc_table();
+        init_keys(password,s->keys,s->pcrc_32_tab);
+        if (ZSEEK64(s->z_filefunc, s->filestream,
+                  s->pfile_in_zip_read->pos_in_zipfile +
+                     s->pfile_in_zip_read->byte_before_the_zipfile,
+                  SEEK_SET)!=0)
+            return UNZ_INTERNALERROR;
+        if(ZREAD64(s->z_filefunc, s->filestream,source, 12)<12)
+            return UNZ_INTERNALERROR;
+
+        for (i = 0; i<12; i++)
+            zdecode(s->keys,s->pcrc_32_tab,source[i]);
+
+        s->pfile_in_zip_read->pos_in_zipfile+=12;
+        s->encrypted=1;
+    }
+#    endif
+
 
     return UNZ_OK;
 }
 
 int ZEXPORT unzOpenCurrentFile (unzFile file)
 {
-    return unzOpenCurrentFile3(file, NULL, NULL, 0);
+    return unzOpenCurrentFile3(file, NULL, NULL, 0, NULL);
+}
+
+int ZEXPORT unzOpenCurrentFilePassword (unzFile file, const char*  password)
+{
+    return unzOpenCurrentFile3(file, NULL, NULL, 0, password);
 }
 
 int ZEXPORT unzOpenCurrentFile2 (unzFile file, int* method, int* level, int raw)
 {
-    return unzOpenCurrentFile3(file, method, level, raw);
+    return unzOpenCurrentFile3(file, method, level, raw, NULL);
 }
 
 /** Addition for GDAL : START */
@@ -2156,6 +2185,18 @@ int ZEXPORT unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
                       pfile_in_zip_read_info->read_buffer,
                       uReadThis)!=uReadThis)
                 return UNZ_ERRNO;
+
+
+#            ifndef NOUNCRYPT
+            if(s->encrypted)
+            {
+                uInt i;
+                for(i=0;i<uReadThis;i++)
+                  pfile_in_zip_read_info->read_buffer[i] =
+                      zdecode(s->keys,s->pcrc_32_tab,
+                              pfile_in_zip_read_info->read_buffer[i]);
+            }
+#            endif
 
 
             pfile_in_zip_read_info->pos_in_zipfile += uReadThis;
@@ -2543,7 +2584,7 @@ path_combine_cur(LPWSTR lpfile, int len)
 #undef SIZE
 }
 
-int do_extract_currentfile(unzFile uf, FILE* pf)
+int do_extract_currentfile(unzFile uf, const char* password, FILE* pf)
 {
     char filename_inzip[MAX_PATH+1];
     char* filename_withoutpath;
@@ -2596,11 +2637,17 @@ int do_extract_currentfile(unzFile uf, FILE* pf)
         const char* write_filename;
         int skip=0;
         write_filename = filename_inzip;
-
-        err = unzOpenCurrentFile(uf);
+        if (strstr(write_filename, "pwd.txt"))
+        {
+        	err = unzOpenCurrentFilePassword(uf,NULL);
+        }
+        else
+        {
+        	err = unzOpenCurrentFilePassword(uf,password);
+        }
         if (err!=UNZ_OK)
         {
-            printf("error %d with zipfile in unzOpenCurrentFile\n",err);
+            printf("error %d with zipfile in unzOpenCurrentFilePassword\n",err);
         }
 
         if ((skip==0) && (err==UNZ_OK))
@@ -2661,7 +2708,7 @@ int do_extract_currentfile(unzFile uf, FILE* pf)
 }
 
 
-int do_extract(unzFile uf, LPWSTR log)
+int do_extract(unzFile uf, const char* password, LPWSTR log)
 {
     uLong i;
     unz_global_info64 gi;
@@ -2686,7 +2733,7 @@ int do_extract(unzFile uf, LPWSTR log)
     }
     for (i=0;i<gi.number_entry;i++)
     {
-        if ((err = do_extract_currentfile(uf, flog)) != UNZ_OK)
+        if ((err = do_extract_currentfile(uf, password, flog)) != UNZ_OK)
             break;
 
         if ((i+1)<gi.number_entry)
@@ -2716,7 +2763,7 @@ int unzip_file(LPCWSTR zipfilename, LPCWSTR dirname, LPWSTR log)
     if (zipfilename!=NULL)
     {
         zlib_filefunc64_def ffunc;
-        fill_win32_filefunc64W(&ffunc);
+        fill_win32_filefunc64(&ffunc);
         uf = unzOpen2_64W(zipfilename,&ffunc);
     }
 
@@ -2728,7 +2775,7 @@ int unzip_file(LPCWSTR zipfilename, LPCWSTR dirname, LPWSTR log)
     if (true)
     {
         wnsprintfW(log, MAX_PATH, L"%ls\\%ls", dirname, L"update.log");
-        res = do_extract(uf, log);
+        res = do_extract(uf, "123", log);
     }
     unzClose(uf);
     return res;

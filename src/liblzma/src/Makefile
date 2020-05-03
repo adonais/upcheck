@@ -6,7 +6,7 @@ ROOT = ..\..\..
 
 STATICLIB = $(BIND)\lib$(NAME).lib
 
-CFLAGS = -nologo -c -W4 -WX -TC -Gy -GR- -GF -MT -GS- -Zc:forScope -Zc:wchar_t -MP2 \
+CFLAGS = -nologo -c -W4 -WX -TC -Gy -GR- -GF -MT -GS- -Zc:forScope -Zc:wchar_t \
          -O2 -D_7ZIP_PPMD_SUPPPORT -Zi -Fd"$(BIND)\lib7z" $(CFLAGS) 
 
 OBJS = \
@@ -30,7 +30,7 @@ OBJS = \
   $(OBJD)\Ppmd7Dec.obj \
 
 {$(SRCDIR)}.c{$(OBJD)}.obj:
-    cl $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) /Fo$@ /c $<
 
 # ---------------------------------------------------------------------
 # Targets only available
@@ -45,7 +45,7 @@ dirs:
     @if not exist "$(INCD)" mkdir "$(INCD)" && echo.   Created $(INCD)
 
 $(STATICLIB): $(OBJS)
-	link -lib -nologo -out:$@ $(OBJS)
+	$(AR) -out:$@ $(OBJS)
 	
 $(INCD)\7z.h : $(SRCDIR)\7z.h
     @copy $(SRCDIR)\*.h $(INCD)\ /y

@@ -248,6 +248,11 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
     WCHAR file_list_log[MAX_PATH + 1] = {
         L'\0',
     };
+    WCHAR *dot = wcsrchr(srcFile, L'.');
+    if (dot && !wcsicmp(dot, L".zip"))
+    {
+    	return unzip_file(srcFile, dstPath, file_list_log);
+    }
     Print("\n7z Decoder " MY_VERSION_CPU " : " MY_COPYRIGHT_DATE "\n\n");
 
     allocImp = g_Alloc;
@@ -423,7 +428,6 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
         char s[32];
         UInt64ToStr(res, s, 0);
         PrintError("7z extract fail,error code:%s, we try to unzip it" ,s);
-        return unzip_file(srcFile, dstPath, file_list_log);
     }
     return 1;
 }

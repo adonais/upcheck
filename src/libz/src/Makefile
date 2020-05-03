@@ -11,11 +11,8 @@ TOP = .
 # variables
 STATICLIB = $(BIND)\zlib.lib
 
-CC = cl
-LD = link
-AR = lib
 RC = rc
-CFLAGS  = -nologo -MT -W3 -O2 -Oy- -Zi -Fd"$(BIND)\zlib" -I../include $(LOC)
+CFLAGS  = -nologo -MT -W3 -O2 -Oy- -Zi -Fd"$(BIND)\zlib" -I../include $(LOC) $(CFLAGS) 
 WFLAGS  = -D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE
 ASFLAGS = -Zi $(LOC)
 LDFLAGS = -nologo -debug -incremental:no -opt:ref
@@ -39,16 +36,17 @@ OBJS = \
     $(OBJD)\uncompr.obj  \
     $(OBJD)\zutil.obj    \
 
+#disable asm
 !if "$(BITS)" == "32"
 # optional build flags
 AS = ml
 ASFLAGS = -coff $(ASFLAGS)
-LOC = -DASMV -DASMINF
-OBJS = $(OBJS) $(OBJD)\inffas32.obj $(OBJD)\match686.obj
+#LOC = -DASMV -DASMINF
+#OBJS = $(OBJS) $(OBJD)\inffas32.obj $(OBJD)\match686.obj
 !else
 AS = ml64
-LOC = -DASMV -DASMINF -I.
-OBJS = $(OBJS) $(OBJD)\inffasx64.obj $(OBJD)\gvmat64.obj $(OBJD)\inffas8664.obj
+#LOC = -DASMV -DASMINF -I.
+#OBJS = $(OBJS) $(OBJD)\inffasx64.obj $(OBJD)\gvmat64.obj $(OBJD)\inffas8664.obj
 !endif
 
 # targets
@@ -115,22 +113,20 @@ $(OBJD)\uncompr.obj: $(TOP)/uncompr.c $(TOP)/zlib.h $(TOP)/zconf.h
 
 $(OBJD)\zutil.obj: $(TOP)/zutil.c $(TOP)/zutil.h $(TOP)/zlib.h $(TOP)/zconf.h
 
-$(OBJD)\gvmat64.obj: $(TOP)/asm\masmx64\gvmat64.asm
+$(OBJD)\gvmat64.obj: $(TOP)/asm/masmx64/gvmat64.asm
 
-$(OBJD)\inffasx64.obj: $(TOP)/asm\masmx64\inffasx64.asm
+$(OBJD)\inffasx64.obj: $(TOP)/asm/masmx64/inffasx64.asm
 
-$(OBJD)\inffas8664.obj: $(TOP)/asm\masmx64\inffas8664.c $(TOP)/zutil.h $(TOP)/zlib.h $(TOP)/zconf.h \
+$(OBJD)\inffas8664.obj: $(TOP)/asm/masmx64/inffas8664.c $(TOP)/zutil.h $(TOP)/zlib.h $(TOP)/zconf.h \
 		                $(TOP)/inftrees.h $(TOP)/inflate.h $(TOP)/inffast.h
 
-$(OBJD)\inffas32.obj: $(TOP)/asm\masmx86\inffas32.asm
+$(OBJD)\inffas32.obj: $(TOP)/asm/masmx86/inffas32.asm
 
-$(OBJD)\match686.obj: $(TOP)/asm\masmx86\match686.asm
+$(OBJD)\match686.obj: $(TOP)/asm/masmx86/match686.asm
 
 # cleanup
 clean:
 	-del /q $(STATICLIB) 2>nul
-	-del /q $(BIND)\*.pdb 2>nul
-	-del /q $(OBJD)\*.obj 2>nul
-	-del /q $(OBJD)\*.res 2>nul
+	-del /q $(OBJS) 2>nul
 	-del /q $(INCD)\zlib.h 2>nul
 	-del /q $(INCD)\zconf.h 2>nul

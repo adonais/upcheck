@@ -12,15 +12,15 @@ extern "C" {
 #endif
 
 // Called on the main thread at startup
-extern unsigned WINAPI show_progress(void *p);
+extern unsigned __stdcall show_progress(void *p);
 
-extern bool WINAPI set_ui_strings(void);
+extern bool __stdcall set_ui_strings(void);
 
 // May be called from any thread
-extern void WINAPI quit_progress();
+extern void quit_progress();
 
 // May be called from any thread: progress is a number between 0 and 100
-extern void WINAPI update_progress(float progress);
+extern void update_progress(float progress);
 
 #ifdef __cplusplus
 }

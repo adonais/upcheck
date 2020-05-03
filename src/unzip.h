@@ -403,7 +403,8 @@ extern int ZEXPORT unzOpenCurrentFile2 OF((unzFile file,
 extern int ZEXPORT unzOpenCurrentFile3 OF((unzFile file,
                                            int* method,
                                            int* level,
-                                           int raw));
+                                           int raw,
+                                           const char* password));
 /*
   Same than unzOpenCurrentFile, but open for read raw the file (not uncompress)
     if raw==1

@@ -15,7 +15,7 @@ ROOT = ..\..\..
 # --------------------------
 
 STATICLIB = $(BIND)\lib$(NAME).lib
-CFLAGS = /nologo /I. /W3 /EHsc /FD /DNDEBUG /O2 /Zi -Fd"$(BIND)\libcares" /DCARES_BUILDING_LIBRARY \
+CFLAGS = /nologo /I. /W3 /EHsc /DNDEBUG /O2 /Zi -Fd"$(BIND)\libcares" /DCARES_BUILDING_LIBRARY \
          /DCARES_STATICLIB /D_WIN32_WINNT=0x0600 -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
 RC_CMD_REL = rc.exe /l 0x409 /d "NDEBUG"
 LINK_CMD_LIB = link.exe /lib /nologo
@@ -185,10 +185,10 @@ HHEADERS = ares.h		   \
 .SUFFIXES: .c .rc
 
 {$(SRCDIR)}.rc{$(OBJD)}.res:
-    $(RC_CMD) /Fo $@ $<
+    $(RC_CMD_REL) /Fo $@ $<
 
 {$(SRCDIR)}.c{$(OBJD)}.obj:
-    cl $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) /Fo$@ /c $<
 
 # ---------------------------------------------------------------------
 # Targets only available when a proper CFG library type has been given
@@ -206,7 +206,7 @@ dirs:
     @if not exist "$(INCD)" mkdir "$(INCD)" && echo.   Created $(INCD)
 
 $(STATICLIB): $(OBJS)
-	$(LINK_CMD_LIB) $(ARFLAGS) -out:$@ $(OBJS)
+	$(AR) $(ARFLAGS) -out:$@ $(OBJS)
 	
 $(INCD)\ares.h : ares.h
     @copy ares.h $@ /y

@@ -36,7 +36,10 @@ win_platform ares__getplatform(void)
 
   memset(&OsvEx, 0, sizeof(OsvEx));
   OsvEx.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-#ifdef _MSC_VER
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable:4996) /* warning C4996: 'GetVersionExW': was declared deprecated */
 #endif
@@ -47,7 +50,9 @@ win_platform ares__getplatform(void)
       if (!GetVersionEx((void *)&OsvEx))
         return WIN_UNKNOWN;
     }
-#ifdef _MSC_VER
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(_MSC_VER)
 #pragma warning(pop)
 #endif
 

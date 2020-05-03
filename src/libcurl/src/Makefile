@@ -22,7 +22,7 @@ ROOT = ..\..\..
 !include "$(ROOT)\system.mak"
 
 STATICLIB = $(BIND)\lib$(NAME).lib
-CFLAGS = /nologo /O2 /DNDEBUG /MT /DCURL_STATICLIB /I. /I../include /W4 /wd4127 /EHsc /FD /c \
+CFLAGS = /nologo /O2 /DNDEBUG /MT /DCURL_STATICLIB /I. /I../include /W4 /wd4127 /EHsc /c \
          /Zi -Fd"$(BIND)\libcurl" /DBUILDING_LIBCURL /D_WIN32_WINNT=0x0600 \
         -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
 RC_CMD_REL = rc.exe /l 0x409 /d "NDEBUG"
@@ -232,16 +232,16 @@ OBJS = \
 .SUFFIXES: .c .rc
 
 {$(SRCDIR)}.rc{$(OBJD)\libcurl}.res:
-    $(RC_CMD) /Fo $@ $<
+    $(RC_CMD_REL) /Fo $@ $<
 
 {$(SRCDIR)}.c{$(OBJD)\libcurl}.obj:
-    cl $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) /Fo$@ /c $<
     
 {$(SRCDIR)\vauth}.c{$(OBJD)\libcurl\vauth}.obj:
-    cl $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) /Fo$@ /c $<
  
 {$(SRCDIR)\vtls}.c{$(OBJD)\libcurl\vtls}.obj:
-    cl $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) /Fo$@ /c $<
         
 # ---------------------------------------------------------------------
 # Targets only available when a proper CFG library type has been given
@@ -258,7 +258,7 @@ dirs:
     @if not exist "$(INCD)" mkdir "$(INCD)" && echo.   Created $(INCD)
 
 $(STATICLIB): $(OBJS)
-	$(LINK_CMD_LIB) $(ARFLAGS) -out:$@ $(OBJS)
+	$(AR) $(ARFLAGS) -out:$@ $(OBJS)
 	
 $(INCD)\curl : ..\include\curl\curl.h
     @xcopy ..\include\curl\* $@ /y /e /i /q

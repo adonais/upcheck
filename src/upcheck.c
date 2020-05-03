@@ -1053,51 +1053,6 @@ md5_sum(void)
     return res;
 }
 
-static bool
-sum_buid_id(void)
-{
-    int msg = 0;
-    uint64_t id1 = 0;
-    uint64_t id2 = 0;
-    size_t num = (MAX_PATH + 1) * sizeof(WCHAR);
-    WCHAR *app = (WCHAR *) SYS_MALLOC(num);
-    if (NULL == app)
-    {
-        return false;
-    }
-    if (!init_file_strings(L"application.ini", app))
-    {
-        printf("init_file_strings application.ini return false\n");
-        SYS_FREE(app);
-        return false;
-    }
-    if (true)
-    {
-        id1 = read_appint(L"App", L"BuildID", app);
-        id2 = read_appint(L"update", L"last_id", file_info.ini);
-        WritePrivateProfileStringW(L"update", L"last_id", NULL, file_info.ini);
-    }
-    if (id1 != id2)
-    {
-        msg = MessageBoxW(NULL,
-                          L"The version number does not correspond the build number."
-                          L"\nPlease contact the developer."
-                          L"\nAre you sure you want to continue?",
-                          L"Warning:",
-                          MB_YESNO | MB_ICONWARNING | MB_SETFOREGROUND);
-        if (msg == IDNO)
-        {
-            msg = 0;
-        }
-    }
-    else
-    {
-        msg = 1;
-    }
-    SYS_FREE(app);
-    return !!msg;
-}
-
 static void
 msg_tips(void)
 {
@@ -1395,7 +1350,7 @@ wmain(int argc, WCHAR **wargv)
     {
         logs_update(result);
     }
-    if (wcslen(file_info.process) > 1 && sum_buid_id())
+    if (wcslen(file_info.process) > 1)
     {
         CloseHandle(create_new(file_info.process, NULL, 2, NULL));
     }

@@ -61,7 +61,7 @@ dirs:
     @if not exist "$(OBJD)" mkdir "$(OBJD)" && echo.   Created $(OBJD)
 
 $(BIND)\upcheck.exe : $(OBJS) $(DEP)
-    link /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
+    $(LD) /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
     
 $(OBJD)\upcheck.obj     : upcheck.c *.h
 $(OBJD)\urlcode.obj     : urlcode.c urlcode.h
