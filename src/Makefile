@@ -39,14 +39,14 @@ OBJS = \
 .SUFFIXES: .cpp .cc .c .h .obj
 
 .c{$(OBJD)}.obj:
-    $(CC) $(CFLAGS) /Fd$(BIND)\upcheck.pdb /Fo$(OBJD)\ /c $<
+    $(CC) $(CFLAGS) /Fd$(BIND)\upcheck$(BITS).pdb /Fo$(OBJD)\ /c $<
     
 .rc{$(OBJD)}.res:
     $(RC) $(RFLAGS) /Fo$@ $<
     
 ##############################################################################
 
-all: dirs $(BIND)\upcheck.exe
+all: dirs $(BIND)\upcheck$(BITS).exe
 
 
 ##############################################################################
@@ -60,7 +60,7 @@ dirs:
     @if not exist "$(BIND)" mkdir "$(BIND)" && echo.   Created $(BIND)
     @if not exist "$(OBJD)" mkdir "$(OBJD)" && echo.   Created $(OBJD)
 
-$(BIND)\upcheck.exe : $(OBJS) $(DEP)
+$(BIND)\upcheck$(BITS).exe : $(OBJS) $(DEP)
     $(LD) /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
     
 $(OBJD)\upcheck.obj     : upcheck.c *.h

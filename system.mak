@@ -45,7 +45,7 @@ LD   = link /nologo
 AR   = llvm-lib /nologo /llvmlibthin
 LD   = lld-link /nologo
 CFLAGS   = -flto=thin $(CFLAGS) -Wno-unused-variable -Wno-unused-function \
-           -Wno-implicit-int-float-conversion -Wno-incompatible-pointer-types
+           -Wno-incompatible-pointer-types
 !IF "$(BITS)" == "32"
 CFLAGS   = --target=i686-pc-windows-msvc $(CFLAGS) 
 !ENDIF
