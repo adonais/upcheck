@@ -337,7 +337,11 @@ static ares_ssize_t socket_recvfrom(ares_channel channel,
 	 channel->sock_func_cb_data);
 
 #ifdef HAVE_RECVFROM
+#ifdef _WIN32
+   return recvfrom(s, data, (int)data_len, flags, from, from_len);
+#else
    return recvfrom(s, data, data_len, flags, from, from_len);
+#endif   
 #else
    return sread(s, data, data_len);
 #endif

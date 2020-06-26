@@ -2,6 +2,7 @@
 #include <wchar.h>
 #include <shlwapi.h>
 #include <windows.h>
+#include "ini_parser.h"
 #include "spinlock.h"
 #include "progressui.h"
 
@@ -336,17 +337,20 @@ getw_cwd(LPWSTR lpstrName, DWORD wlen)
 static bool 
 is_ice(void)
 {
-    WCHAR ini[MAX_PATH+1] = {0};
-    WCHAR names[32] = {0};
+    bool res = false;
+    char *names = NULL;
+    char ini[MAX_PATH+1] = {0};
     if (!init_file_strings(L"application.ini", ini))
     {
         return false;
     }
-    if (!read_appkey(L"App", L"RemotingName", names, 32, ini))
+    if (!ini_read_string("App", "RemotingName", &names, ini))
     {
         return false;
     }
-    return (_wcsicmp(names, L"Iceweasel") == 0);
+    res = _stricmp(names, "Iceweasel") == 0;
+    free(names);
+    return res;
 }
 
 static int

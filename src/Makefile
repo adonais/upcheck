@@ -21,6 +21,7 @@ CFLAGS = $(CFLAGS) $(RELEASE)
 !ENDIF
 
 OBJS = \
+    $(OBJD)\ini_parser.obj     \
     $(OBJD)\upcheck.obj        \
     $(OBJD)\urlcode.obj        \
     $(OBJD)\spinlock.obj       \
@@ -62,7 +63,8 @@ dirs:
 
 $(BIND)\upcheck$(BITS).exe : $(OBJS) $(DEP)
     $(LD) /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
-    
+
+$(OBJD)\ini_parser.obj  : ini_parser.c *.h
 $(OBJD)\upcheck.obj     : upcheck.c *.h
 $(OBJD)\urlcode.obj     : urlcode.c urlcode.h
 $(OBJD)\spinlock.obj    : spinlock.c spinlock.h

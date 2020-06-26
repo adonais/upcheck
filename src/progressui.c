@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "resource.h"
+#include "ini_parser.h"
 #include "spinlock.h"
 #include <commctrl.h>
 #include <process.h>
@@ -190,23 +191,23 @@ DialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 bool WINAPI
 set_ui_strings(void)
 {
-    WCHAR ini[MAX_PATH + 1] = { L'\0' };
-    WCHAR buf[MAX_PATH + 1] = { L'\0' };
+    char *names = NULL;
+    char ini[MAX_PATH + 1] = {0};
     char result[6] = { 0 };
     if (!init_file_strings(L"application.ini", ini))
     {
         return false;
     }
-    if (!read_appkey(L"App", L"RemotingName", sUIStrings.title, MAX_PATH, ini))
+    if (!ini_read_string("App", "RemotingName", &names, ini))
     {
         return false;
     }
-    if (!read_appkey(L"App", L"RemotingName", sUIStrings.info, MAX_PATH, ini))
+    if (!MultiByteToWideChar(CP_UTF8, 0, names, -1, sUIStrings.title, MAX_PATH))
     {
         return false;
     }
     wcsncat(sUIStrings.title, L" ", MAX_PATH);
-    wcsncat(sUIStrings.info, L" ", MAX_PATH);
+    wcsncpy(sUIStrings.info, sUIStrings.title, MAX_PATH);
     if (find_local_str(result, 5) && strcmp(result, "zh-CN") == 0)
     {
         wcsncat(sUIStrings.title, L"更新", MAX_PATH);
@@ -217,6 +218,7 @@ set_ui_strings(void)
         wcsncat(sUIStrings.title, L"Update", MAX_PATH);
         wcsncat(sUIStrings.info, L"is installing your updates and will start in a few moments…", MAX_PATH);
     }
+    free(names);
     return true;
 }
 

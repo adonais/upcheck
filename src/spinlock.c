@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <shlwapi.h>
 #include <tlhelp32.h>
+#include "ini_parser.h"
 #include "spinlock.h"
 
 #pragma comment(lib, "advapi32.lib")
@@ -26,8 +27,7 @@ logmsg(const char * format, ...)
         int  len = wvnsprintfA(buffer,MAX_MESSAGE,format, args);
         if ( len > 0 && len < MAX_MESSAGE )
         {
-            buffer[len] = '\n';
-            buffer[len+1] = '\0';
+            buffer[len] = '\0';
             if ( (pFile = fopen(logfile_buf,"a+")) != NULL )
             {
                 fwrite(buffer,strlen(buffer),1,pFile);
@@ -36,7 +36,7 @@ logmsg(const char * format, ...)
         }
     }
     va_end(args);
-    leave_spinLock();
+    leave_spinlock();
     return;
 }
 
@@ -50,6 +50,19 @@ init_logs(void)
     }
 }
 #endif
+
+uint64_t WINAPI
+ini_read_uint64(const char *sec, const char *key, const char *ini)
+{
+    char *m_str = NULL;
+    uint64_t result = 0;
+    if (ini_read_string(sec, key, &m_str, ini))
+    {
+        result = _strtoui64(m_str, NULL, 10);
+        free(m_str);
+    }
+    return result;
+}
 
 void WINAPI 
 wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
@@ -152,51 +165,11 @@ enter_spinlock(void)
 }
 
 void WINAPI
-leave_spinLock(void)
+leave_spinlock(void)
 {
     // No need to generate a memory barrier here, since InterlockedExchange()
     // generates a full memory barrier itself.
     InterlockedExchange(&g_locked, 0);
-}
-
-bool WINAPI
-read_appkey(LPCWSTR lpappname,           /* 区段名 */
-            LPCWSTR lpkey,               /* 键名  */
-            LPWSTR  prefstring,          /* 保存值缓冲区 */
-            DWORD   bufsize,             /* 缓冲区大小 */
-            LPCWSTR filename             /* 文件名,默认为空 */
-           )
-{
-    DWORD   res = 0;
-    if (filename == NULL)
-    {
-        return false;
-    }
-    res = GetPrivateProfileStringW(lpappname, 
-                                   lpkey ,
-                                   L"", 
-                                   prefstring, 
-                                   bufsize, 
-                                   filename);
-    
-    if ((res == 0 && GetLastError() != 0x0) || *prefstring == L'\0')
-    {
-        return false;
-    }
-    prefstring[res] = L'\0';
-    return ( res>0 );
-}
-
-uint64_t WINAPI 
-read_appint(LPCWSTR cat, LPCWSTR name, LPCWSTR ini)
-{
-    WCHAR buf[NAMES_LEN+1] = {0};
-    if (!read_appkey(cat, name, buf, NAMES_LEN, ini))
-    {
-        return 0;
-    }
-    return _wcstoui64(buf, NULL, 10);
-    
 }
 
 static char *
@@ -235,9 +208,8 @@ memstr(char *full_data, int full_data_len, const char *substr)
 }
 
 bool WINAPI
-init_file_strings(LPCWSTR names, WCHAR *out_path) 
+init_file_strings(LPCWSTR names, char *out_path)
 {
-    // If we do not have names, then we should not bother showing UI.
     WCHAR filename[MAX_PATH];
     if (!GetModuleFileNameW(NULL, filename, MAX_PATH))
     {
@@ -255,11 +227,7 @@ init_file_strings(LPCWSTR names, WCHAR *out_path)
     {
         return false;
     }
-    if (NULL != out_path)
-    {
-        wnsprintfW(out_path,MAX_PATH,L"%ls", filename);
-    }
-    return true;
+    return (WideCharToMultiByte(CP_UTF8, 0, filename, -1, out_path, MAX_PATH, NULL, NULL)>0);
 }
 
 bool WINAPI
@@ -270,12 +238,12 @@ find_local_str(char *result, int len)
     bool found = false;
     const char *ctags = "/global/intl.css";
     char buff[BUFF_MAX+1] = {0};
-    WCHAR omni[MAX_PATH] = {0};
+    char omni[MAX_PATH] = {0};
     if (!init_file_strings(L"omni.ja", omni))
     {
         return false;
     }
-    fp = _wfopen(omni, L"rb");
+    fp = fopen(omni, "rb");
     if (fp == NULL)
     {
         printf("open omni.ja false\n");
@@ -464,95 +432,69 @@ get_files_lenth(LPCWSTR path, int64_t *psize)
     return true;
 }
 
-wchar_t* WINAPI
-utf8_to_utf16(const char *utf8)
-{
-    DWORD   size;
-    wchar_t *path = NULL;
-    /* convert UTF-8 to wide chars */
-    size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8, -1, NULL, 0);
-    if (!size)
-    {
-        return NULL;
-    }
-    if ((path = SYS_MALLOC(sizeof(wchar_t) * size)) == NULL)
-    {
-        return NULL;
-    }
-    size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, path, size);
-    if (size == 0) 
-    {
-        SYS_FREE(path);
-        return NULL;
-    }
-    return path;
-}
-
-char* WINAPI 
-utf16_to_utf8(const wchar_t *utf16)
-{
-    DWORD size;
-    char *utf8 = NULL;
-
-    size = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, NULL, 0, NULL, NULL);
-    if (!size)
-    {
-        return NULL;
-    }
-    utf8 = (char *)SYS_MALLOC(size);
-    if(NULL == utf8)
-    {
-        return NULL;
-    }
-    size = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, utf8, size, NULL, NULL);
-    if (size == 0)
-    {
-        SYS_FREE(utf8);
-        utf8 = NULL;
-    }
-    return utf8;
-}
-
 bool WINAPI 
-exec_ppv(LPSTR cmd, LPCSTR pcd, int flags)
+exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
 {
+    bool res = false;
     PROCESS_INFORMATION pi;
-    STARTUPINFOA si;
-    DWORD dwCreat = 0;
-    if (true)
+    STARTUPINFOW si;
+    DWORD dw = 0;
+    WCHAR *wdir = NULL;
+    WCHAR *process = utf8_to_utf16(cmd);
+    if (!process)
     {
-        memset(&si,0,sizeof(si));
+        return false;
+    }
+    do
+    {
+        if (NULL != pcd)
+        {
+            wdir = utf8_to_utf16(pcd);
+            if (!wdir)
+            {
+                break;
+            }
+        }
+        memset(&si, 0, sizeof(si));
         si.cb = sizeof(si);
         si.dwFlags = STARTF_USESHOWWINDOW;
         if (!flags)
         {
             si.wShowWindow = SW_HIDE;
-            dwCreat |= CREATE_NEW_PROCESS_GROUP;
+            dw |= CREATE_NEW_PROCESS_GROUP;
         }
         else
         {
             si.wShowWindow = SW_SHOWNOACTIVATE;
         }
-        if(!CreateProcessA(NULL,
-                          cmd,
+        if(!CreateProcessW(NULL,
+                          process,
                           NULL,
                           NULL,
-                          FALSE,
-                          dwCreat,
+                          false,
+                          dw,
                           NULL,
-                          pcd,   
+                          wdir,   
                           &si,&pi))
         {
-            printf("CreateProcessA error %lu\n", GetLastError());
-            return false;
+            printf("CreateProcessw error %lu\n", GetLastError());
+            break;
         }
         else
         {
-            printf("run %s\n", cmd);
+            res = false;
         }
+        CloseHandle(pi.hProcess);        
+    }while(0);
+    if (wdir)
+    {
+        free(wdir);
     }
-    CloseHandle(pi.hProcess);
-    return true;
+    if (process)
+    {
+        free(process);
+    }    
+    return res;
 }
 
 bool WINAPI

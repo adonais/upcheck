@@ -8,6 +8,7 @@
 #include <string.h>
 #include <windows.h>
 #include <curl/curl.h>
+#include "ini_parser.h"
 #include "spinlock.h"
 
 extern file_info_t file_info;
@@ -121,6 +122,7 @@ static int
 get_file_bits(void)
 {
     int  bits = 0;
+    char *dll = NULL;
     HANDLE hProcess = NULL;
     bool x64 = is_64bit_os();
     do
@@ -133,14 +135,20 @@ get_file_bits(void)
         }
         if ((hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, false, file_info.pid)) == NULL)
         {
-            WCHAR m_dll[MAX_PATH] = {0};
+            char dll[MAX_PATH+1] = {0};
+            WCHAR wdll[MAX_PATH+1] = {0};
             printf("OpenProcess(%lu) failed, cause: %lu\n", file_info.pid, GetLastError());
-            if (!init_file_strings(L"mozglue.dll", m_dll))
+            if (!init_file_strings(L"mozglue.dll", dll))
             {
                 printf("init_file_strings mozglue.dll return false\n");
                 break;
             }
-            if ((bits = search_file_bits(m_dll)) == 0)
+            if (!MultiByteToWideChar(CP_UTF8, 0, dll, -1, wdll, MAX_PATH))
+            {
+                printf("MultiByteToWideChar return false\n");
+                break;
+            }            
+            if ((bits = search_file_bits(wdll)) == 0)
             {
                 printf("search_file_bits mozglue.dll return false\n");
             }
@@ -168,26 +176,27 @@ get_file_bits(void)
 }
 
 static bool
-ini_query(const WCHAR *ini)
+ini_query(const char *ini)
 {
 #define INFO_LEN 16
+    bool res = false;
     uint64_t dt_remote = 0;
     uint64_t dt_locale = 0;
     char result[6] = { 0 };
-    WCHAR info[INFO_LEN + 1] = { 0 };
-    WCHAR app_ini[MAX_PATH + 1] = { 0 };
-    WCHAR url[MAX_PATH + 1] = { 0 };
-    WCHAR c_md5[MD5_LEN + 1] = { 0 };
+    char app_ini[MAX_PATH + 1] = {0};
+    char info[INFO_LEN + 1] = {0};
+    char *url = NULL;
+    char *c_md5 = NULL;
     int   bits = get_file_bits();
     if (bits == 64)
     {
         printf("is_64bits\n");
-        wcsncpy(info, L"win64.", INFO_LEN);
+        strncpy(info, "win64.", INFO_LEN);
     }
     else if (bits == 32)
     {
         printf("is_32bits\n");
-        wcsncpy(info, L"win32.", INFO_LEN);
+        strncpy(info, "win32.", INFO_LEN);
     }
     else
     {
@@ -197,49 +206,49 @@ ini_query(const WCHAR *ini)
     if (find_local_str(result, 5) && strcmp(result, "zh-CN") == 0)
     {
         printf("locales:zh-CN\n");
-        wcsncat(info, L"zh-CN", INFO_LEN);
+        strncat(info, "zh-CN", INFO_LEN);
     }
     else
     {
         printf("locales:en-US\n");
-        wcsncat(info, L"en-US", INFO_LEN);
+        strncat(info, "en-US", INFO_LEN);
     }
-
-    if (!init_file_strings(L"application.ini", app_ini))
+    do
     {
-        printf("init_file_strings application.ini return false\n");
-        return false;
+        if (!init_file_strings(L"application.ini", app_ini))
+        {
+            printf("init_file_strings application.ini return false\n");
+            break;
+        }
+        if ((dt_locale = ini_read_uint64("App", "BuildID", app_ini)) > 0)
+        {
+            dt_remote = ini_read_uint64("updates", info, ini);
+        }
+        if (dt_locale >= dt_remote)
+        {
+            printf("dt_locale(%I64u) >= dt_remote(%I64u), do not update\n", dt_locale, dt_remote);
+            break;
+        }    
+        if (!ini_read_string(info, "url", &url, ini))
+        {
+            printf("ini_read_string url return false\n");
+            break;
+        }
+        if (!ini_read_string(info, "md5", &c_md5, ini))
+        {
+            printf("ini_read_string md5 return false\n");
+            break;
+        }
+        strncpy(file_info.md5, c_md5, MD5_LEN);
+        strncpy(file_info.url, url, URL_LEN); 
+    }while(0);
+    if (c_md5)
+    {
+        free(c_md5);
     }
-    if ((dt_locale = read_appint(L"App", L"BuildID", app_ini)) > 0)
+    if (url)
     {
-        dt_remote = read_appint(L"updates", info, ini);
-    }
-    if (!read_appkey(info, L"url", url, MAX_PATH, ini))
-    {
-        printf("read_appkey url return false\n");
-        return false;
-    }
-    if (!read_appkey(info, L"md5", c_md5, MD5_LEN+1, ini))
-    {
-        printf("read_appkey md5 return false\n");
-        return false;
-    }
-    if (!WideCharToMultiByte(CP_UTF8, 0, c_md5, -1, file_info.md5, MD5_LEN+1, NULL, NULL))
-    {
-        printf("WideCharToMultiByte c_md5 false\n");
-        file_info.md5[0] = '\0';
-        return false;
-    }
-    if (!WideCharToMultiByte(CP_UTF8, 0, url, -1, file_info.url, sizeof(file_info.url), NULL, NULL))
-    {
-        printf("WideCharToMultiByte url false\n");
-        file_info.url[0] = '\0';
-        return false;
-    }
-    if (dt_locale >= dt_remote)
-    {
-        printf("dt_locale(%I64u) >= dt_remote(%I64u), do not update\n", dt_locale, dt_remote);
-        return false;
+        free(url);
     }
     return true;
 #undef INFO_LEN
@@ -259,9 +268,9 @@ init_resolver(void)
     HANDLE pfile;
     WCHAR temp_path[MAX_PATH];
     WCHAR temp_names[MAX_PATH];
+    char  ini_names[MAX_PATH + 1] = {0};
     char* url = NULL;
-    WCHAR wurl[MAX_PATH + 1];
-    int res = -1;
+    int   res = -1;
     if (!GetTempPathW(MAX_PATH, temp_path))
     {
         return res;
@@ -271,17 +280,12 @@ init_resolver(void)
         printf("GetTempFileNameW return false\n");
         return res;
     }
-    if (!read_appkey(L"update", L"url", wurl, MAX_PATH, file_info.ini))
+    if (!ini_read_string("update", "url", &url, file_info.ini))
     {
-        printf("read_appkey portable.ini update return false\n");
+        printf("ini_read_string portable.ini update return false\n");
         return res;
     }
-    if ((url = utf16_to_utf8(wurl)) == NULL)
-    {
-        printf("WideCharToMultiByte wurl->url return false\n");
-        return res;
-    }
-    pfile = CreateFileW(temp_names, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+    pfile = CreateFileW(temp_names, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY, NULL);
     if (pfile == INVALID_HANDLE_VALUE)
     {
         SYS_FREE(url);
@@ -289,6 +293,7 @@ init_resolver(void)
         return res;
     }
     res = init_process(url, &write_data, pfile);
+    CloseHandle(pfile);
     if (res != CURLE_OK)
     {
 		res = -1;
@@ -296,10 +301,11 @@ init_resolver(void)
     else
     {
         FlushFileBuffers(pfile);
-        res = !ini_query(temp_names);
+        WideCharToMultiByte(CP_UTF8, 0, temp_names, -1, ini_names, MAX_PATH, NULL, NULL);
+        res = !ini_query(ini_names);
     }
     SYS_FREE(url);
-    CloseHandle(pfile);
+    DeleteFileW(temp_names);
     return res;
 }
 #if defined(__clang__)

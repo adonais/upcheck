@@ -25,7 +25,7 @@
 #define MAX_MESSAGE 1024
 #define BUFSIZE     1024*16
 #define BUFF_MAX    1024*100
-#define MD5_LEN     32
+#define MD5_LEN     64
 #define NAMES_LEN   64
 #define VALUE_LEN   128
 #define COOKE_LEN   512
@@ -52,7 +52,7 @@ typedef struct _file_info_t
     WCHAR  process[MAX_PATH+1];
     WCHAR  unzip_dir[MAX_PATH+1];
     WCHAR  del[VALUE_LEN+1];
-    WCHAR  ini[VALUE_LEN+1];
+    char   ini[MAX_PATH+1];
     char   referer[VALUE_LEN+1];
     char   remote_names[MAX_PATH+1];
     char   cookies[COOKE_LEN+1];
@@ -86,19 +86,16 @@ extern bool WINAPI exists_dir(LPCWSTR path);
 extern void __cdecl logmsg(const char *format, ...);
 extern void WINAPI init_logs(void);
 extern void WINAPI enter_spinlock(void);
-extern void WINAPI leave_spinLock(void);
-extern bool WINAPI read_appkey(LPCWSTR, LPCWSTR, LPWSTR, DWORD, LPCWSTR);
-extern uint64_t WINAPI read_appint(LPCWSTR cat,LPCWSTR name, LPCWSTR ini);
-extern bool WINAPI init_file_strings(LPCWSTR names, WCHAR *out_path);
+extern void WINAPI leave_spinlock(void);
+extern bool WINAPI init_file_strings(LPCWSTR names, char *out_path);
 extern bool WINAPI find_local_str(char *result, int len);
 extern bool WINAPI merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name);
 extern bool WINAPI get_files_lenth(LPCWSTR path, int64_t *psize);
-extern wchar_t* WINAPI utf8_to_utf16(const char *filename);
-extern char* WINAPI utf16_to_utf8(const wchar_t *filename);
-extern bool  WINAPI exec_ppv(LPSTR wcmd, LPCSTR pcd, int flags);
+extern bool  WINAPI exec_ppv(LPCSTR wcmd, LPCSTR pcd, int flags);
 extern bool  WINAPI get_name_self(LPWSTR lpstrName, DWORD wlen);
 extern bool  WINAPI search_process(LPCWSTR names);
 extern char* WINAPI url_decode(const char *input);
+extern uint64_t WINAPI ini_read_uint64(const char *sec, const char *key, const char *ini);
 
 #ifdef __cplusplus
 }

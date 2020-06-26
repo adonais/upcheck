@@ -9,6 +9,7 @@
 #include <process.h>
 #include <shlwapi.h>
 #include "upcheck.h"
+#include "ini_parser.h"
 #include "urlcode.h"
 #include "7zc.h"
 #include "progressui.h"
@@ -24,22 +25,19 @@ static LOCK_MUTEXT g_mutex;
 file_info_t file_info;
 
 static bool
-init_parser(LPWSTR ini, DWORD len)
+ini_path_init(void)
 {
-    bool ret = false;
-    GetModuleFileNameW(NULL, ini, len);
-    PathRemoveFileSpecW(ini);
-    PathAppendW(ini, L"portable.ini");
-    ret = PathFileExistsW(ini);
-    if (!ret)
-    {
-        if (PathRemoveFileSpecW(ini))
-        {
-            PathAppendW(ini, L"tmemutil.ini");
-            ret = PathFileExistsW(ini);
-        }
+    bool  ret = false;
+    WCHAR ini_path[MAX_PATH + 1] = {0};
+    if (*file_info.ini != '\0' && strlen(file_info.ini) > 10)
+    {    
+        return false;
     }
-    return ret;
+    GetModuleFileNameW(NULL, ini_path, MAX_PATH);
+    PathRemoveFileSpecW(ini_path);
+    PathAppendW(ini_path, L"portable.ini");
+    ret = PathFileExistsW(ini_path);
+    return (ret && WideCharToMultiByte(CP_UTF8, 0, ini_path, -1, file_info.ini, MAX_PATH, NULL, NULL) > 0);
 }
 
 static HWND
@@ -111,7 +109,7 @@ path_parsing(LPCWSTR save_path)
     }
 }
 
-static void
+static bool
 init_command_data(void)
 {
     int i;
@@ -124,18 +122,29 @@ init_command_data(void)
             VERIFY(i + 1 < __argc - 1);
             WCHAR tmp[URL_LEN + 1] = { 0 };
             _snwprintf(tmp, URL_LEN, L"%ls", pv[i + 1]);
-            if (wcscmp(tmp, L"auto") == 0 && init_parser(file_info.ini, MAX_PATH))
+            if (wcscmp(tmp, L"auto") == 0)
             {
                 // 自动分析ini文件下载
-                continue;
+                if (!ini_path_init())
+                {
+                    return false;
+                }
+                else
+                {
+                    continue;
+                }
             }
-            else if (!WideCharToMultiByte(CP_UTF8, 0, tmp, -1, file_info.url, sizeof(file_info.url), NULL, NULL))
+            else
             {
                 // 直接获得url参数, 转换成utf-8编码
-            }
-            else if (strstr(file_info.url, "baidu.com") || strstr(file_info.url, "www.baidupcs.com"))
-            {
-                _snprintf(file_info.referer, VALUE_LEN, "https://pan.baidu.com/disk/home");
+                if (!WideCharToMultiByte(CP_UTF8, 0, tmp, -1, file_info.url, sizeof(file_info.url), NULL, NULL))
+                {
+                    return false;
+                }
+                else if (strstr(file_info.url, "baidu.com") || strstr(file_info.url, "www.baidupcs.com"))
+                {
+                    _snprintf(file_info.referer, VALUE_LEN, "https://pan.baidu.com/disk/home");
+                }                
             }
         } // 下载目录
         else if (_wcsicmp(pv[i], L"-o") == 0)
@@ -194,7 +203,10 @@ init_command_data(void)
         else if (_wcsicmp(pv[i], L"-s") == 0)
         {
             VERIFY(i + 1 < __argc - 1);
-            init_parser(file_info.ini, MAX_PATH);
+            if (!ini_path_init())
+            {
+                return false;
+            }
             _snwprintf(file_info.process, MAX_PATH, L"%ls", pv[i + 1]);
         }
         else if (_wcsicmp(pv[i], L"-u") == 0)
@@ -228,6 +240,7 @@ init_command_data(void)
             path_parsing(path);
         }
     }
+    return true;
 }
 
 static void
@@ -416,7 +429,7 @@ download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
         }
         downloaded_size += real_size;
     }
-    leave_spinLock();
+    leave_spinlock();
     if (total_size > 0)
     {
         update_ranges(node->tid, node->startidx, downloaded_size);
@@ -508,7 +521,7 @@ run_thread(void *pdata)
                     file_info.re_bind = 1;
                     i = URL_ITERATIONS - 9;
                 }
-                leave_spinLock();
+                leave_spinlock();
             }
             else if (res == CURLE_OK)
             {
@@ -1057,39 +1070,41 @@ static void
 msg_tips(void)
 {
     HWND fx = NULL;
-    WCHAR *msg = (WCHAR *) SYS_MALLOC(MAX_MESSAGE * sizeof(WCHAR));
-    if (NULL == msg)
-    {
-        return;
-    }
-    if (read_appkey(L"update", L"msg", msg, MAX_MESSAGE, file_info.ini))
+    char *lpmsg = NULL;
+    WCHAR msg[MAX_MESSAGE+1] = {0};
+    if (ini_read_string("update", "msg", &lpmsg, file_info.ini) &&
+        MultiByteToWideChar(CP_UTF8, 0, lpmsg, -1, msg, MAX_MESSAGE) > 0)
     {
         fx = get_moz_hwnd();
         wstr_replace(msg, wcslen(msg), L"\\n", L"\n");
         MessageBoxW(fx, msg, L"Tips:", MB_OK | MB_SETFOREGROUND);
     }
-    SYS_FREE(msg);
+    if (lpmsg)
+    {
+        free(lpmsg);
+    }
 }
 
 static void
 logs_update(bool res)
 {
+    char *str_time = NULL;
     uint64_t diff = 3600 * 24;
     uint64_t m_time1 = (uint64_t) time(NULL);
-    uint64_t m_time2 = read_appint(L"update", L"last_check", file_info.ini);
+    uint64_t m_time2 = ini_read_uint64("update", "last_check", file_info.ini);
     if (m_time1 - m_time2 > diff)
     {
-        WCHAR s_time[FILE_LEN] = { 0 };
-        _ui64tow(m_time1, s_time, 10);
-        if (!WritePrivateProfileStringW(L"update", L"last_check", s_time, file_info.ini))
+        char s_time[FILE_LEN] = { 0 };
+        _ui64toa(m_time1, s_time, 10);
+        if (!ini_write_string("update", "last_check", s_time, file_info.ini))
         {
-            printf("WritePrivateProfileStringW return false.\n");
+            printf("ini_write_string return false.\n");
         }
     }
     if (res)
     {
-        WritePrivateProfileStringW(L"update", L"be_ready", L"1", file_info.ini);
-    }
+        ini_write_string("update", "be_ready", "1", file_info.ini);
+    }  
 }
 
 static void
@@ -1140,9 +1155,9 @@ update_task(void)
             WaitForSingleObject(copy, 0);
             CloseHandle(copy);
         }
-        if (!WritePrivateProfileStringW(L"update", L"be_ready", NULL, file_info.ini))
+        if (!ini_write_string("update", "be_ready", NULL, file_info.ini))
         {
-            printf("WritePrivateProfileStringW NULL return false.\n");
+            printf("ini_write_string NULL return false.\n");
         }
         WaitForSingleObject(thread, 300);
         CloseHandle(thread);
@@ -1221,55 +1236,55 @@ wmain(int argc, WCHAR **wargv)
     if (true) // 初始化全局参数
     {
         memset(&file_info, 0, sizeof(file_info));
-        init_command_data();
+        if (!init_command_data())
+        {
+            return -1;
+        }
     }
     if (file_info.use_thunder)
     {
         char  *command = NULL;
-        WCHAR w_command[VALUE_LEN] = {0};
-        WCHAR w_ini[VALUE_LEN] = {0};
-        if (init_parser(w_ini, VALUE_LEN) && read_appkey(L"player", L"command", w_command, VALUE_LEN, w_ini))
+        char mbcs_command[VALUE_LEN] = {0};
+        if (ini_read_string("player", "command", &command, file_info.ini))
         {   // 优先调用命令行参数
-            if ((command = utf16_to_utf8(w_command)) != NULL)
+            char dl[URL_LEN] = {0};
+            char *p1 = NULL,*p2 = NULL;
+            const char *key = "%s";
+            int len_t = (int)strlen(key);
+            p1 = strstr(command, key);
+            if (p1)
             {
-                char dl[URL_LEN] = {0};
-                char *p1 = NULL,*p2 = NULL;
-                const char *key = "%s";
-                int len_t = (int)strlen(key);
-                p1 = strstr(command, key);
-                if (p1)
+                p1 += len_t;
+                p2 = strstr(p1, key);
+            }
+            if (p1 && p2)
+            {
+                p2 += len_t;
+                if (p2[1]=='"')
                 {
-                    p1 += len_t;
-                    p2 = strstr(p1, key);
-                }
-                if (p1 && p2)
-                {
-                    p2 += len_t;
-                    if (p2[1]=='"')
-                    {
-                         p2[2] = '\0';
-                    }
-                    else
-                    {
-                        p2[1] = '\0';
-                    }
-                    _snprintf(dl, URL_LEN, command, file_info.url, file_info.cookies);
-                }
-                else if (p1)
-                {
-                    _snprintf(dl, URL_LEN, command, file_info.url);
+                     p2[2] = '\0';
                 }
                 else
                 {
-                    _snprintf(dl, URL_LEN, command);
-                }                
-                free(command);
-                printf("dl_command: %s\n", dl);
-                if(exec_ppv(dl, NULL, 0))
-                {
-                    return 0;
+                    p2[1] = '\0';
                 }
+                _snprintf(dl, URL_LEN, command, file_info.url, file_info.cookies);
             }
+            else if (p1)
+            {
+                _snprintf(dl, URL_LEN, command, file_info.url);
+            }
+            else
+            {
+                _snprintf(dl, URL_LEN, command);
+            }                
+            free(command);
+            printf("dl_command: %s\n", dl);
+            if(exec_ppv(dl, NULL, 0))
+            {
+                return 0;
+            }
+            
         }
         if (thunder_lookup()) // 调用迅雷下载
         {
@@ -1284,7 +1299,7 @@ wmain(int argc, WCHAR **wargv)
             update_task();
             break;
         }
-        if (wcslen(file_info.ini) > 1) // 下载并解析ini文件
+        if (strlen(file_info.ini) > 1) // 下载并解析ini文件
         {
             int ups = -1;
             WCHAR names[MAX_PATH] = {0};
@@ -1337,7 +1352,7 @@ wmain(int argc, WCHAR **wargv)
                 result = false;
             }
         }
-        if (result && wcslen(file_info.ini) > 1) // 弹出消息提示
+        if (result && strlen(file_info.ini) > 1) // 弹出消息提示
         {
             msg_tips();
         }
@@ -1346,7 +1361,7 @@ wmain(int argc, WCHAR **wargv)
     {
         CloseHandle(file_info.cookie_handle);
     }
-    if (!file_info.up && wcslen(file_info.ini) > 1)
+    if (!file_info.up && strlen(file_info.ini) > 1)
     {
         logs_update(result);
     }
