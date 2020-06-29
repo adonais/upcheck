@@ -4,11 +4,7 @@
 #include <windows.h>
 #include "ini_parser.h"
 #include "spinlock.h"
-#include "progressui.h"
 
-#define PROGRESS_PREPARE_SIZE 10.0f
-#define PROGRESS_EXECUTE_SIZE 99.0f
-#define PROGRESS_FINISH_SIZE   1.0f
 extern  file_info_t file_info;
 static  bool fn_chrome;
 static  bool fx_browser;
@@ -226,7 +222,7 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
     size_t line = 2;
     WCHAR *pos = NULL;
     WCHAR buf[MAX_PATH+1] = {0};
-    float percent = PROGRESS_PREPARE_SIZE;
+    
     if((fp = _wfopen(wlog, L"rb")) == NULL) 
     {
         return false;
@@ -280,11 +276,6 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
         if (true)
         {
             wchr_replace(dst_path);
-            if (percent < PROGRESS_EXECUTE_SIZE)
-            {
-                percent += PROGRESS_FINISH_SIZE;
-                update_progress(percent);
-            }
         }
         if (PathIsDirectoryW(buf))
         {   
@@ -437,7 +428,7 @@ unknown_builds(void)
     return (fx_browser && ice_build);
 }
 
-unsigned WINAPI
+int WINAPI
 update_thread(void *p)
 {
     // 准备复制更新文件到file_info.process所在目录
@@ -447,8 +438,10 @@ update_thread(void *p)
     if (do_update(file_info.unzip_dir, dst) != 0)
     {
         printf("do_update false!\n");
-    } // 自定义erased_lists.bat文件,用于清理多余配置.
-    else if (fn_erase)
+        return 1;
+    } 
+    // 自定义erased_lists.bat文件,用于清理多余配置.
+    if (fn_erase)
     {
         WCHAR r_list[MAX_PATH+1] = {0};
         wcsncpy(r_list, dst, MAX_PATH);
@@ -463,5 +456,5 @@ update_thread(void *p)
             Sleep(1000);
         }
     }
-    return (1);
+    return (0);
 }

@@ -2754,7 +2754,10 @@ int unzip_file(LPCWSTR zipfilename, LPCWSTR dirname, LPWSTR log)
 {
     int res = -1;
     unzFile uf=NULL;
-    CreateDirectoryW(dirname, NULL);
+    if (!create_dir(dirname))
+    {
+        return res;
+    }
     if (!SetCurrentDirectoryW(dirname))
     {
         printf("Error changing into the path, aborting\n");

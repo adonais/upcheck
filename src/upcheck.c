@@ -8,6 +8,7 @@
 #include <wchar.h>
 #include <process.h>
 #include <shlwapi.h>
+#include <shlobj.h>
 #include "upcheck.h"
 #include "ini_parser.h"
 #include "urlcode.h"
@@ -18,9 +19,15 @@
 #include "cookies.h"
 #include "thunderagent.h"
 
+typedef HRESULT (WINAPI *SHGetKnownFolderIDListPtr)(REFKNOWNFOLDERID rfid,
+        DWORD            dwFlags,
+        HANDLE           hToken,
+        PIDLIST_ABSOLUTE *ppidl);
+        
 static int64_t downloaded_size;
 static int64_t total_size;
 static LOCK_MUTEXT g_mutex;
+static SHGetKnownFolderIDListPtr sSHGetKnownFolderIDListStub;
 
 file_info_t file_info;
 
@@ -231,14 +238,41 @@ init_command_data(void)
             file_info.use_thunder = true;
         }
     }
-    if (!found) /* default download directory */
+    if (!(found || file_info.up)) /* default download directory */
     {
         WCHAR path[MAX_PATH + 1] = { 0 };
-        if (GetEnvironmentVariableW(L"USERPROFILE", path, MAX_PATH) > 0)
+        HMODULE h_shell32 = NULL;
+        ITEMIDLIST* pIDList = NULL;
+        if ((h_shell32 = GetModuleHandleW(L"shell32.dll")) == NULL)
         {
-            PathAppendW(path, L"Downloads");
-            path_parsing(path);
+            return false;
+        }   
+        sSHGetKnownFolderIDListStub = (SHGetKnownFolderIDListPtr)GetProcAddress(h_shell32, "SHGetKnownFolderIDList"); 
+        if (!sSHGetKnownFolderIDListStub)
+        {
+            if (FAILED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL,SHGFP_TYPE_CURRENT, path)))
+            {
+                return false;
+            }   
+            else
+            {
+                PathAppendW(path, L"Downloads");
+                path_parsing(path);
+            }               
         }
+        else 
+        {
+            if(FAILED(SHGetKnownFolderIDList(&FOLDERID_Downloads, 0,NULL,&pIDList)))
+            {
+                return false;
+            }
+            if(FAILED(SHGetPathFromIDListW(pIDList, path)))
+            {
+                return false;
+            }
+            path_parsing(path);            
+        }
+        printf("download dir[%ls]\n", path);
     }
     return true;
 }
@@ -748,6 +782,25 @@ init_resume(const char *url, int64_t length)
 }
 
 static bool
+md5_sum(void)
+{
+    bool res = false;
+    char md5_str[MD5_DIGEST_LENGTH * 2 + 1] = { 0 };
+    if (get_file_md5(file_info.names, md5_str) && stricmp(md5_str, file_info.md5) == 0)
+    {
+        printf("%S [md5: %s]\n", file_info.names, md5_str);
+        res = true;
+    }
+    else
+    {
+        res = false;
+        DeleteFileW(file_info.names);
+        printf("package md5[%s] sum error! cause file [%s]\n", md5_str, file_info.md5);
+    }
+    return res;
+}
+
+static bool
 resume_download(const char *url, int64_t length, LPCWSTR path)
 {
     bool fn = false;
@@ -819,6 +872,11 @@ init_download(const char *url, int64_t length)
                 {
                     return resume_download(url, length, sql_name);
                 }
+            }
+            else if (PathFileExistsW(file_info.names) && strlen(file_info.md5) > 1 && md5_sum())
+            {
+                *file_info.md5 = '\0';
+                return true;
             }
         } // 长度未知时,不启用sql日志文件
         if (!length || init_sql_logs(sql_name))
@@ -1047,25 +1105,6 @@ thunder_lookup(void)
     return m_down;
 }
 
-static bool
-md5_sum(void)
-{
-    bool res = false;
-    char md5_str[MD5_DIGEST_LENGTH * 2 + 1] = { 0 };
-    if (get_file_md5(file_info.names, md5_str) && stricmp(md5_str, file_info.md5) == 0)
-    {
-        printf("%S [md5: %s]\n", file_info.names, md5_str);
-        res = true;
-    }
-    else
-    {
-        res = false;
-        DeleteFileW(file_info.names);
-        printf("package md5[%s] sum error! cause file [%s]\n", md5_str, file_info.md5);
-    }
-    return res;
-}
-
 static void
 msg_tips(void)
 {
@@ -1110,6 +1149,8 @@ logs_update(bool res)
 static void
 update_task(void)
 {
+    bool   res = false;
+    HANDLE mutex = NULL;
     HANDLE thread = NULL;
     WCHAR self[MAX_PATH + 1] = { 0 };
     WCHAR sz_clone[MAX_PATH + 1] = { 0 };
@@ -1122,7 +1163,7 @@ update_task(void)
         {
             printf("%S DeleteFileW occurred: %lu.\n", file_info.del, GetLastError());
         }
-        exit(0);
+        ExitProcess(0);
     }
     if (file_info.pid > 0)
     {
@@ -1131,10 +1172,27 @@ update_task(void)
         if (NULL != tmp && TerminateProcess(tmp, (DWORD) -1) && set_ui_strings())
         {
             CloseHandle(tmp);
+            mutex = CreateMutexW(NULL, FALSE, L"_upcheck_install_");
+            if (ERROR_ALREADY_EXISTS == GetLastError())
+            {
+                printf("process with the same name exists, ExitProcess\n");
+                ExitProcess(0);                
+            }
             show.indeterminate = true;
             show.initstrings = false;
             thread = (HANDLE) _beginthreadex(NULL, 0, show_progress, &show, 0, NULL);
             {
+                // 等待残留进程退出
+                float percent = PROGRESS_PREPARE_SIZE;
+                for (int i = 8; i > 0; --i)
+                {
+                    if (percent < PROGRESS_EXECUTE_SIZE)
+                    {
+                        percent += PROGRESS_FINISH_SIZE;
+                        update_progress(percent);
+                    }
+                    Sleep(500);
+                }
                 uint64_t numb;
                 GetModuleFileNameW(NULL, self, MAX_PATH);
                 numb = (uint64_t) _time64(NULL);
@@ -1143,26 +1201,27 @@ update_task(void)
                 if (_wrename(self, sz_clone))
                 {
                     printf("_wrename Error occurred.\n");
+                    res = false;
+                    goto cleanup;
                 }
             }
         }
     } // 从file_info.unzip_dir获得复制文件的源目录
     if (thread != NULL && file_info.extract)
     {
-        HANDLE copy = (HANDLE) _beginthreadex(NULL, 0, update_thread, NULL, 0, NULL);
-        if (copy)
+        if (update_thread(NULL))
         {
-            WaitForSingleObject(copy, 0);
-            CloseHandle(copy);
+            LPCWSTR msg = L"Failed to copy file,\n"
+                          L"The update file is located in the user download directory,\n"
+                          L"You may need to manually unzip to the installation directory";
+            MessageBoxW(NULL, msg, L"Warning:", MB_OK|MB_ICONWARNING);
+            res = false;
+            goto cleanup;
         }
-        if (!ini_write_string("update", "be_ready", NULL, file_info.ini))
+        if (ini_write_string("update", "be_ready", NULL, file_info.ini))
         {
-            printf("ini_write_string NULL return false.\n");
-        }
-        WaitForSingleObject(thread, 300);
-        CloseHandle(thread);
-        quit_progress();
-        {
+            WaitForSingleObject(thread, 300);
+            quit_progress();
             // 准备更新自身
             WCHAR sz_cmdLine[MAX_PATH + 1];
             PROCESS_INFORMATION pi;
@@ -1189,8 +1248,29 @@ update_task(void)
                 CreateProcessW(NULL, sz_cmdLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
                 CloseHandle(h_self);
                 CloseHandle(pi.hProcess);
+                res = true;
             }
         }
+        else
+        {
+            printf("ini_write_string NULL return false.\n");
+            res = false;
+        }
+    }
+cleanup:   
+    if (thread)
+    {
+        CloseHandle(thread);
+        thread = NULL;
+    } 
+    if (mutex)
+    {
+        CloseHandle(mutex);
+        mutex = NULL;
+    }
+    if (!res)
+    {
+        ExitProcess(255);
     }
 }
 
@@ -1301,14 +1381,14 @@ wmain(int argc, WCHAR **wargv)
         }
         if (strlen(file_info.ini) > 1) // 下载并解析ini文件
         {
-            int ups = -1;
+            int   ups = -1;
             WCHAR names[MAX_PATH] = {0};
             if (get_name_self(names, MAX_PATH) && search_process(names))
             {
                 printf("process with the same name exists, exit...\n");
                 *file_info.ini = '\0';
                 break;
-            }
+            }            
             ups = init_resolver();
             if (ups == 0)
             {

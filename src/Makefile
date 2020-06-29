@@ -63,6 +63,7 @@ dirs:
 
 $(BIND)\upcheck$(BITS).exe : $(OBJS) $(DEP)
     $(LD) /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
+    -copy /y $@ $(BIND)\upcheck.exe
 
 $(OBJD)\ini_parser.obj  : ini_parser.c *.h
 $(OBJD)\upcheck.obj     : upcheck.c *.h

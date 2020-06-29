@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 extern LPWSTR WINAPI wstr_replace(LPWSTR, size_t, LPCWSTR, LPCWSTR);
-extern unsigned WINAPI update_thread(void *p);
+extern int WINAPI update_thread(void *p);
 extern bool WINAPI unknown_builds(void);
 
 #ifdef __cplusplus

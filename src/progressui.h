@@ -7,6 +7,10 @@ typedef struct _fn_show
   bool initstrings;
 }fn_show;
 
+#define PROGRESS_PREPARE_SIZE 20.0f
+#define PROGRESS_EXECUTE_SIZE 99.0f
+#define PROGRESS_FINISH_SIZE  10.0f
+
 #ifdef __cplusplus
 extern "C" {
 #endif
