@@ -1447,6 +1447,7 @@ wmain(int argc, WCHAR **wargv)
     }
     if (wcslen(file_info.process) > 1)
     {
+        SetEnvironmentVariableW(L"LIBPORTABLE_UPCHECK_LAUNCHER_PROCESS", L"1");
         CloseHandle(create_new(file_info.process, NULL, 2, NULL));
     }
     return 0;
