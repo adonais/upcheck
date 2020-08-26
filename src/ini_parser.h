@@ -40,14 +40,14 @@ typedef struct _list
     node *pd;
 } ini_list, *ini_cache;
 
-extern bool __stdcall ini_foreach_key(const char *sec, char (*lpdata)[129], int line, const char *path);
-extern bool __stdcall ini_foreach_wkey(const char *sec, wchar_t (*lpdata)[129], int line, const char *path);
-extern bool __stdcall inicache_foreach_key(const char *sec, char (*lpdata)[129], int line, ini_cache *ini);
-extern bool __stdcall inicache_foreach_wkey(const char *sec, wchar_t (*lpdata)[129], int line, ini_cache *ini);
-extern bool __stdcall ini_foreach_string(const char *sec, char (*lpdata)[129], int line, const char *path);
-extern bool __stdcall ini_foreach_wstring(const char *sec, wchar_t (*lpdata)[129], int line, const char *path);
-extern bool __stdcall inicache_foreach_string(const char *sec, char (*lpdata)[129], int line, ini_cache *ini);
-extern bool __stdcall inicache_foreach_wstring(const char *sec, wchar_t (*lpdata)[129], int line, ini_cache *ini);
+extern bool __stdcall ini_foreach_key(const char *sec, char (*lpdata)[129], const int line, const char *path);
+extern bool __stdcall ini_foreach_wkey(const char *sec, wchar_t (*lpdata)[129], const int line, const char *path);
+extern bool __stdcall inicache_foreach_key(const char *sec, char (*lpdata)[129], const int line, ini_cache *ini);
+extern bool __stdcall inicache_foreach_wkey(const char *sec, wchar_t (*lpdata)[129], const int line, ini_cache *ini);
+extern bool __stdcall ini_foreach_string(const char *sec, char (*lpdata)[129], const int line, const char *path);
+extern bool __stdcall ini_foreach_wstring(const char *sec, wchar_t (*lpdata)[129], const int line, const char *path);
+extern bool __stdcall inicache_foreach_string(const char *sec, char (*lpdata)[129], const int line, ini_cache *ini);
+extern bool __stdcall inicache_foreach_wstring(const char *sec, wchar_t (*lpdata)[129], const int line, ini_cache *ini);
 extern bool __stdcall ini_read_string(const char *sec, const char *key, char **buf, const char *path);
 extern bool __stdcall inicache_read_string(const char *sec, const char *key, char **buf, ini_cache *ini);
 extern bool __stdcall ini_write_string(const char *sec, const char *key, const char *new_value, const char *path);
