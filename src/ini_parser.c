@@ -11,7 +11,6 @@
 #include <windows.h>
 #endif
 #include "ini_parser.h"
-#include "spinlock.h"
 
 #define LEN_CONTENT 260
 #define MAX_COUNT 1024
@@ -856,7 +855,7 @@ ini_foreach_entry(node **pphead, const char *sec, char (*lpdata)[129], int line,
             }
             else
             {
-                sscanf(cur->content, "%[^\r|\n]", lpdata[i]);
+                sscanf(cur->content, "%[^\r\n]", lpdata[i]);
             }
             if (*lpdata[i] == '\0')
             {         
@@ -948,8 +947,8 @@ mbcs_create_file(const char *dir)
     char *p = NULL;
     char tmp_name[MAX_PATH];
     strcpy(tmp_name, dir);
-    p = strchr(tmp_name, L'\\');
-    for (; p != NULL; *p = L'\\', p = strchr(p + 1, L'\\'))
+    p = strchr(tmp_name, '\\');
+    for (; p != NULL; *p = '\\', p = strchr(p + 1, '\\'))
     {
         *p = '\0';
         if (mbcs_exist_dir(tmp_name))
@@ -1342,7 +1341,7 @@ inicache_foreach_wkey(const char *sec,
     {
         return false;
     }
-    data = (char (*)[129])calloc(1, line * sizeof(lpdata[0]));
+    data = (char (*)[129])calloc(1, line * sizeof(data[0]));
     if (!data)
     {
         return false;
@@ -1356,6 +1355,10 @@ inicache_foreach_wkey(const char *sec,
     for (; i < line && *data[i] != '\0'; ++i)
     {
         res = MultiByteToWideChar(CP_UTF8, 0, data[i], -1, lpdata[i], LEN_STRINGS)>0;    
+    }
+    if (i < line)
+    {
+        lpdata[i][0] = 0;
     }
     free(data);
     return res;
@@ -1428,7 +1431,7 @@ inicache_foreach_wstring(const char *sec,
     {
         return false;
     }
-    data = (char (*)[129])calloc(1, line * sizeof(lpdata[0]));
+    data = (char (*)[129])calloc(1, line * sizeof(data[0]));
     if (!data)
     {
         return false;
@@ -1442,6 +1445,10 @@ inicache_foreach_wstring(const char *sec,
     for (; i < line && *data[i] != '\0'; ++i)
     {
         res = MultiByteToWideChar(CP_UTF8, 0, data[i], -1, lpdata[i], LEN_STRINGS)>0;
+    }
+    if (i < line)
+    {
+        lpdata[i][0] = 0;
     }    
     free(data);
     return res;
