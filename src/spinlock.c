@@ -482,7 +482,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
         }
         else
         {
-            res = false;
+            res = true;
         }
         CloseHandle(pi.hProcess);        
     }while(0);

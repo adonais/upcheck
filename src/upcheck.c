@@ -127,7 +127,7 @@ init_command_data(void)
         if (_wcsicmp(pv[i], L"-i") == 0)
         {
             VERIFY(i + 1 < __argc - 1);
-            WCHAR tmp[URL_LEN + 1] = { 0 };
+            WCHAR tmp[URL_LEN + 1] = { 0 };         
             _snwprintf(tmp, URL_LEN, L"%ls", pv[i + 1]);
             if (wcscmp(tmp, L"auto") == 0)
             {
@@ -135,11 +135,8 @@ init_command_data(void)
                 if (!ini_path_init())
                 {
                     return false;
-                }
-                else
-                {
-                    continue;
-                }
+                }                  
+                continue;
             }
             else
             {
@@ -1324,7 +1321,10 @@ wmain(int argc, WCHAR **wargv)
     if (file_info.use_thunder)
     {
         char  *command = NULL;
-        char mbcs_command[VALUE_LEN] = {0};
+        if (!ini_path_init())
+        {
+            return false;
+        }         
         if (ini_read_string("player", "command", &command, file_info.ini))
         {   // 优先调用命令行参数
             char dl[URL_LEN] = {0};
@@ -1366,6 +1366,7 @@ wmain(int argc, WCHAR **wargv)
             }
             
         }
+        *file_info.ini = '\0';
         if (thunder_lookup()) // 调用迅雷下载
         {
             return 0;
