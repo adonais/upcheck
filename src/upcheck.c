@@ -82,12 +82,12 @@ path_parsing(LPCWSTR save_path)
     }
     if (PathFindExtensionW(save_path)[0] == L'.')
     {
-        _snwprintf(file_info.names, MAX_PATH, L"%ls", save_path);
+        _snwprintf(file_info.names, MAX_PATH, L"%s", save_path);
     }
     else if (!PathIsFileSpecW(save_path) && save_path[1] == L':')
     {
         size_t len = 0;
-        _snwprintf(file_info.names, MAX_PATH, L"%ls", save_path);
+        _snwprintf(file_info.names, MAX_PATH, L"%s", save_path);
         len = wcslen(file_info.names);
         if (file_info.names[len - 1] != L'\\')
         {
@@ -100,15 +100,15 @@ path_parsing(LPCWSTR save_path)
     {
         // is file
         WCHAR tmp_path[MAX_PATH + 1] = { 0 };
-        _snwprintf(tmp_path, MAX_PATH, L"%ls\\%ls", save_path, file_info.names);
+        _snwprintf(tmp_path, MAX_PATH, L"%s\\%s", save_path, file_info.names);
         path_combine(tmp_path, MAX_PATH);
-        _snwprintf(file_info.names, MAX_PATH, L"%ls", tmp_path);
+        _snwprintf(file_info.names, MAX_PATH, L"%s", tmp_path);
     }
     if (true)
     {
         // creator dir
         WCHAR path[MAX_PATH + 1] = { 0 };
-        _snwprintf(path, MAX_PATH, L"%ls", file_info.names);
+        _snwprintf(path, MAX_PATH, L"%s", file_info.names);
         if (PathRemoveFileSpecW(path))
         {
             create_dir(path);
@@ -128,7 +128,7 @@ init_command_data(void)
         {
             VERIFY(i + 1 < __argc - 1);
             WCHAR tmp[URL_LEN + 1] = { 0 };         
-            _snwprintf(tmp, URL_LEN, L"%ls", pv[i + 1]);
+            _snwprintf(tmp, URL_LEN, L"%s", pv[i + 1]);
             if (wcscmp(tmp, L"auto") == 0)
             {
                 // 自动分析ini文件下载
@@ -202,7 +202,7 @@ init_command_data(void)
         {
             file_info.extract = true;
             VERIFY(i + 1 < __argc - 1);
-            _snwprintf(file_info.unzip_dir, MAX_PATH, L"%ls", pv[i + 1]);
+            _snwprintf(file_info.unzip_dir, MAX_PATH, L"%s", pv[i + 1]);
         } // 更新完毕后启动的进程名
         else if (_wcsicmp(pv[i], L"-s") == 0)
         {
@@ -211,7 +211,7 @@ init_command_data(void)
             {
                 return false;
             }
-            _snwprintf(file_info.process, MAX_PATH, L"%ls", pv[i + 1]);
+            _snwprintf(file_info.process, MAX_PATH, L"%s", pv[i + 1]);
         }
         else if (_wcsicmp(pv[i], L"-u") == 0)
         {
@@ -226,7 +226,7 @@ init_command_data(void)
         else if (_wcsicmp(pv[i], L"-d") == 0)
         {
             VERIFY(i + 1 < __argc - 1);
-            _snwprintf(file_info.del, VALUE_LEN, L"%ls", pv[i + 1]);
+            _snwprintf(file_info.del, VALUE_LEN, L"%s", pv[i + 1]);
         }
         else if (_wcsicmp(pv[i], L"-m") == 0)
         {
@@ -858,7 +858,7 @@ init_download(const char *url, int64_t length)
         }
         if (fill_file_name(url) && length)
         {
-            _snwprintf(sql_name, MAX_PATH, L"%ls%ls", file_info.names, L".sinfo");
+            _snwprintf(sql_name, MAX_PATH, L"%s%s", file_info.names, L".sinfo");
             if (PathFileExistsW(sql_name))
             {
                 if (!PathFileExistsW(file_info.names))
@@ -1024,7 +1024,7 @@ remove_files(LPCWSTR dir)
     int i = sizeof(moz_processes) / sizeof(moz_processes[0]);
     for (num = 0; num < i; num++)
     {
-        _snwprintf(list[num], VALUE_LEN, L"%ls\\%ls", dir, moz_processes[num]);
+        _snwprintf(list[num], VALUE_LEN, L"%s\\%s", dir, moz_processes[num]);
         DeleteFileW(list[num]);
     }
 #undef EXE_NUM
@@ -1193,7 +1193,7 @@ update_task(void)
                 uint64_t numb;
                 GetModuleFileNameW(NULL, self, MAX_PATH);
                 numb = (uint64_t) _time64(NULL);
-                _snwprintf(sz_clone, MAX_PATH, L"%ls_%I64u%ls", self, numb, L".exe");
+                _snwprintf(sz_clone, MAX_PATH, L"%s_%I64u%s", self, numb, L".exe");
                 DeleteFileW(sz_clone);
                 if (_wrename(self, sz_clone))
                 {
@@ -1239,7 +1239,7 @@ update_task(void)
                 {
                     printf("OpenProcess(%S) false\n", self);
                 }
-                _snwprintf(sz_cmdLine, MAX_PATH, L"%ls -h %zu -d %ls", self, (uintptr_t)h_self, sz_clone);
+                _snwprintf(sz_cmdLine, MAX_PATH, L"\"%s\" -h %zu -d \"%s\"", self, (uintptr_t)h_self, sz_clone);
                 ZeroMemory(&si, sizeof(si));
                 si.cb = sizeof(si);
                 CreateProcessW(NULL, sz_cmdLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);

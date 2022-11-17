@@ -27,7 +27,7 @@ wstr_replace(LPWSTR in,size_t in_size,LPCWSTR pattern,LPCWSTR by)
         resoffset += (int) wcslen(by);
     }
     wcscpy(res + resoffset, in);
-    wnsprintfW(in_ptr, (int) in_size, L"%ls", res);
+    _snwprintf(in_ptr, (int) in_size, L"%s", res);
     return in_ptr;
 }
 
@@ -40,11 +40,11 @@ remove_null_dir(LPCWSTR parent)
     WCHAR sub[MAX_PATH] = {0};
     if( parent[wcslen(parent) -1] != '\\' )
     {
-        wnsprintfW(path_name,MAX_PATH, L"%ls\\*.*", parent);
+        _snwprintf(path_name, MAX_PATH, L"%s\\*.*", parent);
     }
     else
     {
-        wnsprintfW(path_name,MAX_PATH, L"%ls*.*", parent);
+        _snwprintf(path_name, MAX_PATH, L"%s*.*", parent);
     }
     h_file = FindFirstFileW(path_name, &fd);
     if(h_file == INVALID_HANDLE_VALUE)
@@ -59,7 +59,7 @@ remove_null_dir(LPCWSTR parent)
         }
         else if(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
-            wnsprintfW(sub,MAX_PATH, L"%s\\%s",parent, fd.cFileName);
+            _snwprintf(sub, MAX_PATH, L"%s\\%s",parent, fd.cFileName);
             if (PathIsDirectoryEmptyW(sub))
             {
                 RemoveDirectoryW(sub);
@@ -84,11 +84,11 @@ erase_dir(LPCWSTR parent)
     BOOL  finded = TRUE;
     if( parent[wcslen(parent) -1] != '\\' )
     {
-        wnsprintfW(path_name,MAX_PATH, L"%ls\\*.*", parent);
+        _snwprintf(path_name, MAX_PATH, L"%s\\*.*", parent);
     }
     else
     {
-        wnsprintfW(path_name,MAX_PATH, L"%ls*.*", parent);
+        _snwprintf(path_name, MAX_PATH, L"%s*.*", parent);
     }
     h_file = FindFirstFileW(path_name, &fd);
     if(h_file == INVALID_HANDLE_VALUE)
@@ -100,7 +100,7 @@ erase_dir(LPCWSTR parent)
         finded = FindNextFileW(h_file, &fd);
         if(wcscmp(fd.cFileName, L".") && wcscmp(fd.cFileName, L".."))
         {
-            wnsprintfW(sub,MAX_PATH, L"%s\\%s",parent, fd.cFileName);
+            _snwprintf(sub, MAX_PATH, L"%s\\%s",parent, fd.cFileName);
             if(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
                 if (_wcsicmp(fd.cFileName, L"plugins") == 0)
@@ -237,8 +237,8 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
     {
         WCHAR oldname[MAX_PATH+1] = {0};
         WCHAR newname[MAX_PATH+1] = {0};
-        wnsprintfW(oldname, MAX_PATH, L"%ls\\%ls", root, L"App");
-        wnsprintfW(newname, MAX_PATH, L"%ls\\%ls", root, unofficial);
+        _snwprintf(oldname, MAX_PATH, L"%s\\%s", root, L"App");
+        _snwprintf(newname, MAX_PATH, L"%s\\%s", root, unofficial);
         if (_wrename(oldname ,newname))
         {
             printf("Error occurred.\n");
@@ -259,7 +259,7 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
         if (ice_unofficial)
         {
             WCHAR tmp[MAX_PATH+1] = {0};
-            wnsprintfW(tmp, MAX_PATH, L"%ls%ls", L"\\", unofficial);
+            _snwprintf(tmp, MAX_PATH, L"%s%s", L"\\", unofficial);
             wstr_replace(buf, MAX_PATH, L"/App", tmp);
         }  
         if (is_root)
@@ -319,7 +319,7 @@ getw_cwd(LPWSTR lpstrName, DWORD wlen)
         }
         if ( i > 0 )
         {
-            i = wnsprintfW(lpstrName,wlen,L"%ls",lpFullPath);
+            i = _snwprintf(lpstrName, wlen, L"%s", lpFullPath);
         }
     }
     return (i>0 && i<(int)wlen);

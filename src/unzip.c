@@ -2576,7 +2576,7 @@ path_combine_cur(LPWSTR lpfile, int len)
             if (PathCombineW(tmp_path, name, lpfile))
             {
                 wchr_replace(tmp_path);
-                n = wnsprintfW(lpfile, len, L"%ls", tmp_path);
+                n = _snwprintf(lpfile, len, L"%s", tmp_path);
             }
         }
     }
@@ -2777,7 +2777,7 @@ int unzip_file(LPCWSTR zipfilename, LPCWSTR dirname, LPWSTR log)
     }
     if (true)
     {
-        wnsprintfW(log, MAX_PATH, L"%ls\\%ls", dirname, L"update.log");
+        _snwprintf(log, MAX_PATH, L"%s\\%s", dirname, L"update.log");
         res = do_extract(uf, "123", log);
     }
     unzClose(uf);

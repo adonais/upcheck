@@ -242,6 +242,7 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
     UInt16 *temp = NULL;
     size_t tempSize = 0;
     FILE   *pf = NULL;
+    PrintError("srcFile = ###%S###, dstPath = ###%S###\n", srcFile, dstPath);
     WCHAR destPath[MAX_PATH + 1] = {
         L'\0',
     };
@@ -299,7 +300,7 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
         if (NULL != dstPath)
         {
             create_dir(dstPath);
-            wnsprintfW(file_list_log, MAX_PATH, L"%ls\\%ls", dstPath, L"update.log");
+            _snwprintf(file_list_log, MAX_PATH, L"%s\\%s", dstPath, L"update.log");
         }
         pf = _wfopen(file_list_log, L"wb");
         if (pf != NULL)

@@ -128,7 +128,7 @@ path_combine(LPWSTR lpfile, int len)
             WCHAR tmp_path[MAX_PATH] = { 0 };
             if (PathRemoveFileSpecW(modname) && PathCombineW(tmp_path, modname, lpfile))
             {
-                n = wnsprintfW(lpfile, len, L"%ls", tmp_path);
+                n = _snwprintf(lpfile, len, L"%s", tmp_path);
             }
         }
     }
@@ -511,7 +511,7 @@ get_name_self(LPWSTR lpstrName, DWORD wlen)
         }
         if (i > 0)
         {
-            i = _snwprintf(lpstrName,wlen,L"%ls",lpFullPath+i+1);
+            i = _snwprintf(lpstrName,wlen,L"%s",lpFullPath+i+1);
         }
     }
     return (i>0 && i<(int)wlen);
