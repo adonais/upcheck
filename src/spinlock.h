@@ -32,12 +32,6 @@
 #define URL_LEN     1024
 #define MD5_DIGEST_LENGTH 16
 
-#if defined(NDEBUG)
-#define printf(...) ((void)0)
-#elif defined(DEBUG_LOG)
-#define printf logmsg
-#endif
-
 #define SYS_MALLOC(x) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (x))
 #define SYS_FREE(x) (HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, (x)), (x = NULL))
 
@@ -74,8 +68,6 @@ typedef struct _sql_node
     uint32_t   thread;
 } sql_node;
 
-extern int __argc;
-extern WCHAR **__wargv;
 extern int  WINAPI get_cpu_works(void);
 extern bool WINAPI get_file_md5(LPCWSTR path, char* md5_str);
 extern bool WINAPI path_combine(LPWSTR lpfile, int len);

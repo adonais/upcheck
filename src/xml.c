@@ -26,28 +26,28 @@ write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 int
 init_process(const char *url, fn_write_data write_data, void *userdata)
 {
-    CURLcode res;
+    CURLcode res = 1;
     CURL *curl_handle = curl_easy_init();
-
-    curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-    curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, "gzip");
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, userdata);
-    curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
-    curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.34.0");
-    curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
-    curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 30L);
-    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 45L);
-
-    res = curl_easy_perform(curl_handle);
-    if (res != CURLE_OK)
+    
+    if (curl_handle)
     {
-        printf("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+        curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, "gzip");
+        curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, userdata);
+        curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
+        //curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.34.0");
+        curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl_handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+        curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 60L);
+        curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 90L);
+        res = curl_easy_perform(curl_handle);
+        if (res != CURLE_OK)
+        {
+            printf("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        }
+        curl_easy_cleanup(curl_handle);
     }
-    curl_easy_cleanup(curl_handle);
-
     return (int) res;
 }
 
@@ -56,7 +56,7 @@ is_64bit_os(void)
 {
     SYSTEM_INFO info = {0};
     GetNativeSystemInfo(&info);
-    if( info.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64 || info.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
+    if (info.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64 || info.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
     {
         return true;
     }

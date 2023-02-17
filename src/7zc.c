@@ -14,14 +14,6 @@
 #include "spinlock.h"
 #include <shlwapi.h>
 
-extern void __cdecl logmsg(const char *format, ...);
-
-#if defined(NDEBUG)
-#define PrintError(...) ((void)0)
-#elif defined(DEBUG_LOG)
-#define PrintError logmsg
-#endif
-
 #define kInputBufSize ((size_t) 1 << 18)
 
 static const ISzAlloc g_Alloc = { SzAlloc, SzFree };
@@ -31,6 +23,7 @@ Print(const char *s)
 {
     fputs(s, stdout);
 }
+
 static void
 PrintLF()
 {

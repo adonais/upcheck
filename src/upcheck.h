@@ -37,6 +37,7 @@ typedef struct _curl_node
 typedef struct _dnld_params_t
 {
     char remote_fname[MAX_PATH+1];
+    char file_len[UINT_LEN+1];
 } dnld_params_t;
 
 #ifdef __cplusplus

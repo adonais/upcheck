@@ -9,12 +9,16 @@ CXXFLAGS = $(CFLAGS) /TP
 
 RFLAGS  = /nologo /D "_UNICODE" /D "UNICODE" 
 
-LDFLAGS = /NOLOGO /DEBUG /opt:ref /opt:icf /LARGEADDRESSAWARE /MACHINE:$(PLATFORM) $(HIDE) /NODEFAULTLIB:MSVCRT /ENTRY:wmainCRTStartup
+LDFLAGS = /NOLOGO /DEBUG /opt:ref /opt:icf /MACHINE:$(PLATFORM) /NODEFAULTLIB:MSVCRT /ENTRY:wmainCRTStartup
+
+!IF "$(BITS)" == "32"
+LDFLAGS = /LARGEADDRESSAWARE $(LDFLAGS)
+!ENDIF
 
 DEP  = $(BIND)\libcurl.lib  $(BIND)\zlib.lib $(BIND)\libcares.lib $(BIND)\lib7z.lib
 LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib
 
-!if "$(MY_DEBUG)"=="1"
+!if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
 !ELSE
 CFLAGS = $(CFLAGS) $(RELEASE)

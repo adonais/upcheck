@@ -91,7 +91,7 @@ CenterDialog(HWND hDlg)
                  rcOwner.top + (rc.bottom / 2),
                  0,
                  0, // ignores size arguments
-                 SWP_NOSIZE);
+                 SWP_NOSIZE|SWP_SHOWWINDOW);
 }
 
 static void

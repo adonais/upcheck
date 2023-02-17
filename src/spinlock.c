@@ -11,46 +11,6 @@
 
 volatile long g_locked = 0;
 
-#ifdef DEBUG_LOG
-static char logfile_buf[MAX_PATH];
-
-void __cdecl 
-logmsg(const char * format, ...)
-{
-    enter_spinlock();
-    va_list args;
-    char    buffer[MAX_MESSAGE];
-    va_start (args, format);
-    if (strlen(logfile_buf) > 0)
-    {
-        FILE *pFile = NULL;
-        int  len = wvnsprintfA(buffer,MAX_MESSAGE,format, args);
-        if ( len > 0 && len < MAX_MESSAGE )
-        {
-            buffer[len] = '\0';
-            if ( (pFile = fopen(logfile_buf,"a+")) != NULL )
-            {
-                fwrite(buffer,strlen(buffer),1,pFile);
-                fclose(pFile);
-            }
-        }
-    }
-    va_end(args);
-    leave_spinlock();
-    return;
-}
-
-void WINAPI 
-init_logs(void)
-{
-    if ( *logfile_buf == '\0' && GetEnvironmentVariableA("APPDATA",logfile_buf,MAX_PATH) > 0 )
-    {
-        strncat(logfile_buf,"\\",MAX_PATH);
-        strncat(logfile_buf,"upcheck.log",MAX_PATH);
-    }
-}
-#endif
-
 uint64_t WINAPI
 ini_read_uint64(const char *sec, const char *key, const char *ini)
 {
