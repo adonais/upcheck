@@ -60,7 +60,7 @@ CFLAGS = $(CFLAGS) /D_UNICODE /DUNICODE
 XPCFLAGS = /D "_USING_V110_SDK71_"
 XPLFALGS = /subsystem:console,5.01
 RELEASE  = /D "NDEBUG"
-DEBUG_L  = /D "DEBUG" /D "DEBUG_LOG"
+DEBUG_L  = /D "DEBUG" /D "APP_DEBUG"
 HIDE     = /subsystem:windows
 
 ##############################################################################

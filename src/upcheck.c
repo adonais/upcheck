@@ -536,12 +536,12 @@ run_thread(void *pdata)
             // 设置重定向的最大次数,301、302跳转跟随location
             curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-#if defined(USE_ARES)
+        #if defined(USE_ARES)
             curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-#else
+        #else
             // 禁用掉alarm信号，防止多线程中使用超时崩溃
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-#endif
+        #endif
             // 关掉CLOSE_WAIT
             curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
             curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
@@ -550,7 +550,9 @@ run_thread(void *pdata)
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
             curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+        #if defined(APP_DEBUG)
             curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
+        #endif
             curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
             curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
             curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
