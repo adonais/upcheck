@@ -544,14 +544,17 @@ run_thread(void *pdata)
         #endif
             // 关掉CLOSE_WAIT
             curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
-            curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
+            curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+            //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+            //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+            curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, CURLSSLOPT_AUTO_CLIENT_CERT | CURLSSLOPT_NO_REVOKE);
+            curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
             curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
         #if defined(APP_DEBUG)
             curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
+            curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
         #endif
             curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
             curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
@@ -609,14 +612,15 @@ get_file_lenth(const char *url, int64_t *file_len)
     {
         memset(&dnld_params, 0, sizeof(dnld_params));
         curl_easy_setopt(handle, CURLOPT_URL, url);
-        curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "gzip");
+        curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "");
         curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, "HEAD");
         curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, curl_header_parse);
         curl_easy_setopt(handle, CURLOPT_HEADERDATA, &dnld_params);
         // 设置链接超时
         curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 120L);
         curl_easy_setopt(handle, CURLOPT_TIMEOUT, 180L);
-        //curl_set_cookies(handle);
+        curl_set_cookies(handle);
+        curl_easy_setopt(handle, CURLOPT_SSL_OPTIONS, CURLSSLOPT_AUTO_CLIENT_CERT | CURLSSLOPT_NO_REVOKE);
         curl_easy_setopt(handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
         // 设置重定向的最大次数
         curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 3L);

@@ -15,7 +15,7 @@ LDFLAGS = /NOLOGO /DEBUG /opt:ref /opt:icf /MACHINE:$(PLATFORM) /NODEFAULTLIB:MS
 LDFLAGS = /LARGEADDRESSAWARE $(LDFLAGS)
 !ENDIF
 
-DEP  = $(BIND)\libcurl.lib  $(BIND)\zlib.lib $(BIND)\libcares.lib $(BIND)\lib7z.lib
+DEP  = $(BIND)\libcurl.lib  $(BIND)\zlib.lib $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\lib7z.lib
 LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib
 
 !if "$(APP_DEBUG)"=="1"

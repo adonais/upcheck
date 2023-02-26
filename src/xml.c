@@ -32,12 +32,13 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
     if (curl_handle)
     {
         curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-        curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, "gzip");
+        curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, "");
         curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, userdata);
         curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
-        //curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.34.0");
+        curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.34.0");
         curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl_handle, CURLOPT_SSL_OPTIONS, CURLSSLOPT_AUTO_CLIENT_CERT | CURLSSLOPT_NO_REVOKE);
         curl_easy_setopt(curl_handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
         curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 60L);
         curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 90L);

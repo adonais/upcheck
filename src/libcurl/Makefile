@@ -8,6 +8,7 @@ NAME = curl
 MY_NO_UNICODE = true
 USE_ZLIB      = true
 USE_CARES     = true
+USE_NGHTTP2   = true
 USE_IPV6      = true
 USE_SSPI      = true
 USE_WINSSL    = true
@@ -34,6 +35,10 @@ CFLAGS = $(CFLAGS) /DHAVE_ZLIB_H /DHAVE_ZLIB /DHAVE_LIBZ $(ADDITIONAL_ZLIB_CFLAG
 
 !IFDEF USE_CARES
 CFLAGS   = $(CFLAGS) /DUSE_ARES /I..\..\libc-ares\src
+!ENDIF
+
+!IFDEF USE_NGHTTP2
+CFLAGS   = $(CFLAGS) /DUSE_NGHTTP2 /DNGHTTP2_STATICLIB /I..\..\libngttp2\src
 !ENDIF
 
 !IF "$(USE_IPV6)"=="true"
