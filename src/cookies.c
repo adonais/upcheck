@@ -21,7 +21,7 @@ extern file_info_t file_info;
 static char baidu_login[MAX_PATH + 1];
 static char baidu_set[NAMES_LEN + 1];
 
-int WINAPI
+int
 parse_baidu_cookies(char *cookies, int len)
 {
     if (strlen(baidu_login) < 2 || strlen(baidu_set) < 2)
@@ -134,7 +134,7 @@ sqlite_txt(LPCWSTR cookie_path, HANDLE hfile)
     return rc;
 }
 
-int WINAPI
+int
 dump_cookies(const wchar_t *sql_path)
 {
     DWORD written = 0;
@@ -185,7 +185,7 @@ back_downloaded(int64_t *psize, int count, char **column, char **names)
     return 0;
 }
 
-bool WINAPI
+bool
 get_down_size(int64_t *psize)
 {
     int  rc = 0;
@@ -200,7 +200,7 @@ get_down_size(int64_t *psize)
     return true;
 }
 
-int WINAPI
+int
 get_ranges(sql_node *node)
 {
     int  rc = 0;
@@ -245,7 +245,7 @@ get_ranges(sql_node *node)
     return num;
 }
 
-bool WINAPI
+bool
 check_status(int64_t *psize)
 {
     int  rc = 0;
@@ -269,7 +269,7 @@ check_status(int64_t *psize)
     return true;
 }
 
-bool WINAPI
+bool
 update_status(uint32_t thread, int status)
 {
     int  rc = 0;
@@ -285,7 +285,7 @@ update_status(uint32_t thread, int status)
     return true;
 }
 
-bool WINAPI
+bool
 update_ranges(uint32_t thread, int64_t begin, int64_t size)
 {
     int  rc = 0;
@@ -303,7 +303,7 @@ update_ranges(uint32_t thread, int64_t begin, int64_t size)
     return true;
 }
 
-bool WINAPI
+bool
 thread_insert(const char *url, int64_t begin, int64_t end, int64_t down, int64_t total, uint32_t thread, uint32_t pid, int status)
 {
     int  rc = 0;
@@ -320,7 +320,7 @@ thread_insert(const char *url, int64_t begin, int64_t end, int64_t down, int64_t
     return true;
 }
 
-void WINAPI 
+void 
 clean_sql_logs(void)
 {
     if (file_info.sql != NULL)
@@ -329,7 +329,7 @@ clean_sql_logs(void)
     }
 }
 
-bool WINAPI
+bool
 init_sql_logs(const wchar_t *logs)
 {
     int   rc = 0;

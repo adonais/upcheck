@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <curl/curl.h>
 #ifdef __GNUC__
 #include <pthread.h>
 #endif
@@ -35,8 +36,14 @@
 #define SYS_MALLOC(x) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (x))
 #define SYS_FREE(x) (HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, (x)), (x = NULL))
 
+#if CURL_LINK
+#define EUAPI_CERT CURLSSLOPT_NATIVE_CA
+#else
+#define EUAPI_CERT CURLSSLOPT_AUTO_CLIENT_CERT
+#endif
+
 #ifdef __cplusplus
-extern "C" {   
+extern "C" {
 #endif
 typedef struct _file_info_t
 {
@@ -68,25 +75,57 @@ typedef struct _sql_node
     uint32_t   thread;
 } sql_node;
 
-extern int  WINAPI get_cpu_works(void);
-extern bool WINAPI get_file_md5(LPCWSTR path, char* md5_str);
-extern bool WINAPI path_combine(LPWSTR lpfile, int len);
-extern void WINAPI wchr_replace(LPWSTR path);
-extern bool WINAPI create_dir(LPCWSTR dir);
-extern bool WINAPI exists_dir(LPCWSTR path);
+typedef const char* (*ptr_curl_easy_strerror)(CURLcode);
+typedef CURL* (*ptr_curl_easy_init)(void);
+typedef CURLcode (*ptr_curl_global_init)(long flags);
+typedef CURLSH* (*ptr_curl_share_init)(void);
+typedef CURLSHcode (*ptr_curl_share_setopt)(CURLSH *share, CURLSHoption option, ...);
+typedef CURLSHcode (*ptr_curl_share_cleanup)(CURLSH *share);
+typedef CURLcode (*ptr_curl_easy_setopt)(CURL*, CURLoption, ...);
+typedef CURLcode (*ptr_curl_easy_perform)(CURL*);
+typedef void (*ptr_curl_easy_cleanup)(CURL*);
+typedef void (*ptr_curl_global_cleanup)(void);
+typedef void (*ptr_curl_slist_free_all)(struct curl_slist *);
+typedef struct curl_slist* (*ptr_curl_slist_append)(struct curl_slist *, const char *);
+typedef CURLcode (*ptr_curl_easy_getinfo)(CURL *data, CURLINFO info, ...);
+
+// for curl
+extern HMODULE  euapi_symbol;
+extern ptr_curl_easy_strerror euapi_curl_easy_strerror;
+extern ptr_curl_easy_setopt euapi_curl_easy_setopt;
+extern ptr_curl_easy_perform euapi_curl_easy_perform;
+extern ptr_curl_easy_getinfo euapi_curl_easy_getinfo;
+extern ptr_curl_slist_append euapi_curl_slist_append;
+extern ptr_curl_slist_free_all euapi_curl_slist_free_all;
+extern ptr_curl_share_init euapi_curl_share_init;
+extern ptr_curl_share_setopt euapi_curl_share_setopt;
+extern ptr_curl_share_cleanup euapi_curl_share_cleanup;
+extern ptr_curl_global_init euapi_curl_global_init;
+extern ptr_curl_easy_init euapi_curl_easy_init;
+extern ptr_curl_global_cleanup euapi_curl_global_cleanup;
+extern ptr_curl_easy_cleanup euapi_curl_easy_cleanup;
+extern bool libcurl_init(void);
+extern void libcurl_destory(void);
+
+extern int  get_cpu_works(void);
+extern bool get_file_md5(LPCWSTR path, char* md5_str);
+extern bool path_combine(LPWSTR lpfile, int len);
+extern void wchr_replace(LPWSTR path);
+extern bool create_dir(LPCWSTR dir);
+extern bool exists_dir(LPCWSTR path);
 extern void __cdecl logmsg(const char *format, ...);
-extern void WINAPI init_logs(void);
-extern void WINAPI enter_spinlock(void);
-extern void WINAPI leave_spinlock(void);
-extern bool WINAPI init_file_strings(LPCWSTR names, char *out_path);
-extern bool WINAPI find_local_str(char *result, int len);
-extern bool WINAPI merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name);
-extern bool WINAPI get_files_lenth(LPCWSTR path, int64_t *psize);
-extern bool  WINAPI exec_ppv(LPCSTR wcmd, LPCSTR pcd, int flags);
-extern bool  WINAPI get_name_self(LPWSTR lpstrName, DWORD wlen);
-extern bool  WINAPI search_process(LPCWSTR names);
-extern char* WINAPI url_decode(const char *input);
-extern uint64_t WINAPI ini_read_uint64(const char *sec, const char *key, const char *ini);
+extern void init_logs(void);
+extern void enter_spinlock(void);
+extern void leave_spinlock(void);
+extern bool init_file_strings(LPCWSTR names, char *out_path);
+extern bool find_local_str(char *result, int len);
+extern bool merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name);
+extern bool get_files_lenth(LPCWSTR path, int64_t *psize);
+extern bool  exec_ppv(LPCSTR wcmd, LPCSTR pcd, int flags);
+extern bool  get_name_self(LPWSTR lpstrName, DWORD wlen);
+extern bool  search_process(LPCWSTR names);
+extern char* url_decode(const char *input);
+extern uint64_t ini_read_uint64(const char *sec, const char *key, const char *ini);
 
 #ifdef __cplusplus
 }

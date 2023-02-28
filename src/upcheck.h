@@ -1,7 +1,6 @@
 #ifndef __NET_H__
 #define __NET_H__
 
-#include <curl/curl.h>
 #include "spinlock.h"
 
 #define MAX_THREAD 32

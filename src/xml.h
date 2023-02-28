@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-extern int __stdcall init_resolver(void);
+extern int init_resolver(void);
 
 #ifdef __cplusplus
 }

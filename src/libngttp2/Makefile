@@ -15,9 +15,13 @@ ROOT = ..\..
 # --------------------------
 NGHTTP2_OBJDIR = $(OBJD)\nghttp2
 STATICLIB = $(BIND)\$(NAME).lib
-CFLAGS = /nologo /I. /Iinclude /Iinclude/nghttp2 /W3 /EHsc /DNDEBUG /O2 /Zi -Fd"$(BIND)\nghttp2" /D_CRT_SECURE_NO_WARNINGS \
-         /DBUILDING_NGHTTP2 /DHAVE_CONFIG_H /DNGHTTP2_STATICLIB /D_WIN32_WINNT=0x0600 /DWIN32 /D_WINDOWS $(CFLAGS)
-
+CFLAGS = -nologo -I. -Iinclude -Iinclude/nghttp2 -W3 -EHsc -O2 -Zi -Fd"$(BIND)\nghttp2" -D_CRT_SECURE_NO_WARNINGS \
+         -DBUILDING_NGHTTP2 -DHAVE_CONFIG_H -DNGHTTP2_STATICLIB -D_WIN32_WINNT=0x0600 -DWIN32 -D_WINDOWS $(CFLAGS)
+!if "$(APP_DEBUG)"=="1"
+CFLAGS = $(CFLAGS) $(DEBUG_L)
+!ELSE
+CFLAGS = $(CFLAGS) $(RELEASE)
+!ENDIF
 # ----------------------------------------
 # Subdir holding sources for all projects
 # ----------------------------------------
@@ -57,22 +61,24 @@ OBJS = \
 .SUFFIXES: .c .h
 
 {$(SRC)}.c{$(NGHTTP2_OBJDIR)}.obj:
-	$(CC) $(CFLAGS) /Fo$(NGHTTP2_OBJDIR)\ /c $<
+    $(CC) $(CFLAGS) -Fo$(NGHTTP2_OBJDIR)\ -c $<
 
 ##############################################################################
 
 # targets
-all: dirs $(STATICLIB)
+all: dirs $(STATICLIB) $(INCD)\nghttp2\nghttp2.h
 
 dirs:
 	@if not exist "$(BIND)" mkdir "$(BIND)" && echo.   Created $(BIND)
 	@if not exist "$(INCD)" mkdir "$(INCD)" && echo.   Created $(INCD)
 	@if not exist "$(INCD)\nghttp2" mkdir "$(INCD)\nghttp2" && echo.   Created $(INCD)\nghttp2
 	@if not exist "$(NGHTTP2_OBJDIR)" mkdir "$(NGHTTP2_OBJDIR)" && echo.   Created $(NGHTTP2_OBJDIR)
-	@xcopy include\nghttp2\* $(INCD)\nghttp2 /y /e /i /q
 
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) -out:$@ $(OBJS)
+
+$(INCD)\nghttp2\nghttp2.h : include\nghttp2\nghttp2.h
+	@xcopy "include\nghttp2\*" "$(INCD)\nghttp2" /y /e /i /q
 
 $(OBJS): $(SRC)\*.c $(SRC)\*.h
 

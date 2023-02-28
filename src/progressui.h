@@ -17,12 +17,9 @@ extern "C" {
 
 // Called on the main thread at startup
 extern unsigned __stdcall show_progress(void *p);
-
-extern bool __stdcall set_ui_strings(void);
-
+extern bool set_ui_strings(void);
 // May be called from any thread
 extern void quit_progress();
-
 // May be called from any thread: progress is a number between 0 and 100
 extern void update_progress(float progress);
 

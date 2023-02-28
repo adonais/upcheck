@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-extern const char* __stdcall url_encode_t(char* str);
-extern const char* __stdcall url_decode_t(char* str);
+extern const char* url_encode_t(char* str);
+extern const char* url_decode_t(char* str);
 
 #ifdef __cplusplus
 }

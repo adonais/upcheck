@@ -1,7 +1,3 @@
-#ifndef CURL_STATICLIB
-#define CURL_STATICLIB
-#endif
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -27,32 +23,32 @@ int
 init_process(const char *url, fn_write_data write_data, void *userdata)
 {
     CURLcode res = 1;
-    CURL *curl_handle = curl_easy_init();
-    
+    CURL *curl_handle = euapi_curl_easy_init();
+
     if (curl_handle)
     {
-        curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-        curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, "");
-        curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, userdata);
-        curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
-        curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.34.0");
-        curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl_handle, CURLOPT_SSL_OPTIONS, CURLSSLOPT_AUTO_CLIENT_CERT | CURLSSLOPT_NO_REVOKE);
-        curl_easy_setopt(curl_handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
-        curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 60L);
-        curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 90L);
-        res = curl_easy_perform(curl_handle);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, "");
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, userdata);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.34.0");
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 60L);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 90L);
+        res = euapi_curl_easy_perform(curl_handle);
         if (res != CURLE_OK)
         {
-            printf("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            printf("euapi_curl_easy_perform() failed: %s\n", euapi_curl_easy_strerror(res));
         }
-        curl_easy_cleanup(curl_handle);
+        euapi_curl_easy_cleanup(curl_handle);
     }
     return (int) res;
 }
 
-static bool 
+static bool
 is_64bit_os(void)
 {
     SYSTEM_INFO info = {0};
@@ -61,7 +57,7 @@ is_64bit_os(void)
     {
         return true;
     }
-    return false;    
+    return false;
 }
 
 static int
@@ -69,8 +65,8 @@ search_file_bits(const wchar_t* path)
 {
     IMAGE_DOS_HEADER dos_header;
     IMAGE_NT_HEADERS pe_header;
-    int  	ret = 0;
-    HANDLE	hFile = CreateFileW(path,GENERIC_READ,
+    int      ret = 0;
+    HANDLE    hFile = CreateFileW(path,GENERIC_READ,
                                 FILE_SHARE_READ,NULL,OPEN_EXISTING,
                                 FILE_ATTRIBUTE_NORMAL,NULL);
     if( hFile == INVALID_HANDLE_VALUE )
@@ -148,7 +144,7 @@ get_file_bits(void)
             {
                 printf("MultiByteToWideChar return false\n");
                 break;
-            }            
+            }
             if ((bits = search_file_bits(wdll)) == 0)
             {
                 printf("search_file_bits mozglue.dll return false\n");
@@ -229,7 +225,7 @@ ini_query(const char *ini)
         {
             printf("dt_locale(%I64u) >= dt_remote(%I64u), do not update\n", dt_locale, dt_remote);
             break;
-        }    
+        }
         if (!ini_read_string(info, "url", &url, ini))
         {
             printf("ini_read_string url return false\n");
@@ -241,7 +237,7 @@ ini_query(const char *ini)
             break;
         }
         strncpy(file_info.md5, c_md5, MD5_LEN);
-        strncpy(file_info.url, url, URL_LEN); 
+        strncpy(file_info.url, url, URL_LEN);
     }while(0);
     if (c_md5)
     {
@@ -263,7 +259,7 @@ ini_query(const char *ini)
 #elif defined(_MSC_VER)
 # pragma optimize("g", off)
 #endif
-int WINAPI
+int
 init_resolver(void)
 {
     HANDLE pfile;
@@ -297,7 +293,7 @@ init_resolver(void)
     CloseHandle(pfile);
     if (res != CURLE_OK)
     {
-		res = -1;
+        res = -1;
     }
     else
     {

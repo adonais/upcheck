@@ -5,13 +5,29 @@
 #include <shlwapi.h>
 #include <tlhelp32.h>
 #include "ini_parser.h"
+#include <curl/curl.h>
 #include "spinlock.h"
 
 #pragma comment(lib, "advapi32.lib")
 
 volatile long g_locked = 0;
 
-uint64_t WINAPI
+HMODULE euapi_symbol = NULL;
+ptr_curl_easy_strerror euapi_curl_easy_strerror = NULL;
+ptr_curl_easy_setopt euapi_curl_easy_setopt = NULL;
+ptr_curl_easy_perform euapi_curl_easy_perform = NULL;
+ptr_curl_easy_getinfo euapi_curl_easy_getinfo = NULL;
+ptr_curl_slist_append euapi_curl_slist_append = NULL;
+ptr_curl_slist_free_all euapi_curl_slist_free_all = NULL;
+ptr_curl_share_init euapi_curl_share_init = NULL;
+ptr_curl_share_setopt euapi_curl_share_setopt = NULL;
+ptr_curl_share_cleanup euapi_curl_share_cleanup = NULL;
+ptr_curl_global_init euapi_curl_global_init = NULL;
+ptr_curl_easy_init euapi_curl_easy_init = NULL;
+ptr_curl_global_cleanup euapi_curl_global_cleanup = NULL;
+ptr_curl_easy_cleanup euapi_curl_easy_cleanup = NULL;
+
+uint64_t
 ini_read_uint64(const char *sec, const char *key, const char *ini)
 {
     char *m_str = NULL;
@@ -24,7 +40,7 @@ ini_read_uint64(const char *sec, const char *key, const char *ini)
     return result;
 }
 
-void WINAPI 
+void 
 wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
 {
     LPWSTR   lp = NULL;
@@ -41,7 +57,7 @@ wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
     return;
 }
 
-bool WINAPI 
+bool 
 exists_dir(LPCWSTR path) 
 {
     DWORD fileattr = GetFileAttributesW(path);
@@ -52,7 +68,7 @@ exists_dir(LPCWSTR path)
     return false;
 }
 
-bool WINAPI 
+bool 
 create_dir(LPCWSTR dir)
 {
     LPWSTR p = NULL;
@@ -71,7 +87,7 @@ create_dir(LPCWSTR dir)
     return (CreateDirectoryW(tmp_name, NULL)||GetLastError() == ERROR_ALREADY_EXISTS);
 }
 
-bool WINAPI
+bool
 path_combine(LPWSTR lpfile, int len)
 {
 #define SIZE 128
@@ -96,7 +112,7 @@ path_combine(LPWSTR lpfile, int len)
 #undef SIZE
 }
 
-int WINAPI
+int
 get_cpu_works(void)
 {
     SYSTEM_INFO si;
@@ -104,7 +120,7 @@ get_cpu_works(void)
     return (int) (si.dwNumberOfProcessors);
 }
 
-void WINAPI
+void
 enter_spinlock(void)
 {
     SIZE_T spinCount = 0;
@@ -124,7 +140,7 @@ enter_spinlock(void)
     }
 }
 
-void WINAPI
+void
 leave_spinlock(void)
 {
     // No need to generate a memory barrier here, since InterlockedExchange()
@@ -167,7 +183,7 @@ memstr(char *full_data, int full_data_len, const char *substr)
     return NULL;
 }
 
-bool WINAPI
+bool
 init_file_strings(LPCWSTR names, char *out_path)
 {
     WCHAR filename[MAX_PATH];
@@ -190,7 +206,7 @@ init_file_strings(LPCWSTR names, char *out_path)
     return (WideCharToMultiByte(CP_UTF8, 0, filename, -1, out_path, MAX_PATH, NULL, NULL)>0);
 }
 
-bool WINAPI
+bool
 find_local_str(char *result, int len)
 {
     FILE *fp = NULL;
@@ -240,7 +256,7 @@ md5_to_str(byte* in_md5_hex, char* out_md5_str)
     out_md5_str[MD5_DIGEST_LENGTH * 2] = '\0';
 }
 
-bool WINAPI 
+bool 
 get_file_md5(LPCWSTR path, char* md5_str)
 {
     bool res = false;
@@ -308,14 +324,14 @@ get_file_md5(LPCWSTR path, char* md5_str)
         }
     #undef MD5_SIZE
     }while (0);
-	if(hHash)          //销毁hash对象
-	{
-		CryptDestroyHash(hHash);
-	}
-	if(hProv)
-	{
-		CryptReleaseContext(hProv,0);
-	}
+    if(hHash)          //销毁hash对象
+    {
+        CryptDestroyHash(hHash);
+    }
+    if(hProv)
+    {
+        CryptReleaseContext(hProv,0);
+    }
     if (hFile)
     {
         CloseHandle(hFile); 
@@ -331,7 +347,7 @@ get_file_md5(LPCWSTR path, char* md5_str)
     return res;
 }
 
-bool WINAPI
+bool
 merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name)
 {
     size_t rc1,rc2;
@@ -380,7 +396,7 @@ merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name)
     return res;
 }
 
-bool WINAPI
+bool
 get_files_lenth(LPCWSTR path, int64_t *psize)
 {
     struct _stati64 statbuf;
@@ -392,7 +408,7 @@ get_files_lenth(LPCWSTR path, int64_t *psize)
     return true;
 }
 
-bool WINAPI 
+bool 
 exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
 {
     bool res = false;
@@ -457,7 +473,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
     return res;
 }
 
-bool WINAPI
+bool
 get_name_self(LPWSTR lpstrName, DWORD wlen)
 {
     int   i = 0;
@@ -477,7 +493,7 @@ get_name_self(LPWSTR lpstrName, DWORD wlen)
     return (i>0 && i<(int)wlen);
 }
 
-bool WINAPI
+bool
 search_process(LPCWSTR names)
 {
     bool   ret = false;
@@ -505,29 +521,116 @@ search_process(LPCWSTR names)
     return ret;
 }
 
-char* WINAPI
+char*
 url_decode (const char *input)
 {
-	int input_length = (int)strlen(input);
-	size_t output_length = (input_length + 1);
-	char *working, *output;
-	if ((working = output = SYS_MALLOC(output_length)) == NULL)
-	{
-	    return NULL;
-	}
-	while(*input)
-	{
-		if(*input == '%')
-		{
-			char buffer[3] = { input[1], input[2], 0 };
-			*working++ = (char)strtol(buffer, NULL, 16);
-			input += 3;
-		}
-		else
-		{
-			*working++ = *input++;
-		}
-	}
-	*working = 0;  //null terminate
-	return output;
+    int input_length = (int)strlen(input);
+    size_t output_length = (input_length + 1);
+    char *working, *output;
+    if ((working = output = SYS_MALLOC(output_length)) == NULL)
+    {
+        return NULL;
+    }
+    while(*input)
+    {
+        if(*input == '%')
+        {
+            char buffer[3] = { input[1], input[2], 0 };
+            *working++ = (char)strtol(buffer, NULL, 16);
+            input += 3;
+        }
+        else
+        {
+            *working++ = *input++;
+        }
+    }
+    *working = 0;  //null terminate
+    return output;
+}
+
+WCHAR *
+get_process_path(WCHAR *path, const int len)
+{
+    WCHAR *p = NULL;
+    if (!GetModuleFileNameW(NULL , path , len - 1))
+    {
+        return NULL;
+    }
+    p = wcsrchr(path , L'\\');
+    if( p )
+    {
+        *p = 0 ;
+    }
+    return path;
+}
+
+bool
+libcurl_init(void)
+{
+#if defined(CURL_LINK) && CURL_LINK > 0
+    WCHAR path[MAX_PATH + 1] = {0};
+    if (!get_process_path(path, MAX_PATH)[0])
+    {
+        return false;
+    }
+    wcsncat(path, L"\\plugins\\libcurl.dll" , MAX_PATH);
+    if (!euapi_symbol && !(euapi_symbol = LoadLibraryExW(path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)))
+    {
+        printf("LoadLibraryExW[%ls] failed, cause: %u\n", path, GetLastError());
+        return false;
+    }
+    euapi_curl_global_init = (ptr_curl_global_init)GetProcAddress(euapi_symbol,"curl_global_init");
+    euapi_curl_easy_init = (ptr_curl_easy_init)GetProcAddress(euapi_symbol,"curl_easy_init");
+    euapi_curl_global_cleanup = (ptr_curl_global_cleanup)GetProcAddress(euapi_symbol,"curl_global_cleanup");
+    euapi_curl_easy_cleanup = (ptr_curl_easy_cleanup)GetProcAddress(euapi_symbol,"curl_easy_cleanup");
+    euapi_curl_easy_setopt = (ptr_curl_easy_setopt)GetProcAddress(euapi_symbol,"curl_easy_setopt");
+    euapi_curl_easy_perform = (ptr_curl_easy_perform)GetProcAddress(euapi_symbol,"curl_easy_perform");
+    euapi_curl_slist_append = (ptr_curl_slist_append)GetProcAddress(euapi_symbol,"curl_slist_append");
+    euapi_curl_slist_free_all = (ptr_curl_slist_free_all)GetProcAddress(euapi_symbol,"curl_slist_free_all");
+    euapi_curl_easy_getinfo = (ptr_curl_easy_getinfo)GetProcAddress(euapi_symbol,"curl_easy_getinfo");
+    euapi_curl_easy_strerror = (ptr_curl_easy_strerror)GetProcAddress(euapi_symbol,"curl_easy_strerror");
+    euapi_curl_share_init = (ptr_curl_share_init)GetProcAddress(euapi_symbol,"curl_share_init");
+    euapi_curl_share_setopt = (ptr_curl_share_setopt)GetProcAddress(euapi_symbol,"curl_share_setopt");
+    euapi_curl_share_cleanup = (ptr_curl_share_cleanup)GetProcAddress(euapi_symbol,"curl_share_cleanup");
+#else
+    euapi_curl_global_init = curl_global_init;
+    euapi_curl_easy_init = curl_easy_init;
+    euapi_curl_global_cleanup = curl_global_cleanup;
+    euapi_curl_easy_cleanup = curl_easy_cleanup;
+    euapi_curl_easy_setopt = curl_easy_setopt;
+    euapi_curl_easy_perform = curl_easy_perform;
+    euapi_curl_slist_append = curl_slist_append;
+    euapi_curl_slist_free_all = curl_slist_free_all;
+    euapi_curl_easy_getinfo = curl_easy_getinfo;
+    euapi_curl_easy_strerror = curl_easy_strerror;
+    euapi_curl_share_init = curl_share_init;
+    euapi_curl_share_setopt = curl_share_setopt;
+    euapi_curl_share_cleanup = curl_share_cleanup;
+#endif
+    return (euapi_curl_global_init && euapi_curl_easy_init && euapi_curl_global_cleanup && euapi_curl_easy_setopt && euapi_curl_easy_perform &&
+            euapi_curl_easy_cleanup && euapi_curl_slist_append && euapi_curl_slist_free_all && euapi_curl_easy_getinfo && euapi_curl_easy_strerror &&
+            euapi_curl_share_init && euapi_curl_share_setopt && euapi_curl_share_cleanup);
+}
+
+void
+libcurl_destory(void)
+{
+    if (euapi_symbol)
+    {
+        FreeLibrary(euapi_symbol);
+        euapi_symbol = NULL;
+        euapi_curl_global_init = NULL;
+        euapi_curl_easy_init = NULL;
+        euapi_curl_global_cleanup = NULL;
+        euapi_curl_easy_setopt = NULL;
+        euapi_curl_easy_perform = NULL;
+        euapi_curl_easy_cleanup = NULL;
+        euapi_curl_slist_append = NULL;
+        euapi_curl_slist_free_all = NULL;
+        euapi_curl_easy_getinfo = NULL;
+        euapi_curl_easy_strerror = NULL;
+        euapi_curl_share_init = NULL;
+        euapi_curl_share_setopt = NULL;
+        euapi_curl_share_cleanup = NULL;
+    }
 }

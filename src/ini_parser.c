@@ -260,7 +260,7 @@ list_delete_node(node **pphead, position pos)
     }
 }
 
-char *WINAPI
+char*
 utf16_to_utf8(const wchar_t *utf16)
 {
     int   size = 0;
@@ -281,7 +281,7 @@ utf16_to_utf8(const wchar_t *utf16)
     return utf8;
 }
 
-char *WINAPI
+char*
 utf16_to_mbcs(const wchar_t *utf16)
 {
     int   size = 0;
@@ -302,7 +302,7 @@ utf16_to_mbcs(const wchar_t *utf16)
     return a8;  
 }
 
-wchar_t *WINAPI
+wchar_t*
 mbcs_to_utf16(const char *ansi)
 {
     int size;
@@ -323,7 +323,7 @@ mbcs_to_utf16(const char *ansi)
     return u16;
 }
 
-char *WINAPI
+char*
 mbcs_to_utf8(const char *ansi)
 {
 #ifdef _WIN32     
@@ -340,7 +340,7 @@ mbcs_to_utf8(const char *ansi)
 #endif      
 }
 
-wchar_t *WINAPI
+wchar_t*
 utf8_to_utf16(const char *utf8)
 {
     int size;
@@ -360,7 +360,7 @@ utf8_to_utf16(const char *utf8)
     return u16;
 }
 
-char *WINAPI
+char*
 utf8_to_mbcs(const char *utf8)
 {
 #ifdef _WIN32      
@@ -964,7 +964,7 @@ mbcs_create_file(const char *dir)
 }
 
 /* 销毁解析器 */
-void WINAPI
+void
 iniparser_destroy_cache(ini_cache *pli)
 {
     if (!(pli && *pli))
@@ -1031,7 +1031,7 @@ ini_parser_create(const char *ini, ini_list **ini_table, bool write_access)
     return res;
 }
 
-ini_cache WINAPI
+ini_cache
 iniparser_create_cache(const char *ini, bool write_access)
 {
     ini_cache ini_handle = NULL;
@@ -1057,7 +1057,7 @@ erase_node(node *en, const char *v)
     return turn;
 }
 
-bool WINAPI
+bool
 inicache_delete_section(const char *sec, ini_cache *ini)
 {
     bool res = false;
@@ -1076,7 +1076,7 @@ inicache_delete_section(const char *sec, ini_cache *ini)
     return res;
 }
 
-bool WINAPI
+bool
 ini_delete_section(const char *sec, const char *path)
 {
     bool res = false;
@@ -1131,7 +1131,7 @@ replace_insert(node **pnode, const char *in, const char *sub, const char *by)
     free(res);
 }
 
-bool WINAPI
+bool
 inicache_new_section(const char *value, ini_cache *ini)
 {
     int  len = 0;
@@ -1175,7 +1175,7 @@ inicache_new_section(const char *value, ini_cache *ini)
     return true;
 }
 
-bool WINAPI
+bool
 ini_new_section(const char *value, const char *path)
 {
     bool res = false;
@@ -1189,7 +1189,7 @@ ini_new_section(const char *value, const char *path)
     return res;
 }
 
-bool WINAPI
+bool
 inicache_write_string(const char *sec, const char *key, const char *value, ini_cache *ini)
 {
     bool res = true;
@@ -1253,7 +1253,7 @@ inicache_write_string(const char *sec, const char *key, const char *value, ini_c
     return res;
 }
 
-bool WINAPI
+bool
 ini_write_string(const char *sec, const char *key, const char *new_value, const char *path)
 {
     bool res = false;
@@ -1266,7 +1266,7 @@ ini_write_string(const char *sec, const char *key, const char *new_value, const 
     return res;
 }
 
-bool WINAPI
+bool
 inicache_read_string(const char *sec, const char *key, char **buf, ini_cache *ini)
 {
     bool res = false;
@@ -1282,7 +1282,7 @@ inicache_read_string(const char *sec, const char *key, char **buf, ini_cache *in
     return res;
 }
 
-bool WINAPI
+bool
 ini_read_string(const char *sec, const char *key, char **buf, const char *path)
 {
     bool res = false;
@@ -1296,7 +1296,7 @@ ini_read_string(const char *sec, const char *key, char **buf, const char *path)
     return res;
 }
 
-int WINAPI
+int
 ini_read_int(const char *sec, const char *key, const char *path)
 {
     int res = 0;
@@ -1312,7 +1312,7 @@ ini_read_int(const char *sec, const char *key, const char *path)
     return res;
 }
 
-int WINAPI
+int
 inicache_read_int(const char *sec, const char *key, ini_cache *ini)
 {
     int res = 0;
@@ -1328,7 +1328,7 @@ inicache_read_int(const char *sec, const char *key, ini_cache *ini)
     return res;
 }
 
-bool WINAPI
+bool
 inicache_foreach_wkey(const char *sec,
                       wchar_t (*lpdata)[129],
                       const int line,
@@ -1364,7 +1364,7 @@ inicache_foreach_wkey(const char *sec,
     return res;
 }
 
-bool WINAPI
+bool
 inicache_foreach_key(const char *sec,
                      char (*lpdata)[129],
                      const int line,
@@ -1384,7 +1384,7 @@ inicache_foreach_key(const char *sec,
  * 二维数组行数                                             *
  * ini文件路径                                              *
  ************************************************************/ 
-bool WINAPI
+bool
 ini_foreach_key(const char *sec,
                 char (*lpdata)[129],
                 const int line, 
@@ -1401,7 +1401,7 @@ ini_foreach_key(const char *sec,
     return res;
 }
 
-bool WINAPI
+bool
 ini_foreach_wkey(const char *sec,
                 wchar_t (*lpdata)[129],
                 const int line, 
@@ -1418,7 +1418,7 @@ ini_foreach_wkey(const char *sec,
     return res;
 }
 
-bool WINAPI
+bool
 inicache_foreach_wstring(const char *sec,
                          wchar_t (*lpdata)[129],
                          const int line,
@@ -1454,7 +1454,7 @@ inicache_foreach_wstring(const char *sec,
     return res;
 }
 
-bool WINAPI
+bool
 inicache_foreach_string(const char *sec,
                         char (*lpdata)[129],
                         const int line,
@@ -1474,7 +1474,7 @@ inicache_foreach_string(const char *sec,
  * 二维数组行数                                             *
  * ini文件路径                                              *
  ************************************************************/ 
-bool WINAPI
+bool
 ini_foreach_string(const char *sec,
                    char (*lpdata)[129],
                    const int line, 
@@ -1491,7 +1491,7 @@ ini_foreach_string(const char *sec,
     return res;
 }
 
-bool WINAPI
+bool
 ini_foreach_wstring(const char *sec,
                     wchar_t (*lpdata)[129],
                     const int line, 
@@ -1508,7 +1508,7 @@ ini_foreach_wstring(const char *sec,
     return res;
 }
 
-bool WINAPI
+bool
 inicache_search_string(const char *key, char **buf, ini_cache *ini)
 {
     bool res = false;
@@ -1530,7 +1530,7 @@ inicache_search_string(const char *key, char **buf, ini_cache *ini)
     return res;
 }
 
-bool WINAPI
+bool
 ini_search_string(const char *key, char **buf, const char *path)
 {
     bool res = false;

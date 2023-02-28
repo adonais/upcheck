@@ -11,7 +11,7 @@ static  bool fx_browser;
 static  bool ice_build;
 static  bool fn_erase;
 
-LPWSTR WINAPI
+LPWSTR
 wstr_replace(LPWSTR in,size_t in_size,LPCWSTR pattern,LPCWSTR by)
 {
     WCHAR *in_ptr = in;
@@ -302,7 +302,7 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
     return res;
 }
 
-bool WINAPI 
+bool 
 getw_cwd(LPWSTR lpstrName, DWORD wlen)
 {
     int   i = 0;
@@ -422,13 +422,13 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
     return res;
 }
 
-bool WINAPI 
+bool 
 unknown_builds(void)
 {
     return (fx_browser && ice_build);
 }
 
-int WINAPI
+int
 update_thread(void *p)
 {
     // 准备复制更新文件到file_info.process所在目录

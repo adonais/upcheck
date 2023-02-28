@@ -27,23 +27,23 @@ CC_VERS_NUM = 199
 
 !IF "$(PLATFORM)"=="x64" || "$(TARGET_CPU)"=="x64" || "$(VSCMD_ARG_HOST_ARCH)"=="x64"
 BITS	 = 64
-CFLAGS   = $(CFLAGS) /DWIN64 /D_WIN64 /I$(INCD)
+CFLAGS   = $(CFLAGS) -DWIN64 -D_WIN64 -I$(INCD)
 !IF "$(CC)" == "cl"
-CFLAGS   = $(CFLAGS) /favor:blend
+CFLAGS   = $(CFLAGS) -favor:blend
 !ENDIF
 !ELSEIF "$(PLATFORM)"=="x86"
 BITS	 = 32
-CFLAGS   = $(CFLAGS) /DWIN32 /D_WIN32 /I$(INCD)
+CFLAGS   = $(CFLAGS) -DWIN32 -D_WIN32 -I$(INCD)
 !ELSE
 !ERROR Unknown target processor: $(PLATFORM)
 !ENDIF
 
 !IF "$(CC)" == "cl"
-AR   = lib /nologo 
-LD   = link /nologo
+AR   = lib -nologo 
+LD   = link -nologo
 !ELSEIF "$(CC)" == "clang-cl"
-AR   = llvm-lib /nologo /llvmlibthin
-LD   = lld-link /nologo
+AR   = llvm-lib -nologo -llvmlibthin
+LD   = lld-link -nologo
 CFLAGS   = -flto=thin $(CFLAGS) -Wno-unused-variable -Wno-unused-function \
            -Wno-incompatible-pointer-types
 !IF "$(BITS)" == "32"
@@ -53,15 +53,21 @@ CFLAGS   = --target=i686-pc-windows-msvc $(CFLAGS)
 !ERROR Unknown compiler
 !ENDIF
 
+!if "$(CURL_LINK)"=="1"
+CFLAGS = $(CFLAGS) -MD -DCURL_LINK=1 -Ilibcurl/include
+!ELSE
+CFLAGS = $(CFLAGS) -MT
+!ENDIF
+
 !IFNDEF MY_NO_UNICODE
-CFLAGS = $(CFLAGS) /D_UNICODE /DUNICODE
+CFLAGS = $(CFLAGS) -D_UNICODE -DUNICODE
 !ENDIF 
 
-XPCFLAGS = /D "_USING_V110_SDK71_"
-XPLFALGS = /subsystem:console,5.01
-RELEASE  = /D "NDEBUG"
-DEBUG_L  = /D "DEBUG" /D "APP_DEBUG"
-HIDE     = /subsystem:windows
+XPCFLAGS = -D "_USING_V110_SDK71_"
+XPLFALGS = -subsystem:console,5.01
+RELEASE  = -D "NDEBUG"
+DEBUG_L  = -D "DEBUG" -D "APP_DEBUG"
+HIDE     = -subsystem:windows
 
 ##############################################################################
 ##

@@ -2,20 +2,27 @@ ROOT = ..
 
 !include "$(ROOT)\system.mak"
 
-CFLAGS=/nologo /MT /W3 /WX- /wd4996 /wd4819 /O2 /Zi /Gd /D "_CRT_SECURE_NO_WARNINGS"  \
-       /D "SQLITE_OMIT_BUILTIN_TEST" /utf-8 /D "USE_ARES" $(CFLAGS) /D "COBJMACROS"
+CFLAGS = -nologo -W3 -WX- -wd4996 -wd4819 -O2 -Zi -Gd -D "_CRT_SECURE_NO_WARNINGS"  \
+         -D "SQLITE_OMIT_BUILTIN_TEST" -utf-8 -D "USE_ARES" $(CFLAGS) -D "COBJMACROS"
       
 CXXFLAGS = $(CFLAGS) /TP
 
-RFLAGS  = /nologo /D "_UNICODE" /D "UNICODE" 
+RFLAGS  = -nologo -D "_UNICODE" -D "UNICODE" 
 
-LDFLAGS = /NOLOGO /DEBUG /opt:ref /opt:icf /MACHINE:$(PLATFORM) /NODEFAULTLIB:MSVCRT /ENTRY:wmainCRTStartup
+LDFLAGS = -NOLOGO -DEBUG -opt:ref -opt:icf -MACHINE:$(PLATFORM) -ENTRY:wmainCRTStartup
 
 !IF "$(BITS)" == "32"
-LDFLAGS = /LARGEADDRESSAWARE $(LDFLAGS)
+LDFLAGS = -LARGEADDRESSAWARE $(LDFLAGS)
 !ENDIF
 
-DEP  = $(BIND)\libcurl.lib  $(BIND)\zlib.lib $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\lib7z.lib
+!IF "$(CURL_LINK)" == "1"
+DEP  = $(BIND)\zlib.lib  $(BIND)\lib7z.lib
+!ELSE
+DEP  = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib  $(BIND)\lib7z.lib
+CFLAGS = $(CFLAGS) -DCURL_STATICLIB
+LDFLAGS = -NODEFAULTLIB:MSVCRT $(LDFLAGS)
+!ENDIF
+
 LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib
 
 !if "$(APP_DEBUG)"=="1"
@@ -44,10 +51,10 @@ OBJS = \
 .SUFFIXES: .cpp .cc .c .h .obj
 
 .c{$(OBJD)}.obj:
-    $(CC) $(CFLAGS) /Fd$(BIND)\upcheck$(BITS).pdb /Fo$(OBJD)\ /c $<
-    
+    $(CC) $(CFLAGS) -Fd$(BIND)\upcheck$(BITS).pdb -Fo$(OBJD)\ -c $<
+
 .rc{$(OBJD)}.res:
-    $(RC) $(RFLAGS) /Fo$@ $<
+    $(RC) $(RFLAGS) -Fo$@ $<
     
 ##############################################################################
 

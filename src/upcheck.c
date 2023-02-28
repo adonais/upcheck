@@ -1,7 +1,3 @@
-#ifndef CURL_STATICLIB
-#define CURL_STATICLIB
-#endif
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -291,23 +287,23 @@ curl_set_cookies(CURL *curl)
     if (strlen(file_info.referer) > 1)
     {
         char cookies[COOKE_LEN + 1] = { 0 };
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
-        curl_easy_setopt(curl, CURLOPT_REFERER, file_info.referer);
+        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
+        euapi_curl_easy_setopt(curl, CURLOPT_REFERER, file_info.referer);
         if (!parse_baidu_cookies(cookies, COOKE_LEN))
         {
             _snprintf(file_info.cookies, COOKE_LEN, "%s", cookies);
-            curl_easy_setopt(curl, CURLOPT_COOKIE, file_info.cookies);
+            euapi_curl_easy_setopt(curl, CURLOPT_COOKIE, file_info.cookies);
         }
     }
     else if (strlen(file_info.cookies) > 1)
     {
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
-        curl_easy_setopt(curl, CURLOPT_COOKIEFILE, file_info.cookies);
+        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
+        euapi_curl_easy_setopt(curl, CURLOPT_COOKIEFILE, file_info.cookies);
     }
     else
     {
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.34.0");
-        curl_easy_setopt(curl, CURLOPT_COOKIE, "");
+        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.34.0");
+        euapi_curl_easy_setopt(curl, CURLOPT_COOKIE, "");
     }
 }
 
@@ -488,7 +484,7 @@ download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
     return written;
 }
 
-int
+static int
 sets_progress_func(void *ptr, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
     if (total_size > 0)
@@ -503,20 +499,20 @@ sets_progress_func(void *ptr, curl_off_t dltotal, curl_off_t dlnow, curl_off_t u
     return 0;
 }
 
-unsigned WINAPI
+static unsigned WINAPI
 run_thread(void *pdata)
 {
     int i = 0;
     curl_node *pnode = (curl_node *) pdata;
     do
     {
-        CURL *curl = curl_easy_init();
+        CURL *curl = euapi_curl_easy_init();
         if (curl)
         {
             CURLcode res = CURLE_OK;
             char *m_ranges = NULL;
-            curl_easy_setopt(curl, CURLOPT_URL, pnode->url);
-            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+            euapi_curl_easy_setopt(curl, CURLOPT_URL, pnode->url);
+            euapi_curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
             if (total_size > 0)
             {
                 if ((m_ranges = SYS_MALLOC(FILE_LEN)) == NULL)
@@ -524,43 +520,43 @@ run_thread(void *pdata)
                     break;
                 }
                 _snprintf(m_ranges, FILE_LEN, "%I64d-%I64d", pnode->startidx, pnode->endidx);
-                curl_easy_setopt(curl, CURLOPT_RANGE, m_ranges);
+                euapi_curl_easy_setopt(curl, CURLOPT_RANGE, m_ranges);
                 printf("\n[%s] setup \n", m_ranges);
                 curl_set_cookies(curl);
-                curl_easy_setopt(curl, CURLOPT_SHARE, pnode->share);
+                euapi_curl_easy_setopt(curl, CURLOPT_SHARE, pnode->share);
             }
             if (m_ranges)
             {
                 SYS_FREE(m_ranges);
             }
             // 设置重定向的最大次数,301、302跳转跟随location
-            curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5);
-            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+            euapi_curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5);
+            euapi_curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
         #if defined(USE_ARES)
-            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+            euapi_curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
         #else
             // 禁用掉alarm信号，防止多线程中使用超时崩溃
-            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+            euapi_curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
         #endif
             // 关掉CLOSE_WAIT
-            curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
-            curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
-            //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-            //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-            curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, CURLSSLOPT_AUTO_CLIENT_CERT | CURLSSLOPT_NO_REVOKE);
-            curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
-            curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+            euapi_curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
+            euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+            euapi_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
+            euapi_curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
+            //euapi_curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+            //euapi_curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+            euapi_curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
+            euapi_curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+            euapi_curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
         #if defined(APP_DEBUG)
-            curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
-            curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+            euapi_curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
+            euapi_curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
         #endif
-            curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
-            curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
-            curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
-            res = curl_easy_perform(curl);
-            curl_easy_cleanup(curl);
+            euapi_curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
+            euapi_curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
+            euapi_curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
+            res = euapi_curl_easy_perform(curl);
+            euapi_curl_easy_cleanup(curl);
             if (res == CURLE_WRITE_ERROR)
             {
                 printf("\nerror:failed writing received data to disk\n");
@@ -586,7 +582,7 @@ run_thread(void *pdata)
             }
             else
             {
-                const char *err_string = curl_easy_strerror(res);
+                const char *err_string = euapi_curl_easy_strerror(res);
                 printf("\ndownload error: %s\n\nurl = %s\n", err_string, pnode->url);
                 pnode->error = true;
             }
@@ -605,31 +601,31 @@ run_thread(void *pdata)
 static bool
 get_file_lenth(const char *url, int64_t *file_len)
 {
-    CURLcode res = CURLE_OK;
+    CURLcode res = CURLE_FAILED_INIT;
     dnld_params_t dnld_params;
     CURL *handle = NULL;
-    if ((handle = curl_easy_init()) != NULL)
+    if ((handle = euapi_curl_easy_init()) != NULL)
     {
         memset(&dnld_params, 0, sizeof(dnld_params));
-        curl_easy_setopt(handle, CURLOPT_URL, url);
-        curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "");
-        curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, "HEAD");
-        curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, curl_header_parse);
-        curl_easy_setopt(handle, CURLOPT_HEADERDATA, &dnld_params);
+        euapi_curl_easy_setopt(handle, CURLOPT_URL, url);
+        euapi_curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "");
+        euapi_curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, "HEAD");
+        euapi_curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, curl_header_parse);
+        euapi_curl_easy_setopt(handle, CURLOPT_HEADERDATA, &dnld_params);
         // 设置链接超时
-        curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 120L);
-        curl_easy_setopt(handle, CURLOPT_TIMEOUT, 180L);
+        euapi_curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 120L);
+        euapi_curl_easy_setopt(handle, CURLOPT_TIMEOUT, 180L);
         curl_set_cookies(handle);
-        curl_easy_setopt(handle, CURLOPT_SSL_OPTIONS, CURLSSLOPT_AUTO_CLIENT_CERT | CURLSSLOPT_NO_REVOKE);
-        curl_easy_setopt(handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+        euapi_curl_easy_setopt(handle, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
+        euapi_curl_easy_setopt(handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
         // 设置重定向的最大次数
-        curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 3L);
+        euapi_curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 3L);
         // 设置301、302跳转跟随location
-        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
+        euapi_curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
         //不需要body, 只需要header头
-        curl_easy_setopt(handle, CURLOPT_NOBODY, 1);
-        curl_easy_setopt(handle, CURLOPT_HEADER, 1);
-        if ((res = curl_easy_perform(handle)) == CURLE_OK)
+        euapi_curl_easy_setopt(handle, CURLOPT_NOBODY, 1);
+        euapi_curl_easy_setopt(handle, CURLOPT_HEADER, 1);
+        if ((res = euapi_curl_easy_perform(handle)) == CURLE_OK)
         {
             if (dnld_params.file_len[0])
             {
@@ -643,11 +639,11 @@ get_file_lenth(const char *url, int64_t *file_len)
         }
         else
         {
-            const char *err_string = curl_easy_strerror(res);
+            const char *err_string = euapi_curl_easy_strerror(res);
             printf("%s[%s] error: %s\n", __FUNCTION__, url, err_string);
             *file_len = 0;
         }
-        curl_easy_cleanup(handle);
+        euapi_curl_easy_cleanup(handle);
     }
     return (res == CURLE_OK);
 }
@@ -759,20 +755,20 @@ init_resume(const char *url, int64_t length)
             res = false;
             break;
         }
-        if ((share = curl_share_init()) == NULL)
+        if ((share = euapi_curl_share_init()) == NULL)
         {
-            printf("curl_share_init error in init_resume().\n");
+            printf("euapi_curl_share_init error in init_resume().\n");
             res = false;
             break;
         }
         total_size = length;
         downloaded_size -= num;
         file_info.thread_num = num;
-        curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
-        curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
-        curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
-        curl_share_setopt(share, CURLSHOPT_LOCKFUNC, lock_cb);
-        curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, unlock_cb);
+        euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+        euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+        euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+        euapi_curl_share_setopt(share, CURLSHOPT_LOCKFUNC, lock_cb);
+        euapi_curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, unlock_cb);
         for (i = 0; i < file_info.thread_num; i++)
         {
             m_node[i].fp = fp;
@@ -809,7 +805,7 @@ init_resume(const char *url, int64_t length)
     }
     if (share)
     {
-        curl_share_cleanup(share);
+        euapi_curl_share_cleanup(share);
     }
     return res;
 }
@@ -950,20 +946,20 @@ init_download(const char *url, int64_t length)
         {
             file_info.thread_num = MAX_THREAD;
         }
-        share = curl_share_init();
+        share = euapi_curl_share_init();
         if (NULL == share)
         {
-            printf("curl_share_init() error.\n");
+            printf("euapi_curl_share_init() error.\n");
             m_error = true;
             break;
         }
         else
         {
-            curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
-            curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
-            curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
-            curl_share_setopt(share, CURLSHOPT_LOCKFUNC, lock_cb);
-            curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, unlock_cb);
+            euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+            euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+            euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+            euapi_curl_share_setopt(share, CURLSHOPT_LOCKFUNC, lock_cb);
+            euapi_curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, unlock_cb);
         }
         for (i = 0; i < file_info.thread_num; i++)
         {
@@ -1014,7 +1010,7 @@ init_download(const char *url, int64_t length)
     }
     if (share != NULL)
     {
-        curl_share_cleanup(share);
+        euapi_curl_share_cleanup(share);
     }
     if (m_error)
     {
@@ -1036,7 +1032,7 @@ init_download(const char *url, int64_t length)
     return (!m_error);
 }
 
-void
+static void
 remove_files(LPCWSTR dir)
 {
 #define EXE_NUM 16
@@ -1066,7 +1062,7 @@ remove_files(LPCWSTR dir)
 #undef EXE_NUM
 }
 
-HANDLE WINAPI
+static HANDLE
 create_new(LPCWSTR wcmd, const LPCWSTR pcd, int flags, DWORD *opid)
 {
     PROCESS_INFORMATION pi;
@@ -1326,21 +1322,21 @@ wmain(int argc, wchar_t **argv)
     int argn = 0;
     bool result = false;
     wchar_t **wargv = NULL;
-	const HMODULE hlib = GetModuleHandleW(L"kernel32.dll");
-	SetDllDirectoryW(L"");
-	if (hlib)
-	{
-	    typedef BOOL (WINAPI * SSPM) (DWORD);
-	    const SSPM fnSetSearchPathMode = (SSPM)GetProcAddress (hlib, "SetSearchPathMode");
-	    if (fnSetSearchPathMode)
-	    {
-	  	    fnSetSearchPathMode(BASE_SEARCH_PATH_ENABLE_SAFE_SEARCHMODE | BASE_SEARCH_PATH_PERMANENT);
-	    }
-	}
-	if (!(wargv = CommandLineToArgvW(GetCommandLine(), &argn)))
-	{
-	    return -1;
-	}
+    const HMODULE hlib = GetModuleHandleW(L"kernel32.dll");
+    SetDllDirectoryW(L"");
+    if (hlib)
+    {
+        typedef BOOL (WINAPI * SSPM) (DWORD);
+        const SSPM fnSetSearchPathMode = (SSPM)GetProcAddress (hlib, "SetSearchPathMode");
+        if (fnSetSearchPathMode)
+        {
+            fnSetSearchPathMode(BASE_SEARCH_PATH_ENABLE_SAFE_SEARCHMODE | BASE_SEARCH_PATH_PERMANENT);
+        }
+    }
+    if (!(wargv = CommandLineToArgvW(GetCommandLine(), &argn)))
+    {
+        return -1;
+    }
     if (argn < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
         printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.8\n",
@@ -1415,10 +1411,17 @@ wmain(int argc, wchar_t **argv)
             return 0;
         }
     }
-    curl_global_init(CURL_GLOBAL_DEFAULT);
     do
     {
         int64_t length = 0;
+        if (!libcurl_init())
+        {
+            *file_info.ini = '\0';
+            *file_info.process = L'\0';
+            printf("Can not load curl.dll\n");
+            break;
+        }
+        euapi_curl_global_init(CURL_GLOBAL_DEFAULT);
         if (file_info.up || file_info.handle > 0) // 执行升级任务
         {
             update_task();
@@ -1462,6 +1465,10 @@ wmain(int argc, wchar_t **argv)
             *file_info.ini = '\0';
             break;
         }
+        else
+        {
+            printf("get_file_lenth ok, length = %I64d\n", length);
+        }
         if ((result = curl_task(length)) == false) // 开始下载任务
         {
             break;
@@ -1482,7 +1489,11 @@ wmain(int argc, wchar_t **argv)
             msg_tips();
         }
     } while (0);
-    curl_global_cleanup();
+    if (euapi_curl_global_cleanup)
+    {
+        euapi_curl_global_cleanup();
+    }
+    libcurl_destory();
     if (file_info.cookie_handle > 0)
     {
         CloseHandle(file_info.cookie_handle);
@@ -1493,7 +1504,9 @@ wmain(int argc, wchar_t **argv)
     }
     if (wcslen(file_info.process) > 1)
     {
+    #ifndef CURL_LINK
         SetEnvironmentVariableW(L"LIBPORTABLE_UPCHECK_LAUNCHER_PROCESS", L"1");
+    #endif
         CloseHandle(create_new(file_info.process, NULL, 2, NULL));
     }
     return 0;

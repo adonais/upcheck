@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-extern int __stdcall extract7z(LPCWSTR srcFile, LPCWSTR dstPath);
+extern int extract7z(LPCWSTR srcFile, LPCWSTR dstPath);
 
 #ifdef __cplusplus
 }

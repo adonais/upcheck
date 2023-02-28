@@ -23,41 +23,46 @@ ROOT = ..\..
 !include "$(ROOT)\system.mak"
 
 STATICLIB = $(BIND)\lib$(NAME).lib
-CFLAGS = /nologo /O2 /DNDEBUG /MT /DCURL_STATICLIB /I. /Isrc /Iinclude /W4 /wd4127 /EHsc /c \
-         /Zi -Fd"$(BIND)\libcurl" /DBUILDING_LIBCURL /D_WIN32_WINNT=0x0600 \
-        -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
-RC_CMD_REL = rc.exe /l 0x409 /d "NDEBUG"
-LINK_CMD_LIB = link.exe /lib /nologo
+CFLAGS = -nologo -O2 -DCURL_STATICLIB -I. -Isrc -Iinclude -W4 -wd4127 -EHsc -c \
+         -Zi -Fd"$(BIND)\libcurl" -DBUILDING_LIBCURL -D_WIN32_WINNT=0x0600 \
+         -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
+RC_CMD_REL = rc.exe -l 0x409 -d "NDEBUG"
+LINK_CMD_LIB = link.exe -lib -nologo
+!if "$(APP_DEBUG)"=="1"
+CFLAGS = $(CFLAGS) $(DEBUG_L)
+!ELSE
+CFLAGS = $(CFLAGS) $(RELEASE)
+!ENDIF
 
 !IFDEF USE_ZLIB
-CFLAGS = $(CFLAGS) /DHAVE_ZLIB_H /DHAVE_ZLIB /DHAVE_LIBZ $(ADDITIONAL_ZLIB_CFLAGS) /I..\..\libz\src
+CFLAGS = $(CFLAGS) -DHAVE_ZLIB_H -DHAVE_ZLIB -DHAVE_LIBZ $(ADDITIONAL_ZLIB_CFLAGS) -I..\..\libz\src
 !ENDIF 
 
 !IFDEF USE_CARES
-CFLAGS   = $(CFLAGS) /DUSE_ARES /I..\..\libc-ares\src
+CFLAGS   = $(CFLAGS) -DUSE_ARES -I..\..\libc-ares\src
 !ENDIF
 
 !IFDEF USE_NGHTTP2
-CFLAGS   = $(CFLAGS) /DUSE_NGHTTP2 /DNGHTTP2_STATICLIB /I..\..\libngttp2\src
+CFLAGS   = $(CFLAGS) -DUSE_NGHTTP2 -DNGHTTP2_STATICLIB -I..\..\libngttp2\src
 !ENDIF
 
 !IF "$(USE_IPV6)"=="true"
-CFLAGS = $(CFLAGS) /DUSE_IPV6
+CFLAGS = $(CFLAGS) -DUSE_IPV6
 !ENDIF
 
 !IF "$(USE_SSPI)"=="true"
-CFLAGS = $(CFLAGS) /DUSE_WINDOWS_SSPI
+CFLAGS = $(CFLAGS) -DUSE_WINDOWS_SSPI
 !ENDIF
 
 !IF "$(USE_SSPI)"=="true"
-CFLAGS = $(CFLAGS) /DUSE_WIN32_IDN /DWANT_IDN_PROTOTYPES
+CFLAGS = $(CFLAGS) -DUSE_WIN32_IDN -DWANT_IDN_PROTOTYPES
 !ENDIF
 
 !IF "$(USE_WINSSL)"=="true"
 !IF "$(USE_SSPI)"!="true"
 !ERROR cannot build with WinSSL without SSPI
 !ENDIF
-CFLAGS = $(CFLAGS) /DUSE_SCHANNEL
+CFLAGS = $(CFLAGS) -DUSE_SCHANNEL
 !ENDIF
 
 # ----------------------------------------
@@ -71,17 +76,17 @@ SRCDIR = .\src
 # -------------------------------------------------
 
 !IF $(CC_VERS_NUM) == 60
-PDB_NONE            = /pdb:none
-PDBTYPE_CONSOLIDATE = /pdbtype:consolidate
+PDB_NONE            = -pdb:none
+PDBTYPE_CONSOLIDATE = -pdbtype:consolidate
 !ELSE
 !UNDEF PDB_NONE
 !UNDEF PDBTYPE_CONSOLIDATE
 !ENDIF
 
 !IF $(CC_VERS_NUM) <= 70
-RT_ERROR_CHECKING = /GZ
+RT_ERROR_CHECKING = -GZ
 !ELSE
-RT_ERROR_CHECKING = /RTCsu
+RT_ERROR_CHECKING = -RTCsu
 !ENDIF
 
 # ----------------------------
@@ -259,23 +264,23 @@ OBJS = \
 .SUFFIXES: .c .rc
 
 {$(SRCDIR)}.rc{$(OBJD)\libcurl}.res:
-    $(RC_CMD_REL) /Fo $@ $<
+    $(RC_CMD_REL) -Fo $@ $<
 
 {$(SRCDIR)}.c{$(OBJD)\libcurl}.obj:
-    $(CC) $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) -Fo$@ -c $<
     
 {$(SRCDIR)\vauth}.c{$(OBJD)\libcurl\vauth}.obj:
-    $(CC) $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) -Fo$@ -c $<
     	
 {$(SRCDIR)\vquic}.c{$(OBJD)\libcurl\vquic}.obj:
-    $(CC) $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) -Fo$@ -c $<
     	
 {$(SRCDIR)\vssh}.c{$(OBJD)\libcurl\vssh}.obj:
-    $(CC) $(CFLAGS) /Fo$@ /c $<    	    	
+    $(CC) $(CFLAGS) -Fo$@ -c $<    	    	
  
 {$(SRCDIR)\vtls}.c{$(OBJD)\libcurl\vtls}.obj:
-    $(CC) $(CFLAGS) /Fo$@ /c $<
-        
+    $(CC) $(CFLAGS) -Fo$@ -c $<
+
 # ---------------------------------------------------------------------
 # Targets only available when a proper CFG library type has been given
 # ---------------------------------------------------------------------
@@ -294,10 +299,10 @@ dirs:
 
 $(STATICLIB): $(OBJS)
 	$(AR) $(ARFLAGS) -out:$@ $(OBJS)
-	
+
 $(INCD)\curl : include\curl\curl.h
-    @xcopy include\curl\* $@ /y /e /i /q
-    
+	@xcopy include\curl\* $@ /y /e /i /q
+
 # cleanup
 clean:
 	-del /q $(STATICLIB) 2>nul

@@ -188,7 +188,7 @@ DialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return FALSE;
 }
 
-bool WINAPI
+bool
 set_ui_strings(void)
 {
     char *names = NULL;

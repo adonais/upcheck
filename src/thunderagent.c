@@ -501,7 +501,7 @@ str_bstr(LPCSTR str)
     return bstr;
 }
 
-BOOL WINAPI
+BOOL
 thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
 {
     HRESULT hr = 1;
@@ -511,10 +511,10 @@ thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
     {
         return FALSE;
     }
-	printf("url = %s\n", b_url);
-	do 
-	{
-	    int ret = 0;
+    printf("url = %s\n", b_url);
+    do 
+    {
+        int ret = 0;
         CoInitialize(NULL);
         hr = CoCreateInstance(&CLSID_Agent, NULL, CLSCTX_INPROC_SERVER, &IID_IAgent2, (void **) &pAgent);
         if (FAILED(hr) || pAgent == NULL)
@@ -536,25 +536,25 @@ thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
             printf("IAgent2_AddTask2 error, cause: %lu\n", GetLastError());
             break;
         }
-        hr = IAgent2_CommitTasks2(pAgent, 1, &ret);	    
+        hr = IAgent2_CommitTasks2(pAgent, 1, &ret);        
         if (FAILED(hr))
         {
             printf("IAgent2_CommitTasks2 error, cause: %lu\n", GetLastError());
         }
         printf("ret = %d\n", ret); 
-	} while(0);
-	if (url)
-	{
-	    SysFreeString(url);
-	}
-	if (refer)
-	{
-	    SysFreeString(refer);
-	}
-	if (cookies)
-	{
-	    SysFreeString(cookies);
-	}		    
+    } while(0);
+    if (url)
+    {
+        SysFreeString(url);
+    }
+    if (refer)
+    {
+        SysFreeString(refer);
+    }
+    if (cookies)
+    {
+        SysFreeString(cookies);
+    }            
     if (pAgent)
     {
         IAgent2_Release(pAgent);

@@ -15,11 +15,13 @@ ROOT = ..\..
 # --------------------------
 CARES_OBJDIR = $(OBJD)\libcares
 STATICLIB = $(BIND)\lib$(NAME).lib
-CFLAGS = /nologo /I. /Iinclude /W3 /EHsc /DNDEBUG /O2 /Zi -Fd"$(BIND)\libcares" /DCARES_BUILDING_LIBRARY \
-         /DCARES_STATICLIB /D_WIN32_WINNT=0x0600 -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
-RC_CMD_REL = rc.exe /l 0x409 /d "NDEBUG"
-LINK_CMD_LIB = link.exe /lib /nologo
-
+CFLAGS = -nologo -I. -Iinclude -W3 -EHsc -O2 -Zi -Fd"$(BIND)\libcares" -DCARES_BUILDING_LIBRARY \
+         -DCARES_STATICLIB -D_WIN32_WINNT=0x0600 -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
+!if "$(APP_DEBUG)"=="1"
+CFLAGS = $(CFLAGS) $(DEBUG_L)
+!ELSE
+CFLAGS = $(CFLAGS) $(RELEASE)
+!ENDIF
 # ----------------------------------------
 # Subdir holding sources for all projects
 # ----------------------------------------
@@ -31,17 +33,17 @@ SRCDIR = .\src
 # -------------------------------------------------
 
 !IF $(CC_VERS_NUM) == 60
-PDB_NONE            = /pdb:none
-PDBTYPE_CONSOLIDATE = /pdbtype:consolidate
+PDB_NONE            = -pdb:none
+PDBTYPE_CONSOLIDATE = -pdbtype:consolidate
 !ELSE
 !UNDEF PDB_NONE
 !UNDEF PDBTYPE_CONSOLIDATE
 !ENDIF
 
 !IF $(CC_VERS_NUM) <= 70
-RT_ERROR_CHECKING = /GZ
+RT_ERROR_CHECKING = -GZ
 !ELSE
-RT_ERROR_CHECKING = /RTCsu
+RT_ERROR_CHECKING = -RTCsu
 !ENDIF
 
 # --------------------------------------------
@@ -67,7 +69,7 @@ CARES_OBJS = $(CARES_OBJS:.c=.obj)
 .SUFFIXES: .c
 
 {$(SRCDIR)}.c{$(CARES_OBJDIR)}.obj:
-    $(CC) $(CFLAGS) /Fo$@ /c $<
+    $(CC) $(CFLAGS) -Fo$@ -c $<
 
 # ---------------------------------------------------------------------
 # Targets only available when a proper CFG library type has been given
@@ -75,11 +77,6 @@ CARES_OBJS = $(CARES_OBJS:.c=.obj)
 
 all: dirs $(STATICLIB)      \
      $(INCD)\ares.h         \
-     $(INCD)\ares_build.h   \
-     $(INCD)\ares_dns.h     \
-     $(INCD)\ares_nameser.h \
-     $(INCD)\ares_rules.h   \
-     $(INCD)\ares_version.h \
      
 dirs:
     @if not exist "$(BIND)" mkdir "$(BIND)" && echo.   Created $(BIND)
@@ -92,23 +89,8 @@ $(STATICLIB): $(CARES_OBJS)
 	$(AR) $(ARFLAGS) -out:$@ $(CARES_OBJS)
 	
 $(INCD)\ares.h : include\ares.h
-    @copy include\ares.h $@ /y
+	@copy include\*.h $(INCD)\ /y
 
-$(INCD)\ares_build.h : include\ares_build.h
-    @copy include\ares_build.h $@ /y
-    
-$(INCD)\ares_dns.h : include\ares_dns.h
-    @copy include\ares_dns.h $@ /y
-
-$(INCD)\ares_nameser.h : include\ares_nameser.h
-    @copy include\ares_nameser.h $@ /y    
-    
-$(INCD)\ares_rules.h : include\ares_rules.h
-    @copy include\ares_rules.h $@ /y
-
-$(INCD)\ares_version.h : include\ares_version.h
-    @copy include\ares_version.h $@ /y
-    
 # cleanup
 clean:
 	-del /q $(STATICLIB) 2>nul
@@ -122,3 +104,4 @@ clean:
 	-del /q $(INCD)\ares_nameser.h 2>nul
 	-del /q $(INCD)\ares_rules.h 2>nul
 	-del /q $(INCD)\ares_version.h 2>nul
+	-rd  /s /q "$(CARES_OBJDIR)" 2>nul

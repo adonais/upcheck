@@ -4,7 +4,7 @@
 
 // str必须有足够的空间,函数会回写str,并返回str
 // 遵循RFC 2396,把空格编码成%20,而不是+
-const char* __stdcall
+const char*
 url_encode_t(char* str)
 {
     int i;
@@ -47,7 +47,7 @@ url_encode_t(char* str)
 }
 
 // 注意,函数会回写str,并返回str
-const char* __stdcall
+const char*
 url_decode_t(char* str)
 {
     int m_size=0;
@@ -66,19 +66,19 @@ url_decode_t(char* str)
     {
         return NULL;
     }  
-	while(*input)
-	{
-		if(*input == '%')
-		{
-			char buffer[3] = { input[1], input[2], 0 };
-			*result++ = (char)strtol(buffer, NULL, 16);
-			input += 3;
-		}
-		else
-		{
-			*result++ = *input++;
-		}
-	}
+    while(*input)
+    {
+        if(*input == '%')
+        {
+            char buffer[3] = { input[1], input[2], 0 };
+            *result++ = (char)strtol(buffer, NULL, 16);
+            input += 3;
+        }
+        else
+        {
+            *result++ = *input++;
+        }
+    }
     *result = 0;
     strcpy(str,output);
     free(output);

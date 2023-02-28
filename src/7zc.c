@@ -222,7 +222,7 @@ GetAttribString(UInt32 wa, bool isDir, char *s)
     s[5] = 0;
 }
 
-int WINAPI
+int
 extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
 {
     ISzAlloc allocImp;
