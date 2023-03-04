@@ -4,7 +4,7 @@ ROOT = .
 all:
     cd "$(MAKEDIR)"
 	@if exist "$(MAKEDIR)\src\zlib\Makefile" cd "$(MAKEDIR)\src\zlib" && $(MAKE)  /NOLOGO /$(MAKEFLAGS)
-!IF "$(CURL_LINK)" != "1"
+!IF "$(EUAPI_LINK)" != "1"
 	@if exist "$(MAKEDIR)\src\libcares\Makefile" cd "$(MAKEDIR)\src\libcares" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
 	@if exist "$(MAKEDIR)\src\libngttp2\Makefile" cd "$(MAKEDIR)\src\libngttp2" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
 	@if exist "$(MAKEDIR)\src\libcurl\Makefile" cd "$(MAKEDIR)\src\libcurl" && $(MAKE) /NOLOGO /$(MAKEFLAGS)

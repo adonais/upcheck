@@ -20,21 +20,21 @@ url_encode_t(char* str)
     if ((result = (char *)malloc(3*m_size)) == NULL)
     {
         return NULL;
-    }        
-    for (i=0; i<m_size; ++i) 
+    }
+    for (i=0; i<m_size; ++i)
     {
         ch = str[i];
         if (((ch>='A') && (ch<='Z')) ||
             ((ch>='a') && (ch<='z')) ||
-            ((ch>='0') && (ch<='9'))) 
+            ((ch>='0') && (ch<='9')))
         {
             result[j++] = ch;
         }
-        else if (ch == '.' || ch == '-' || ch == '_' || ch == '*') 
+        else if (ch == '.' || ch == '-' || ch == '_' || ch == '*')
         {
             result[j++] = ch;
-        } 
-        else 
+        }
+        else
         {
             sprintf(result+j, "%%%02X", (unsigned char)ch);
             j += 3;
@@ -65,7 +65,7 @@ url_decode_t(char* str)
     if ((output = result = (char *)malloc(m_size+1)) == NULL)
     {
         return NULL;
-    }  
+    }
     while(*input)
     {
         if(*input == '%')

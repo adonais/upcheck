@@ -36,7 +36,7 @@
 #define SYS_MALLOC(x) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (x))
 #define SYS_FREE(x) (HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, (x)), (x = NULL))
 
-#if CURL_LINK
+#if EUAPI_LINK
 #define EUAPI_CERT CURLSSLOPT_NATIVE_CA
 #else
 #define EUAPI_CERT CURLSSLOPT_AUTO_CLIENT_CERT
@@ -47,25 +47,27 @@ extern "C" {
 #endif
 typedef struct _file_info_t
 {
-    HANDLE handle;
-    HANDLE cookie_handle;
-    WCHAR  names[MAX_PATH+1];
-    WCHAR  process[MAX_PATH+1];
-    WCHAR  unzip_dir[MAX_PATH+1];
-    WCHAR  del[VALUE_LEN+1];
-    char   ini[MAX_PATH+1];
-    char   referer[VALUE_LEN+1];
-    char   remote_names[MAX_PATH+1];
-    char   cookies[COOKE_LEN+1];
-    char   md5[MD5_LEN+1];
-    char   url[URL_LEN+1];
-    int    thread_num;
-    void   *sql;
-    bool   use_thunder;
-    bool   extract;
-    bool   re_bind;
-    DWORD  pid;
-    bool   up;
+    HANDLE   handle;
+    HANDLE   cookie_handle;
+    WCHAR    names[MAX_PATH+1];
+    WCHAR    process[MAX_PATH+1];
+    WCHAR    unzip_dir[MAX_PATH+1];
+    WCHAR    del[VALUE_LEN+1];
+    HWND     remote_hwnd;
+    void     *sql;
+    uint32_t pid;
+    int      thread_num;
+    char     remote_names[MAX_PATH+1];
+    char     ini_uri[MAX_PATH+1];
+    char     referer[VALUE_LEN+1];
+    char     cookies[COOKE_LEN+1];
+    char     md5[MD5_LEN+1];
+    char     ini[MAX_PATH+1];
+    char     url[URL_LEN+1];
+    bool     use_thunder;
+    bool     extract;
+    bool     re_bind;
+    bool     up;
 } file_info_t;
 
 typedef struct _sql_node

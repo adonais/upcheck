@@ -10,14 +10,14 @@ extern "C" {
 
 typedef enum
 {
-    CHR_UNKOWN,
+    CHR_UNKOWN = 0,
     CHR_WIN,
     CHR_UNIX
 } str_line;
 
 typedef enum
 {
-    E_OTHER,
+    E_OTHER = 0,
     E_ANSI,
     E_UNICODE,
     E_UNICODE_BIG,
@@ -39,6 +39,8 @@ typedef struct _list
     FILE *pf;
     node *pd;
 } ini_list, *ini_cache;
+
+#define ini_safe_free(p) ((p) ? ((free((void *)(p))), ((p) = NULL)) : (void *)(p))
 
 extern bool ini_foreach_key(const char *sec, char (*lpdata)[129], const int line, const char *path);
 extern bool ini_foreach_wkey(const char *sec, wchar_t (*lpdata)[129], const int line, const char *path);
@@ -62,13 +64,13 @@ extern ini_cache iniparser_create_cache(const char *ini, bool write_access);
 extern void iniparser_destroy_cache(ini_cache *li);
 extern int  inicache_read_int(const char *sec, const char *key, ini_cache *ini);
 extern int  ini_read_int(const char *sec, const char *key, const char *path);
-extern char*utf16_to_utf8(const wchar_t *utf16);
-extern char* utf16_to_mbcs(const wchar_t *utf16);
-extern wchar_t* mbcs_to_utf16(const char *ansi);
-extern char* mbcs_to_utf8(const char *ansi);
-extern wchar_t* utf8_to_utf16(const char *utf8);
-extern char* utf8_to_mbcs(const char *utf8);
-
+extern char* ini_utf16_utf8(const wchar_t *utf16, size_t *out_len);
+extern char* ini_utf16_mbcs(int codepage, const wchar_t *utf16, size_t *out_len);
+extern wchar_t* ini_mbcs_utf16(int codepage, const char *ansi, size_t *out_len);
+extern char* ini_mbcs_utf8(int codepage, const char *ansi, size_t *out_len);
+extern wchar_t* ini_utf8_utf16(const char *utf8, size_t *out_len);
+extern char* ini_utf8_mbcs(int codepage, const char *utf8, size_t *out_len);
+extern char* ini_make_u8(const wchar_t *utf16, char *utf8, int len);
 #ifdef __cplusplus
 }
 #endif

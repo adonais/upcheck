@@ -103,8 +103,8 @@ SQLITE_API int SQLITE_STDCALL sqlite3_exec(
 #define SQLITE_FORMAT      24   /* Auxiliary database format error */
 #define SQLITE_RANGE       25   /* 2nd parameter to sqlite3_bind out of range */
 #define SQLITE_NOTADB      26   /* File opened that is not a database file */
-#define SQLITE_NOTICE      27 
-#define SQLITE_WARNING     28   
+#define SQLITE_NOTICE      27
+#define SQLITE_WARNING     28
 #define SQLITE_ROW         100  /* sqlite3_step() has another row ready */
 #define SQLITE_DONE        101  /* sqlite3_step() has finished executing */
 /* end-of-error-codes */
@@ -568,7 +568,7 @@ SQLITE_API int SQLITE_STDCALL sqlite3_reset(sqlite3_stmt *pStmt);
 #define SQLITE_UTF16BE        3    /* IMP: R-51971-34154 */
 #define SQLITE_UTF16          4    /* Use native byte order */
 #define SQLITE_ANY            5    /* Deprecated */
-#define SQLITE_UTF16_ALIGNED  8    
+#define SQLITE_UTF16_ALIGNED  8
 
 #define SQLITE_DETERMINISTIC    0x800
 
@@ -692,7 +692,7 @@ struct sqlite3_module {
                        void (**pxFunc)(sqlite3_context*,int,sqlite3_value**),
                        void **ppArg);
   int (*xRename)(sqlite3_vtab *pVtab, const char *zNew);
-  /* The methods above are in version 1 of the sqlite_module object. Those 
+  /* The methods above are in version 1 of the sqlite_module object. Those
   ** below are for version 2 and greater. */
   int (*xSavepoint)(sqlite3_vtab *pVTab, int);
   int (*xRelease)(sqlite3_vtab *pVTab, int);
@@ -878,7 +878,7 @@ struct sqlite3_pcache_methods2 {
   int (*xPagecount)(sqlite3_pcache*);
   sqlite3_pcache_page *(*xFetch)(sqlite3_pcache*, unsigned key, int createFlag);
   void (*xUnpin)(sqlite3_pcache*, sqlite3_pcache_page*, int discard);
-  void (*xRekey)(sqlite3_pcache*, sqlite3_pcache_page*, 
+  void (*xRekey)(sqlite3_pcache*, sqlite3_pcache_page*,
       unsigned oldKey, unsigned newKey);
   void (*xTruncate)(sqlite3_pcache*, unsigned iLimit);
   void (*xDestroy)(sqlite3_pcache*);
@@ -932,7 +932,7 @@ SQLITE_API int SQLITE_STDCALL sqlite3_vtab_on_conflict(sqlite3 *);
 #define SQLITE_SCANSTAT_EST      2
 #define SQLITE_SCANSTAT_NAME     3
 #define SQLITE_SCANSTAT_EXPLAIN  4
-#define SQLITE_SCANSTAT_SELECTID 5   
+#define SQLITE_SCANSTAT_SELECTID 5
 
 #ifdef SQLITE_OMIT_FLOATING_POINT
 # undef double

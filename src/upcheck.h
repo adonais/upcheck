@@ -15,6 +15,14 @@
 #define fseek _fseeki64
 #endif
 
+#if defined(_WIN64) || defined(_M_X64)
+#define _wtoiz _wtoi64
+#define _atoiz _atoi64
+#else
+#define _wtoiz _wtoi
+#define _atoiz atoi
+#endif
+
 #define ABORT(...) (fprintf(stderr, __VA_ARGS__), exit(-1))
 #define VERIFY(x) (void)((x) || (ABORT("failed assert(%s): %s:%d\n", #x, __FILE__, __LINE__), 0))
 

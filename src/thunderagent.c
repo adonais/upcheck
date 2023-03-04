@@ -481,7 +481,7 @@ extern "C"
 
 #endif /* __ThunderAgentLib_LIBRARY_DEFINED__ */
 /* printf macro */
-#include "spinlock.h" 
+#include "spinlock.h"
 
 static BSTR
 str_bstr(LPCSTR str)
@@ -512,7 +512,7 @@ thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
         return FALSE;
     }
     printf("url = %s\n", b_url);
-    do 
+    do
     {
         int ret = 0;
         CoInitialize(NULL);
@@ -536,12 +536,12 @@ thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
             printf("IAgent2_AddTask2 error, cause: %lu\n", GetLastError());
             break;
         }
-        hr = IAgent2_CommitTasks2(pAgent, 1, &ret);        
+        hr = IAgent2_CommitTasks2(pAgent, 1, &ret);
         if (FAILED(hr))
         {
             printf("IAgent2_CommitTasks2 error, cause: %lu\n", GetLastError());
         }
-        printf("ret = %d\n", ret); 
+        printf("ret = %d\n", ret);
     } while(0);
     if (url)
     {
@@ -554,7 +554,7 @@ thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
     if (cookies)
     {
         SysFreeString(cookies);
-    }            
+    }
     if (pAgent)
     {
         IAgent2_Release(pAgent);

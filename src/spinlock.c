@@ -40,7 +40,7 @@ ini_read_uint64(const char *sec, const char *key, const char *ini)
     return result;
 }
 
-void 
+void
 wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
 {
     LPWSTR   lp = NULL;
@@ -57,8 +57,8 @@ wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
     return;
 }
 
-bool 
-exists_dir(LPCWSTR path) 
+bool
+exists_dir(LPCWSTR path)
 {
     DWORD fileattr = GetFileAttributesW(path);
     if (fileattr != INVALID_FILE_ATTRIBUTES)
@@ -68,7 +68,7 @@ exists_dir(LPCWSTR path)
     return false;
 }
 
-bool 
+bool
 create_dir(LPCWSTR dir)
 {
     LPWSTR p = NULL;
@@ -245,7 +245,7 @@ find_local_str(char *result, int len)
 }
 
 /* 将hex编码的MD5转换成字符串 */
-static void 
+static void
 md5_to_str(byte* in_md5_hex, char* out_md5_str)
 {
     int i = 0;
@@ -256,7 +256,7 @@ md5_to_str(byte* in_md5_hex, char* out_md5_str)
     out_md5_str[MD5_DIGEST_LENGTH * 2] = '\0';
 }
 
-bool 
+bool
 get_file_md5(LPCWSTR path, char* md5_str)
 {
     bool res = false;
@@ -270,20 +270,20 @@ get_file_md5(LPCWSTR path, char* md5_str)
     #define MD5_SIZE 1024*1000*10
         DWORD cbRead;
         DWORD dwHashLen=sizeof(DWORD);
-        
+
         hFile=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
         if (hFile==INVALID_HANDLE_VALUE)                                        //如果CreateFile调用失败
         {
             printf("CreateFile error : %lu\n", GetLastError());
             return false;
         }
-        
+
         if(!CryptAcquireContext(&hProv,NULL,NULL,PROV_RSA_FULL,CRYPT_VERIFYCONTEXT))       //获得CSP中一个密钥容器的句柄
         {
             printf("CryptAcquireContext error : %lu\n", GetLastError());
             break;
         }
-        
+
         if(!CryptCreateHash(hProv,CALG_MD5,0,0,&hHash))     //初始化对数据流的hash，创建并返回一个与CSP的hash对象相关的句柄
         {
             printf("CryptCreateHash error : %lu\n", GetLastError());
@@ -334,7 +334,7 @@ get_file_md5(LPCWSTR path, char* md5_str)
     }
     if (hFile)
     {
-        CloseHandle(hFile); 
+        CloseHandle(hFile);
     }
     if (rgbFile)
     {
@@ -374,7 +374,7 @@ merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name)
         while((rc1 = fread(buf, 1, BUFSIZE, fp1)) != 0)
         {
             fwrite(buf, 1, rc1, fp3);
-        } 
+        }
         while((rc2 = fread(buf, 1, BUFSIZE, fp2)) != 0)
         {
             fwrite(buf, 1, rc2, fp3);
@@ -408,7 +408,7 @@ get_files_lenth(LPCWSTR path, int64_t *psize)
     return true;
 }
 
-bool 
+bool
 exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
 {
     bool res = false;
@@ -416,7 +416,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
     STARTUPINFOW si;
     DWORD dw = 0;
     WCHAR *wdir = NULL;
-    WCHAR *process = utf8_to_utf16(cmd);
+    WCHAR *process = ini_utf8_utf16(cmd, NULL);
     if (!process)
     {
         return false;
@@ -425,7 +425,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
     {
         if (NULL != pcd)
         {
-            wdir = utf8_to_utf16(pcd);
+            wdir = ini_utf8_utf16(pcd, NULL);
             if (!wdir)
             {
                 break;
@@ -450,7 +450,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
                           false,
                           dw,
                           NULL,
-                          wdir,   
+                          wdir,
                           &si,&pi))
         {
             printf("CreateProcessw error %lu\n", GetLastError());
@@ -460,7 +460,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
         {
             res = true;
         }
-        CloseHandle(pi.hProcess);        
+        CloseHandle(pi.hProcess);
     }while(0);
     if (wdir)
     {
@@ -469,7 +469,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
     if (process)
     {
         free(process);
-    }    
+    }
     return res;
 }
 
@@ -508,7 +508,7 @@ search_process(LPCWSTR names)
     if (!Process32FirstW(hSnapshot,&pe32))
     {
         return false;
-    }        
+    }
     do
     {
         if (!_wcsicmp(pe32.szExeFile, names) && pe32.th32ProcessID != GetCurrentProcessId())
@@ -567,16 +567,16 @@ get_process_path(WCHAR *path, const int len)
 bool
 libcurl_init(void)
 {
-#if defined(CURL_LINK) && CURL_LINK > 0
+#if defined(EUAPI_LINK) && EUAPI_LINK > 0
     WCHAR path[MAX_PATH + 1] = {0};
     if (!get_process_path(path, MAX_PATH)[0])
     {
         return false;
     }
-    wcsncat(path, L"\\plugins\\libcurl.dll" , MAX_PATH);
+    wcsncat(path, L"\\libcurl.dll" , MAX_PATH);
     if (!euapi_symbol && !(euapi_symbol = LoadLibraryExW(path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)))
     {
-        printf("LoadLibraryExW[%ls] failed, cause: %u\n", path, GetLastError());
+        printf("LoadLibraryExW[%ls] failed, cause: %lu\n", path, GetLastError());
         return false;
     }
     euapi_curl_global_init = (ptr_curl_global_init)GetProcAddress(euapi_symbol,"curl_global_init");

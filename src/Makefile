@@ -4,10 +4,10 @@ ROOT = ..
 
 CFLAGS = -nologo -W3 -WX- -wd4996 -wd4819 -O2 -Zi -Gd -D "_CRT_SECURE_NO_WARNINGS"  \
          -D "SQLITE_OMIT_BUILTIN_TEST" -utf-8 -D "USE_ARES" $(CFLAGS) -D "COBJMACROS"
-      
+
 CXXFLAGS = $(CFLAGS) /TP
 
-RFLAGS  = -nologo -D "_UNICODE" -D "UNICODE" 
+RFLAGS  = -nologo -D "_UNICODE" -D "UNICODE"
 
 LDFLAGS = -NOLOGO -DEBUG -opt:ref -opt:icf -MACHINE:$(PLATFORM) -ENTRY:wmainCRTStartup
 
@@ -15,7 +15,7 @@ LDFLAGS = -NOLOGO -DEBUG -opt:ref -opt:icf -MACHINE:$(PLATFORM) -ENTRY:wmainCRTS
 LDFLAGS = -LARGEADDRESSAWARE $(LDFLAGS)
 !ENDIF
 
-!IF "$(CURL_LINK)" == "1"
+!IF "$(EUAPI_LINK)" == "1"
 DEP  = $(BIND)\zlib.lib  $(BIND)\lib7z.lib
 !ELSE
 DEP  = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib  $(BIND)\lib7z.lib
@@ -55,7 +55,7 @@ OBJS = \
 
 .rc{$(OBJD)}.res:
     $(RC) $(RFLAGS) -Fo$@ $<
-    
+
 ##############################################################################
 
 all: dirs $(BIND)\upcheck$(BITS).exe

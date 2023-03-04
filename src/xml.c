@@ -134,7 +134,7 @@ get_file_bits(void)
         {
             char dll[MAX_PATH+1] = {0};
             WCHAR wdll[MAX_PATH+1] = {0};
-            printf("OpenProcess(%lu) failed, cause: %lu\n", file_info.pid, GetLastError());
+            printf("OpenProcess(%u) failed, cause: %lu\n", file_info.pid, GetLastError());
             if (!init_file_strings(L"mozglue.dll", dll))
             {
                 printf("init_file_strings mozglue.dll return false\n");
@@ -254,11 +254,6 @@ ini_query(const char *ini)
 /* 连不上更新服务器或函数执行失败,返回-1 */
 /* 需要更新,返回0                        */
 /* 不需要更新,返回1                      */
-#if defined(__clang__)
-# pragma clang optimize off
-#elif defined(_MSC_VER)
-# pragma optimize("g", off)
-#endif
 int
 init_resolver(void)
 {
@@ -285,7 +280,7 @@ init_resolver(void)
     pfile = CreateFileW(temp_names, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY, NULL);
     if (pfile == INVALID_HANDLE_VALUE)
     {
-        SYS_FREE(url);
+        ini_safe_free(url);
         printf("CreateFileW temp file return false\n");
         return res;
     }
@@ -301,12 +296,7 @@ init_resolver(void)
         WideCharToMultiByte(CP_UTF8, 0, temp_names, -1, ini_names, MAX_PATH, NULL, NULL);
         res = !ini_query(ini_names);
     }
-    SYS_FREE(url);
+    ini_safe_free(url);
     DeleteFileW(temp_names);
     return res;
 }
-#if defined(__clang__)
-# pragma clang optimize on
-#elif defined(_MSC_VER)
-# pragma optimize("g", on)
-#endif

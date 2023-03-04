@@ -19,6 +19,11 @@ CFLAGS = $(CFLAGS) $(DEBUG_L)
 !ELSE
 CFLAGS = $(CFLAGS) $(RELEASE)
 !ENDIF
+
+!IF "$(CC)" == "clang-cl"
+CFLAGS   = $(CFLAGS) -Wno-deprecated-non-prototype
+!ENDIF
+
 ASFLAGS = -Zi $(LOC)
 LDFLAGS = -nologo -debug -incremental:no -opt:ref
 ARFLAGS = -nologo

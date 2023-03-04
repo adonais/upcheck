@@ -31,7 +31,7 @@ wstr_replace(LPWSTR in,size_t in_size,LPCWSTR pattern,LPCWSTR by)
     return in_ptr;
 }
 
-static void 
+static void
 remove_null_dir(LPCWSTR parent)
 {
     HANDLE h_file = NULL;
@@ -70,11 +70,11 @@ remove_null_dir(LPCWSTR parent)
             }
         }
     } while(FindNextFileW(h_file, &fd) != 0);
-    FindClose(h_file); 
+    FindClose(h_file);
     h_file = NULL;
 }
 
-static void 
+static void
 erase_dir(LPCWSTR parent)
 {
     HANDLE h_file = NULL;
@@ -95,7 +95,7 @@ erase_dir(LPCWSTR parent)
     {
         return;
     }
-    while(finded) 
+    while(finded)
     {
         finded = FindNextFileW(h_file, &fd);
         if(wcscmp(fd.cFileName, L".") && wcscmp(fd.cFileName, L".."))
@@ -112,11 +112,11 @@ erase_dir(LPCWSTR parent)
             else
             {
                 DeleteFileW(sub);
-            }            
+            }
         }
     }
-    FindClose(h_file); 
-    RemoveDirectoryW(parent); 
+    FindClose(h_file);
+    RemoveDirectoryW(parent);
     h_file = NULL;
 }
 
@@ -128,7 +128,7 @@ exist_root_dir(LPCWSTR wlog, LPWSTR root_path)
     WCHAR *pos = NULL;
     WCHAR root[MAX_PATH+1] = {0};
     WCHAR buf[MAX_PATH+1] = {0};
-    if((fp = _wfopen(wlog, L"rb")) == NULL) 
+    if((fp = _wfopen(wlog, L"rb")) == NULL)
     {
         return -1;
     }
@@ -162,11 +162,11 @@ exist_root_dir(LPCWSTR wlog, LPWSTR root_path)
         if (wcsstr(buf, L"/browser/omni.ja"))
         {
             fn_chrome = true;
-        }   
+        }
         if (wcsstr(buf, L"erased_lists.bat"))
         {
             fn_erase = true;
-        }         
+        }
         if ((pos = wcsrchr(buf, L'\r')) != NULL)
         {
             *pos = L'\0';
@@ -185,7 +185,7 @@ exist_root_dir(LPCWSTR wlog, LPWSTR root_path)
     return res;
 }
 
-static bool 
+static bool
 move_file(LPCWSTR src_path, LPCWSTR dst_path)
 {
     uint32_t attrs = 0;
@@ -210,7 +210,7 @@ move_file(LPCWSTR src_path, LPCWSTR dst_path)
     return true;
 }
 
-static bool 
+static bool
 move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
 {
     FILE *fp = NULL;
@@ -222,8 +222,8 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
     size_t line = 2;
     WCHAR *pos = NULL;
     WCHAR buf[MAX_PATH+1] = {0};
-    
-    if((fp = _wfopen(wlog, L"rb")) == NULL) 
+
+    if((fp = _wfopen(wlog, L"rb")) == NULL)
     {
         return false;
     }
@@ -261,7 +261,7 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
             WCHAR tmp[MAX_PATH+1] = {0};
             _snwprintf(tmp, MAX_PATH, L"%s%s", L"\\", unofficial);
             wstr_replace(buf, MAX_PATH, L"/App", tmp);
-        }  
+        }
         if (is_root)
         {
             wcsncpy(dst_path, dst, MAX_PATH);
@@ -272,14 +272,14 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
             wcsncpy(dst_path, dst, MAX_PATH);
             wcsncat(dst_path, L"\\", MAX_PATH);
             wcsncat(dst_path, buf, MAX_PATH);
-        }      
+        }
         if (true)
         {
             wchr_replace(dst_path);
         }
         if (PathIsDirectoryW(buf))
-        {   
-       
+        {
+
             if (!PathIsDirectoryW(dst_path))
             {
                 create_dir(dst_path);
@@ -302,7 +302,7 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
     return res;
 }
 
-bool 
+bool
 getw_cwd(LPWSTR lpstrName, DWORD wlen)
 {
     int   i = 0;
@@ -325,7 +325,7 @@ getw_cwd(LPWSTR lpstrName, DWORD wlen)
     return (i>0 && i<(int)wlen);
 }
 
-static bool 
+static bool
 is_ice(void)
 {
     bool res = false;
@@ -395,7 +395,7 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
                 if (move_form_src(wlog, dst, root, NULL))
                 {
                     return 0;
-                }                    
+                }
             }
             else if (ice_build && (_wcsicmp(strip, L"App") != 0))
             {
@@ -403,8 +403,8 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
                 if (move_form_src(wlog, dst, root, strip))
                 {
                     return 0;
-                }                
-            }          
+                }
+            }
         }
         else
         {
@@ -422,7 +422,7 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
     return res;
 }
 
-bool 
+bool
 unknown_builds(void)
 {
     return (fx_browser && ice_build);
@@ -439,7 +439,7 @@ update_thread(void *p)
     {
         printf("do_update false!\n");
         return 1;
-    } 
+    }
     // 自定义erased_lists.bat文件,用于清理多余配置.
     if (fn_erase)
     {

@@ -29,7 +29,7 @@ parse_baidu_cookies(char *cookies, int len)
         printf("parse_baidu_cookies return false\n");
         return -1;
     }
-    wnsprintfA(cookies, len, "%s; %s", baidu_login, baidu_set);
+    _snprintf(cookies, len - 1, "%s; %s", baidu_login, baidu_set);
     return 0;
 }
 
@@ -64,21 +64,21 @@ parse_sqlite_cookies(void *hfile, int count, char **column, char **names)
     }
     if (atoi(only))
     {
-        wnsprintfA(host, VALUE_LEN, "#HttpOnly_%s", tmp_t);
-        wnsprintfA(only, LDOWRD, "TRUE");
+        _snprintf(host, VALUE_LEN, "#HttpOnly_%s", tmp_t);
+        _snprintf(only, LDOWRD, "TRUE");
     }
     else
     {
-        wnsprintfA(host, VALUE_LEN, "%s", tmp_t);
-        wnsprintfA(only, LDOWRD, "FALSE");
+        _snprintf(host, VALUE_LEN, "%s", tmp_t);
+        _snprintf(only, LDOWRD, "FALSE");
     }
     if (!atoi(secure))
     {
-        wnsprintfA(secure, LDOWRD, "FALSE");
+        _snprintf(secure, LDOWRD, "FALSE");
     }
     else
     {
-        wnsprintfA(secure, LDOWRD, "TRUE");
+        _snprintf(secure, LDOWRD, "TRUE");
     }
     {
         LPCSTR host1 = "#HttpOnly_.baidu.com";
@@ -87,14 +87,14 @@ parse_sqlite_cookies(void *hfile, int count, char **column, char **names)
         LPCSTR key2 = "pcsett";
         if (strcmp(host, host1) == 0 && strcmp(name, key1) == 0)
         {
-            wnsprintfA(baidu_login, MAX_PATH, "%s=%s", key1, value);
+            _snprintf(baidu_login, MAX_PATH, "%s=%s", key1, value);
         }
         if (strcmp(host, host2) == 0 && strcmp(name, key2) == 0)
         {
-            wnsprintfA(baidu_set, NAMES_LEN, "%s=%s", key2, value);
+            _snprintf(baidu_set, NAMES_LEN, "%s=%s", key2, value);
         }
     }
-    wnsprintfA(line, LINE_SIZE, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", host, only, path, secure, expir, name, value);
+    _snprintf(line, LINE_SIZE, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", host, only, path, secure, expir, name, value);
     if (value)
     {
         free(value);
@@ -115,7 +115,7 @@ sqlite_txt(LPCWSTR cookie_path, HANDLE hfile)
     {
         printf("WideCharToMultiByte cookie_path error: %lu\n", GetLastError());
         return -1;
-    }       
+    }
     if ((rc = sqlite3_open(utf8, &db)) != SQLITE_OK)
     {
         printf("sqlite3_open false\n");
@@ -138,8 +138,8 @@ int
 dump_cookies(const wchar_t *sql_path)
 {
     DWORD written = 0;
-    char temp_path[MAX_PATH];
-    char cookies[MAX_PATH];
+    wchar_t temp_path[MAX_PATH];
+    wchar_t cookies[MAX_PATH];
     LPCSTR notes = "# Netscape HTTP Cookie File\n"
                    "# select host,isHttpOnly,path,isSecure,expiry,name,value from moz_cookies\n\n";
     if (sql_path == NULL || !PathFileExistsW(sql_path))
@@ -147,20 +147,20 @@ dump_cookies(const wchar_t *sql_path)
         printf("%S no exist\n", sql_path);
         return -1;
     }
-    if (!GetTempPathA(sizeof(temp_path), temp_path))
+    if (!GetTempPathW(MAX_PATH, temp_path))
     {
         return -1;
     }
-    if (!GetTempFileNameA(temp_path, "cke", 0, cookies))
+    if (!GetTempFileNameW(temp_path, "cke", 0, cookies))
     {
-        printf("GetTempFileNameA return false\n");
+        printf("GetTempFileNameW return false\n");
         return -1;
     }
     file_info.cookie_handle =
-        CreateFileA(cookies, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+        CreateFileW(cookies, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
     if (INVALID_HANDLE_VALUE == file_info.cookie_handle)
     {
-        printf("CreateFileA false\n");
+        printf("CreateFileW false\n");
         file_info.cookie_handle = NULL;
         return -1;
     }
@@ -173,7 +173,7 @@ dump_cookies(const wchar_t *sql_path)
     else
     {
         FlushFileBuffers(file_info.cookie_handle);
-        wnsprintfA(file_info.cookies, MAX_PATH, "%s", cookies);
+        _snprintf(file_info.cookies, MAX_PATH - 1, "%s", cookies);
     }
     return 0;
 }
@@ -232,7 +232,7 @@ get_ranges(sql_node *node)
         szEnd = sqlite3_column_int64(pstmt,col++);
         szThread = (uint32_t)sqlite3_column_int64(pstmt,col++);
         szStatus = sqlite3_column_int(pstmt,col++);
-        
+
         if (!szStatus)
         {
             node[num].startidx = szBegin-1;
@@ -279,7 +279,7 @@ update_status(uint32_t thread, int status)
     {
         return false;
     }
-    wnsprintfA(m_sql, VALUE_LEN, "update download_info set szStatus=%d where szThread=%lu;" ,status, thread);
+    _snprintf(m_sql, VALUE_LEN - 1, "update download_info set szStatus=%d where szThread=%u;" ,status, thread);
     rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
     CHECK_RC(rc, "update_status error", msg, file_info.sql);
     return true;
@@ -297,7 +297,7 @@ update_ranges(uint32_t thread, int64_t begin, int64_t size)
     }
     rc = sqlite3_exec(file_info.sql, "PRAGMA journal_mode=OFF;", 0, 0, &msg);
     CHECK_RC(rc, "journal_mode=OFF error", msg, file_info.sql);
-    wnsprintfA(m_sql, VALUE_LEN, "update download_info set szBegin=%I64d,szDown=%I64d where szThread=%lu;" ,begin, size, thread);
+    _snprintf(m_sql, VALUE_LEN - 1, "update download_info set szBegin=%I64d,szDown=%I64d where szThread=%u;" ,begin, size, thread);
     rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
     CHECK_RC(rc, "update ranges error", msg, file_info.sql);
     return true;
@@ -313,14 +313,14 @@ thread_insert(const char *url, int64_t begin, int64_t end, int64_t down, int64_t
     {
         return false;
     }
-    wnsprintfA(m_sql, COOKE_LEN, "insert into download_info(szUrl,szBegin,szEnd,szDown,szTotal,szThread,szPid,szStatus) values('%s',%I64d,%I64d,%I64d,%I64d,%lu,%lu,%d);"
-               ,url, begin, end, down, total, thread, pid, status);
+    _snprintf(m_sql, COOKE_LEN - 1, "insert into download_info(szUrl,szBegin,szEnd,szDown,szTotal,szThread,szPid,szStatus) values('%s',%I64d,%I64d,%I64d,%I64d,%u,%u,%d);"
+              ,url, begin, end, down, total, thread, pid, status);
     rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
     CHECK_RC(rc, "thread_insert error", msg, file_info.sql);
     return true;
 }
 
-void 
+void
 clean_sql_logs(void)
 {
     if (file_info.sql != NULL)

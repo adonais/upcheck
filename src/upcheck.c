@@ -196,7 +196,7 @@ init_command_data(const int args, const wchar_t **pv)
                     }
                     continue;
                 }
-                WideCharToMultiByte(CP_UTF8, 0, cookies, -1, file_info.cookies, sizeof(file_info.cookies), NULL, NULL);
+                ini_make_u8(cookies, file_info.cookies, _countof(file_info.cookies));
             } // 解压目录
             else if (_wcsicmp(pv[i], L"-e") == 0)
             {
@@ -222,7 +222,7 @@ init_command_data(const int args, const wchar_t **pv)
             else if (_wcsicmp(pv[i], L"-h") == 0)
             {
                 VERIFY(i + 1 < argn - 1);
-                file_info.handle = (HANDLE)(uintptr_t) _wtoi(pv[i + 1]);
+                file_info.handle = (HANDLE)_wtoiz(pv[i + 1]);
             }
             else if (_wcsicmp(pv[i], L"-d") == 0)
             {
@@ -234,6 +234,16 @@ init_command_data(const int args, const wchar_t **pv)
                 VERIFY(i + 1 < argn - 1);
                 // thunder
                 file_info.use_thunder = true;
+            }
+            else if (_wcsicmp(pv[i], L"-uri") == 0)
+            {
+                VERIFY(i + 1 < argn - 1);
+                ini_make_u8(pv[i + 1], file_info.ini_uri, _countof(file_info.ini_uri));
+            }
+            else if (_wcsicmp(pv[i], L"-hwnd") == 0)
+            {
+                VERIFY(i + 1 < argn - 1);
+                file_info.remote_hwnd = (HWND)_wtoiz(pv[i + 1]);
             }
         }
         if (ret && !(found || file_info.up)) /* default download directory */
@@ -360,8 +370,15 @@ get_name_from_url(char const *url, char *oname)
     p = ++u;
     if ((p = strchr(u, '?')) != NULL || (p = strchr(u, '=')) != NULL || (p = strchr(u, '&')) != NULL)
     {
-        /* 没有从重定向url得到正确文件名 */
-        _snprintf(oname, MAX_PATH, "%s", "a.zip");
+        if (p - u < MAX_PATH)
+        {
+            _snprintf(oname, p - u, "%s", u);
+        }
+        else
+        {
+            /* 没有从重定向url得到正确文件名 */
+            _snprintf(oname, MAX_PATH, "%s", "a.zip");
+        }
         return 0;
     }
     // Copy value as oname
@@ -615,7 +632,7 @@ get_file_lenth(const char *url, int64_t *file_len)
         // 设置链接超时
         euapi_curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 120L);
         euapi_curl_easy_setopt(handle, CURLOPT_TIMEOUT, 180L);
-        curl_set_cookies(handle);
+        // curl_set_cookies(handle);
         euapi_curl_easy_setopt(handle, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
         euapi_curl_easy_setopt(handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
         // 设置重定向的最大次数
@@ -1459,7 +1476,7 @@ wmain(int argc, wchar_t **argv)
             printf("not url\n");
             break;
         }
-        if (!get_file_lenth(file_info.url, &length)) // 获取远程文件大小
+        if (!get_file_lenth(file_info.url, &length) && file_info.thread_num > 1) // 获取远程文件大小
         {
             printf("get_file_lenth return false\n");
             *file_info.ini = '\0';
@@ -1504,7 +1521,7 @@ wmain(int argc, wchar_t **argv)
     }
     if (wcslen(file_info.process) > 1)
     {
-    #ifndef CURL_LINK
+    #ifndef EUAPI_LINK
         SetEnvironmentVariableW(L"LIBPORTABLE_UPCHECK_LAUNCHER_PROCESS", L"1");
     #endif
         CloseHandle(create_new(file_info.process, NULL, 2, NULL));

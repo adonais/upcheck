@@ -327,8 +327,7 @@ static int ZCALLBACK ferror_file_func (voidpf opaque, voidpf stream)
     return ret;
 }
 
-void fill_fopen_filefunc (pzlib_filefunc_def)
-  zlib_filefunc_def* pzlib_filefunc_def;
+void fill_fopen_filefunc (zlib_filefunc_def* pzlib_filefunc_def)
 {
     pzlib_filefunc_def->zopen_file = fopen_file_func;
     pzlib_filefunc_def->zread_file = fread_file_func;
@@ -1537,7 +1536,7 @@ local int unz64local_GetCurrentFileInfoInternal (unzFile file,
             if (headerId == 0x0001)
             {
                 uLong uL;
-                
+
                 if(file_info.uncompressed_size == MAXU32)
                 {
                         if (unz64local_getLong64(&s->z_filefunc, s->filestream,&file_info.uncompressed_size) != UNZ_OK)
