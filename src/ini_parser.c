@@ -695,7 +695,7 @@ open_to_mem(ini_list **li, const wchar_t *path, bool write_access)
                 break;
             }
         }
-        buf_len = u8_buf ? strlen((const char *)u8_buf) : 0;
+        buf_len = u8_buf ? (int)strlen((const char *)u8_buf) : 0;
         if (buf_len > 0)
         {
             int index = 0;

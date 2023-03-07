@@ -188,9 +188,64 @@ DialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return FALSE;
 }
 
+static bool
+euapi_get_string(void)
+{
+    bool ret = false;
+    WCHAR *p = NULL;
+    WCHAR path[MAX_PATH] = {0};
+    TCHAR lang_path[MAX_PATH] = {0};
+    HMODULE lang_symbol = NULL;
+    if (!get_process_path(path, MAX_PATH)[0])
+    {
+        return false;
+    }
+    if((p = wcsrchr(path , L'\\')))
+    {
+        *p = 0 ;
+    }
+    uint32_t cid = (uint32_t) GetSystemDefaultLCID();
+    switch (cid)
+    {
+        case 0x0804: // 简中
+        {
+            _snwprintf(lang_path, MAX_PATH-1, L"%s\\locales\\zh-cn.dll", path);
+            break;
+        }
+        default:
+            _snwprintf(lang_path, MAX_PATH-1, L"%s\\locales\\en-us.dll", path);
+            break;
+    }
+    if (!(lang_symbol = LoadLibraryExW(lang_path, NULL, LOAD_LIBRARY_AS_DATAFILE)))
+    {
+        printf("LoadLibraryExW[%ls] failed, cause: %lu\n", lang_path, GetLastError());
+        return false;
+    }
+    do
+    {
+        if (!LoadString(lang_symbol, 44061, sUIStrings.title, MAX_PATH - 1))
+        {
+            printf("LoadString %d return false\n", 44061);
+            break;
+        }
+        if (!LoadString(lang_symbol, 44062, sUIStrings.info, MAX_PATH - 1))
+        {
+            printf("LoadString %d return false\n", 44062);
+            break;
+        }
+        ret = true;
+    } while(0);
+    FreeLibrary(lang_symbol);
+    return ret;
+}
+
 bool
 set_ui_strings(void)
 {
+    bool ret = true;
+#if EUAPI_LINK
+    ret = euapi_get_string();
+#else
     char *names = NULL;
     char ini[MAX_PATH + 1] = {0};
     char result[6] = { 0 };
@@ -216,10 +271,11 @@ set_ui_strings(void)
     else
     {
         wcsncat(sUIStrings.title, L"Update", MAX_PATH);
-        wcsncat(sUIStrings.info, L"is installing your updates and will start in a few moments…", MAX_PATH);
+        wcsncat(sUIStrings.info, L"Is Installing Your Updates And Will Start In A Few Moments…", MAX_PATH);
     }
     free(names);
-    return true;
+#endif
+    return ret;
 }
 
 unsigned WINAPI
@@ -238,7 +294,7 @@ show_progress(void *p)
             return 0;
     }
     // Don't load the UI if the strings for the UI are not provided.
-    if (show->initstrings && !set_ui_strings())
+    if (show->initstrings && !sUIStrings.title[0])
     {
         return 0;
     }

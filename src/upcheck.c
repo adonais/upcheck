@@ -30,6 +30,9 @@ file_info_t file_info;
 static bool
 ini_path_init(void)
 {
+#if EUAPI_LINK
+    return true;
+#else
     bool  ret = false;
     WCHAR ini_path[MAX_PATH + 1] = {0};
     if (*file_info.ini != '\0' && strlen(file_info.ini) > 10)
@@ -41,6 +44,7 @@ ini_path_init(void)
     PathAppendW(ini_path, L"portable.ini");
     ret = PathFileExistsW(ini_path);
     return (ret && WideCharToMultiByte(CP_UTF8, 0, ini_path, -1, file_info.ini, MAX_PATH, NULL, NULL) > 0);
+#endif
 }
 
 static HWND
@@ -235,6 +239,11 @@ init_command_data(const int args, const wchar_t **pv)
                 // thunder
                 file_info.use_thunder = true;
             }
+            else if (_wcsicmp(pv[i], L"-dt") == 0)
+            {
+                VERIFY(i + 1 < argn - 1);
+                file_info.dt_local = (uint64_t)_wtoi64(pv[i + 1]);
+            }
             else if (_wcsicmp(pv[i], L"-uri") == 0)
             {
                 VERIFY(i + 1 < argn - 1);
@@ -245,12 +254,17 @@ init_command_data(const int args, const wchar_t **pv)
                 VERIFY(i + 1 < argn - 1);
                 file_info.remote_hwnd = (HWND)_wtoiz(pv[i + 1]);
             }
+            else if (_wcsicmp(pv[i], L"-param") == 0)
+            {
+                VERIFY(i + 1 < argn - 1);
+                _snwprintf(file_info.param, MAX_PATH, L"%s", pv[i + 1]);
+            }
         }
         if (ret && !(found || file_info.up)) /* default download directory */
         {
             WCHAR path[MAX_PATH + 1] = { 0 };
             HMODULE h_shell32 = NULL;
-            ITEMIDLIST* pIDList = NULL;
+            ITEMIDLIST* pidlist = NULL;
             if ((h_shell32 = GetModuleHandleW(L"shell32.dll")) == NULL)
             {
                 ret = false;
@@ -272,12 +286,12 @@ init_command_data(const int args, const wchar_t **pv)
             }
             else
             {
-                if(FAILED(SHGetKnownFolderIDList(&FOLDERID_Downloads, 0,NULL,&pIDList)))
+                if(FAILED(SHGetKnownFolderIDList(&FOLDERID_Downloads, 0,NULL,&pidlist)))
                 {
                     ret = false;
                     break;
                 }
-                if(FAILED(SHGetPathFromIDListW(pIDList, path)))
+                if(FAILED(SHGetPathFromIDListW(pidlist, path)))
                 {
                     ret = false;
                     break;
@@ -1080,21 +1094,26 @@ remove_files(LPCWSTR dir)
 }
 
 static HANDLE
-create_new(LPCWSTR wcmd, const LPCWSTR pcd, int flags, DWORD *opid)
+create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opid)
 {
     PROCESS_INFORMATION pi;
     STARTUPINFOW si;
     DWORD dwCreat = 0;
-    WCHAR my_cmd[MAX_PATH + 1] = { 0 };
-    wcsncpy(my_cmd, wcmd, MAX_PATH);
-
+    WCHAR my_cmd[URL_LEN + 1] = { 0 };
+    wcsncpy(my_cmd, wcmd, URL_LEN);
+    if (param && *param)
+    {
+        wcsncat(my_cmd, L" ", URL_LEN);
+        wcsncat(my_cmd, param, URL_LEN);
+    }
+#ifndef EUAPI_LINK
     if (unknown_builds())
     {
         PathRemoveFileSpecW(my_cmd);
         remove_files(my_cmd);
         PathAppendW(my_cmd, L"Iceweasel.exe");
     }
-
+#endif
     if (true)
     {
         memset(&si, 0, sizeof(si));
@@ -1196,7 +1215,6 @@ static void
 update_task(void)
 {
     bool   res = false;
-    HANDLE mutex = NULL;
     HANDLE thread = NULL;
     WCHAR self[MAX_PATH + 1] = { 0 };
     WCHAR sz_clone[MAX_PATH + 1] = { 0 };
@@ -1213,17 +1231,20 @@ update_task(void)
     }
     if (file_info.pid > 0)
     {
-        // 杀死firefox进程
-        HANDLE tmp = OpenProcess(PROCESS_TERMINATE, false, file_info.pid);
-        if (NULL != tmp && TerminateProcess(tmp, (DWORD) -1) && set_ui_strings())
+    #if EUAPI_LINK
+        HANDLE tmp = (HANDLE)(intptr_t)0x1;
+    #else
+        HANDLE tmp = OpenProcess(PROCESS_TERMINATE, false, file_info.pid);  // 杀死firefox进程
+        if (tmp)
         {
+            TerminateProcess(tmp, (DWORD) -1);
+        }
+    #endif
+        if (NULL != tmp && set_ui_strings())
+        {
+        #ifndef EUAPI_LINK
             CloseHandle(tmp);
-            mutex = CreateMutexW(NULL, FALSE, L"_upcheck_install_");
-            if (ERROR_ALREADY_EXISTS == GetLastError())
-            {
-                printf("process with the same name exists, ExitProcess\n");
-                ExitProcess(0);
-            }
+        #endif
             show.indeterminate = true;
             show.initstrings = false;
             thread = (HANDLE) _beginthreadex(NULL, 0, show_progress, &show, 0, NULL);
@@ -1252,19 +1273,28 @@ update_task(void)
                 }
             }
         }
-    } // 从file_info.unzip_dir获得复制文件的源目录
-    if (thread != NULL && file_info.extract)
+    }
+    if (thread != NULL && file_info.extract)  // 从file_info.unzip_dir获得复制文件的源目录
     {
+    #if EUAPI_LINK
+        bool result = true;
+    #else
+        bool result = false;
+    #endif
         if (update_thread(NULL))
         {
             LPCWSTR msg = L"Failed to copy file,\n"
                           L"The update file is located in the user download directory,\n"
                           L"You may need to manually unzip to the installation directory";
+            quit_progress();
             MessageBoxW(NULL, msg, L"Warning:", MB_OK|MB_ICONWARNING);
             res = false;
             goto cleanup;
         }
-        if (ini_write_string("update", "be_ready", NULL, file_info.ini))
+    #ifndef EUAPI_LINK
+        result = ini_write_string("update", "be_ready", NULL, file_info.ini);
+    #endif
+        if (result)
         {
             WaitForSingleObject(thread, 300);
             quit_progress();
@@ -1309,11 +1339,6 @@ cleanup:
         CloseHandle(thread);
         thread = NULL;
     }
-    if (mutex)
-    {
-        CloseHandle(mutex);
-        mutex = NULL;
-    }
     if (!res)
     {
         ExitProcess(255);
@@ -1337,6 +1362,7 @@ int
 wmain(int argc, wchar_t **argv)
 {
     int argn = 0;
+    int ret = 0;
     bool result = false;
     wchar_t **wargv = NULL;
     const HMODULE hlib = GetModuleHandleW(L"kernel32.dll");
@@ -1420,7 +1446,6 @@ wmain(int argc, wchar_t **argv)
             {
                 return 0;
             }
-
         }
         *file_info.ini = '\0';
         if (thunder_lookup()) // 调用迅雷下载
@@ -1431,35 +1456,27 @@ wmain(int argc, wchar_t **argv)
     do
     {
         int64_t length = 0;
-        if (!libcurl_init())
-        {
-            *file_info.ini = '\0';
-            *file_info.process = L'\0';
-            printf("Can not load curl.dll\n");
-            break;
-        }
-        euapi_curl_global_init(CURL_GLOBAL_DEFAULT);
         if (file_info.up || file_info.handle > 0) // 执行升级任务
         {
             update_task();
             break;
         }
-        if (strlen(file_info.ini) > 1) // 下载并解析ini文件
+        if (libcurl_init(CURL_GLOBAL_DEFAULT) != 0)
         {
-            int   ups = -1;
-            WCHAR names[MAX_PATH] = {0};
-            if (get_name_self(names, MAX_PATH) && search_process(names))
-            {
-                printf("process with the same name exists, exit...\n");
-                *file_info.ini = '\0';
-                break;
-            }
-            ups = init_resolver();
-            if (ups == 0)
+            *file_info.ini = '\0';
+            *file_info.process = L'\0';
+            ret = -1;
+            printf("Can not load curl.dll\n");
+            break;
+        }
+        if (strlen(file_info.ini) > 1 || strlen(file_info.ini_uri) > 0) // 下载并解析ini文件
+        {
+            ret = init_resolver();
+            if (ret == 0)
             {
                 printf("init_resolver ok.\n");
             }
-            else if (ups > 0)
+            else if (ret > 0)
             {
                 printf("init_resolver return 1.\n");
                 break;
@@ -1474,12 +1491,14 @@ wmain(int argc, wchar_t **argv)
         if (strlen(file_info.url) < 2) // 没有下载任务
         {
             printf("not url\n");
+            ret = -1;
             break;
         }
         if (!get_file_lenth(file_info.url, &length) && file_info.thread_num > 1) // 获取远程文件大小
         {
             printf("get_file_lenth return false\n");
             *file_info.ini = '\0';
+            ret = -1;
             break;
         }
         else
@@ -1488,6 +1507,7 @@ wmain(int argc, wchar_t **argv)
         }
         if ((result = curl_task(length)) == false) // 开始下载任务
         {
+            ret = -1;
             break;
         }
         if (strlen(file_info.md5) > 1) // 核对文件md5值
@@ -1498,18 +1518,17 @@ wmain(int argc, wchar_t **argv)
         {
             if (extract7z(file_info.names, file_info.unzip_dir))
             {
+                ret = -1;
                 result = false;
+                break;
             }
         }
         if (result && strlen(file_info.ini) > 1) // 弹出消息提示
         {
             msg_tips();
         }
+        ret = 0;
     } while (0);
-    if (euapi_curl_global_cleanup)
-    {
-        euapi_curl_global_cleanup();
-    }
     libcurl_destory();
     if (file_info.cookie_handle > 0)
     {
@@ -1524,7 +1543,7 @@ wmain(int argc, wchar_t **argv)
     #ifndef EUAPI_LINK
         SetEnvironmentVariableW(L"LIBPORTABLE_UPCHECK_LAUNCHER_PROCESS", L"1");
     #endif
-        CloseHandle(create_new(file_info.process, NULL, 2, NULL));
+        CloseHandle(create_new(file_info.process, file_info.param, NULL, 2, NULL));
     }
-    return 0;
+    return ret;
 }

@@ -12,7 +12,7 @@
 
 volatile long g_locked = 0;
 
-HMODULE euapi_symbol = NULL;
+static HMODULE curl_symbol = NULL;
 ptr_curl_easy_strerror euapi_curl_easy_strerror = NULL;
 ptr_curl_easy_setopt euapi_curl_easy_setopt = NULL;
 ptr_curl_easy_perform euapi_curl_easy_perform = NULL;
@@ -564,34 +564,35 @@ get_process_path(WCHAR *path, const int len)
     return path;
 }
 
-bool
-libcurl_init(void)
+
+CURLcode
+libcurl_init(long flags)
 {
 #if defined(EUAPI_LINK) && EUAPI_LINK > 0
     WCHAR path[MAX_PATH + 1] = {0};
     if (!get_process_path(path, MAX_PATH)[0])
     {
-        return false;
+        return CURLE_FAILED_INIT;
     }
     wcsncat(path, L"\\libcurl.dll" , MAX_PATH);
-    if (!euapi_symbol && !(euapi_symbol = LoadLibraryExW(path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)))
+    if (!curl_symbol && !(curl_symbol = LoadLibraryExW(path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)))
     {
         printf("LoadLibraryExW[%ls] failed, cause: %lu\n", path, GetLastError());
-        return false;
+        return CURLE_FAILED_INIT;
     }
-    euapi_curl_global_init = (ptr_curl_global_init)GetProcAddress(euapi_symbol,"curl_global_init");
-    euapi_curl_easy_init = (ptr_curl_easy_init)GetProcAddress(euapi_symbol,"curl_easy_init");
-    euapi_curl_global_cleanup = (ptr_curl_global_cleanup)GetProcAddress(euapi_symbol,"curl_global_cleanup");
-    euapi_curl_easy_cleanup = (ptr_curl_easy_cleanup)GetProcAddress(euapi_symbol,"curl_easy_cleanup");
-    euapi_curl_easy_setopt = (ptr_curl_easy_setopt)GetProcAddress(euapi_symbol,"curl_easy_setopt");
-    euapi_curl_easy_perform = (ptr_curl_easy_perform)GetProcAddress(euapi_symbol,"curl_easy_perform");
-    euapi_curl_slist_append = (ptr_curl_slist_append)GetProcAddress(euapi_symbol,"curl_slist_append");
-    euapi_curl_slist_free_all = (ptr_curl_slist_free_all)GetProcAddress(euapi_symbol,"curl_slist_free_all");
-    euapi_curl_easy_getinfo = (ptr_curl_easy_getinfo)GetProcAddress(euapi_symbol,"curl_easy_getinfo");
-    euapi_curl_easy_strerror = (ptr_curl_easy_strerror)GetProcAddress(euapi_symbol,"curl_easy_strerror");
-    euapi_curl_share_init = (ptr_curl_share_init)GetProcAddress(euapi_symbol,"curl_share_init");
-    euapi_curl_share_setopt = (ptr_curl_share_setopt)GetProcAddress(euapi_symbol,"curl_share_setopt");
-    euapi_curl_share_cleanup = (ptr_curl_share_cleanup)GetProcAddress(euapi_symbol,"curl_share_cleanup");
+    euapi_curl_global_init = (ptr_curl_global_init)GetProcAddress(curl_symbol,"curl_global_init");
+    euapi_curl_easy_init = (ptr_curl_easy_init)GetProcAddress(curl_symbol,"curl_easy_init");
+    euapi_curl_global_cleanup = (ptr_curl_global_cleanup)GetProcAddress(curl_symbol,"curl_global_cleanup");
+    euapi_curl_easy_cleanup = (ptr_curl_easy_cleanup)GetProcAddress(curl_symbol,"curl_easy_cleanup");
+    euapi_curl_easy_setopt = (ptr_curl_easy_setopt)GetProcAddress(curl_symbol,"curl_easy_setopt");
+    euapi_curl_easy_perform = (ptr_curl_easy_perform)GetProcAddress(curl_symbol,"curl_easy_perform");
+    euapi_curl_slist_append = (ptr_curl_slist_append)GetProcAddress(curl_symbol,"curl_slist_append");
+    euapi_curl_slist_free_all = (ptr_curl_slist_free_all)GetProcAddress(curl_symbol,"curl_slist_free_all");
+    euapi_curl_easy_getinfo = (ptr_curl_easy_getinfo)GetProcAddress(curl_symbol,"curl_easy_getinfo");
+    euapi_curl_easy_strerror = (ptr_curl_easy_strerror)GetProcAddress(curl_symbol,"curl_easy_strerror");
+    euapi_curl_share_init = (ptr_curl_share_init)GetProcAddress(curl_symbol,"curl_share_init");
+    euapi_curl_share_setopt = (ptr_curl_share_setopt)GetProcAddress(curl_symbol,"curl_share_setopt");
+    euapi_curl_share_cleanup = (ptr_curl_share_cleanup)GetProcAddress(curl_symbol,"curl_share_cleanup");
 #else
     euapi_curl_global_init = curl_global_init;
     euapi_curl_easy_init = curl_easy_init;
@@ -607,18 +608,26 @@ libcurl_init(void)
     euapi_curl_share_setopt = curl_share_setopt;
     euapi_curl_share_cleanup = curl_share_cleanup;
 #endif
-    return (euapi_curl_global_init && euapi_curl_easy_init && euapi_curl_global_cleanup && euapi_curl_easy_setopt && euapi_curl_easy_perform &&
-            euapi_curl_easy_cleanup && euapi_curl_slist_append && euapi_curl_slist_free_all && euapi_curl_easy_getinfo && euapi_curl_easy_strerror &&
-            euapi_curl_share_init && euapi_curl_share_setopt && euapi_curl_share_cleanup);
+    if (euapi_curl_global_init && euapi_curl_easy_init && euapi_curl_global_cleanup && euapi_curl_easy_setopt && euapi_curl_easy_perform &&
+        euapi_curl_easy_cleanup && euapi_curl_slist_append && euapi_curl_slist_free_all && euapi_curl_easy_getinfo && euapi_curl_easy_strerror &&
+        euapi_curl_share_init && euapi_curl_share_setopt && euapi_curl_share_cleanup)
+    {
+        return euapi_curl_global_init(flags);
+    }
+    return CURLE_FAILED_INIT;
 }
 
 void
 libcurl_destory(void)
 {
-    if (euapi_symbol)
+    if (curl_symbol)
     {
-        FreeLibrary(euapi_symbol);
-        euapi_symbol = NULL;
+        if (euapi_curl_global_cleanup)
+        {
+            euapi_curl_global_cleanup();
+        }
+        FreeLibrary(curl_symbol);
+        curl_symbol = NULL;
         euapi_curl_global_init = NULL;
         euapi_curl_easy_init = NULL;
         euapi_curl_global_cleanup = NULL;

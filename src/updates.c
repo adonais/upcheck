@@ -204,7 +204,7 @@ move_file(LPCWSTR src_path, LPCWSTR dst_path)
     }
     if (!MoveFileExW(src_path, dst_path, MOVEFILE_COPY_ALLOWED|MOVEFILE_REPLACE_EXISTING))
     {
-        printf("move %ls failed, error[%lu]\n", src_path, GetLastError());
+        printf("move %ls to %ls failed, error[%lu]\n", src_path, dst_path, GetLastError());
         return false;
     }
     return true;
@@ -279,7 +279,6 @@ move_form_src(LPCWSTR wlog, LPCWSTR dst, LPCWSTR root, void *pr)
         }
         if (PathIsDirectoryW(buf))
         {
-
             if (!PathIsDirectoryW(dst_path))
             {
                 create_dir(dst_path);
@@ -384,6 +383,7 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
     if (res > 0)
     {
         printf("yes, path Is root Director\n");
+    #ifndef EUAPI_LINK
         wcsncpy(strip, dst0, MAX_PATH);
         PathStripPathW(strip);
         if (is_ice())
@@ -410,6 +410,7 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
         {
             fx_browser = true;
         }
+    #endif
         if (move_form_src(wlog, dst, root, NULL))
         {
             return 0;

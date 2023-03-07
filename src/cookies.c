@@ -18,6 +18,7 @@
     }
 
 extern file_info_t file_info;
+extern char* ini_make_u8(const wchar_t *utf16, char *utf8, int len);
 static char baidu_login[MAX_PATH + 1];
 static char baidu_set[NAMES_LEN + 1];
 
@@ -151,7 +152,7 @@ dump_cookies(const wchar_t *sql_path)
     {
         return -1;
     }
-    if (!GetTempFileNameW(temp_path, "cke", 0, cookies))
+    if (!GetTempFileNameW(temp_path, L"cke", 0, cookies))
     {
         printf("GetTempFileNameW return false\n");
         return -1;
@@ -173,7 +174,7 @@ dump_cookies(const wchar_t *sql_path)
     else
     {
         FlushFileBuffers(file_info.cookie_handle);
-        _snprintf(file_info.cookies, MAX_PATH - 1, "%s", cookies);
+        ini_make_u8(cookies, file_info.cookies, MAX_PATH - 1);
     }
     return 0;
 }

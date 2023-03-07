@@ -7,6 +7,8 @@
 #include "ini_parser.h"
 #include "spinlock.h"
 
+#define INFO_LEN 16
+
 extern file_info_t file_info;
 
 typedef size_t (*fn_write_data)(void *contents, size_t size, size_t nmemb, void *userp);
@@ -24,7 +26,6 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
 {
     CURLcode res = 1;
     CURL *curl_handle = euapi_curl_easy_init();
-
     if (curl_handle)
     {
         euapi_curl_easy_setopt(curl_handle, CURLOPT_URL, url);
@@ -135,11 +136,19 @@ get_file_bits(void)
             char dll[MAX_PATH+1] = {0};
             WCHAR wdll[MAX_PATH+1] = {0};
             printf("OpenProcess(%u) failed, cause: %lu\n", file_info.pid, GetLastError());
+        #if EUAPI_LINK
+            if (!init_file_strings(L"libcurl.dll", dll))
+            {
+                printf("init_file_strings libcurl.dll return false\n");
+                break;
+            }
+        #else
             if (!init_file_strings(L"mozglue.dll", dll))
             {
                 printf("init_file_strings mozglue.dll return false\n");
                 break;
             }
+        #endif
             if (!MultiByteToWideChar(CP_UTF8, 0, dll, -1, wdll, MAX_PATH))
             {
                 printf("MultiByteToWideChar return false\n");
@@ -172,11 +181,62 @@ get_file_bits(void)
     return bits;
 }
 
-static bool
-ini_query(const char *ini)
+static int
+ini_query_edit(const char *ini)
 {
-#define INFO_LEN 16
-    bool res = false;
+    int res = -1;
+    char *c_md5 = NULL;
+    char *url = NULL;
+    char info[INFO_LEN + 1] = {0};
+    uint64_t dt_remote = 0;
+    int  bits = get_file_bits();
+    if (bits == 64)
+    {
+        printf("is_64bits\n");
+        strncpy(info, "x64", INFO_LEN);
+    }
+    else if (bits == 32)
+    {
+        printf("is_32bits\n");
+        strncpy(info, "x86", INFO_LEN);
+    }
+    else
+    {
+        printf("unknown platform\n");
+        return res;
+    }
+    while (file_info.dt_local > 0 && (dt_remote = ini_read_uint64("updates", info, ini)) > 0)
+    {
+        res = dt_remote > file_info.dt_local ? 0 : 1;
+        if (res == 0)
+        {
+            if (!ini_read_string(info, "url", &url, ini))
+            {
+                printf("ini_read_string url return false\n");
+                res = -1;
+                break;
+            }
+            if (!ini_read_string(info, "md5", &c_md5, ini))
+            {
+                printf("ini_read_string md5 return false\n");
+                res = -1;
+                break;
+            }
+            strncpy(file_info.md5, c_md5, MD5_LEN);
+            strncpy(file_info.url, url, URL_LEN);
+        }
+        break;
+    }
+    ini_safe_free(c_md5);
+    ini_safe_free(url);
+    return res;
+}
+
+static int
+ini_query_ice(const char *ini)
+{
+
+    int res = -1;
     uint64_t dt_remote = 0;
     uint64_t dt_locale = 0;
     char result[6] = { 0 };
@@ -198,7 +258,7 @@ ini_query(const char *ini)
     else
     {
         printf("unknown platform\n");
-        return false;
+        return res;
     }
     if (find_local_str(result, 5) && strcmp(result, "zh-CN") == 0)
     {
@@ -224,31 +284,28 @@ ini_query(const char *ini)
         if (dt_locale >= dt_remote)
         {
             printf("dt_locale(%I64u) >= dt_remote(%I64u), do not update\n", dt_locale, dt_remote);
+            res = 1;
             break;
         }
         if (!ini_read_string(info, "url", &url, ini))
         {
             printf("ini_read_string url return false\n");
+            res = -1;
             break;
         }
         if (!ini_read_string(info, "md5", &c_md5, ini))
         {
             printf("ini_read_string md5 return false\n");
+            res = -1;
             break;
         }
         strncpy(file_info.md5, c_md5, MD5_LEN);
         strncpy(file_info.url, url, URL_LEN);
+        res = 0;
     }while(0);
-    if (c_md5)
-    {
-        free(c_md5);
-    }
-    if (url)
-    {
-        free(url);
-    }
-    return true;
-#undef INFO_LEN
+    ini_safe_free(c_md5);
+    ini_safe_free(url);
+    return res;
 }
 
 /* 连不上更新服务器或函数执行失败,返回-1 */
@@ -272,9 +329,14 @@ init_resolver(void)
         printf("GetTempFileNameW return false\n");
         return res;
     }
-    if (!ini_read_string("update", "url", &url, file_info.ini))
+    if (*file_info.ini && !ini_read_string("update", "url", &url, file_info.ini))
     {
         printf("ini_read_string portable.ini update return false\n");
+        return res;
+    }
+    else if (*file_info.ini_uri && !(url = _strdup(file_info.ini_uri)))
+    {
+        printf("file_info.ini_uri maybe null\n");
         return res;
     }
     pfile = CreateFileW(temp_names, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY, NULL);
@@ -294,7 +356,14 @@ init_resolver(void)
     {
         FlushFileBuffers(pfile);
         WideCharToMultiByte(CP_UTF8, 0, temp_names, -1, ini_names, MAX_PATH, NULL, NULL);
-        res = !ini_query(ini_names);
+        if (file_info.ini_uri)
+        {
+            res = ini_query_edit(ini_names);
+        }
+        else
+        {
+            res = ini_query_ice(ini_names);
+        }
     }
     ini_safe_free(url);
     DeleteFileW(temp_names);

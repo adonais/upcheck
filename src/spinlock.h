@@ -51,11 +51,13 @@ typedef struct _file_info_t
     HANDLE   cookie_handle;
     WCHAR    names[MAX_PATH+1];
     WCHAR    process[MAX_PATH+1];
+    WCHAR    param[MAX_PATH+1];
     WCHAR    unzip_dir[MAX_PATH+1];
     WCHAR    del[VALUE_LEN+1];
     HWND     remote_hwnd;
     void     *sql;
     uint32_t pid;
+    uint64_t dt_local;
     int      thread_num;
     char     remote_names[MAX_PATH+1];
     char     ini_uri[MAX_PATH+1];
@@ -92,7 +94,6 @@ typedef struct curl_slist* (*ptr_curl_slist_append)(struct curl_slist *, const c
 typedef CURLcode (*ptr_curl_easy_getinfo)(CURL *data, CURLINFO info, ...);
 
 // for curl
-extern HMODULE  euapi_symbol;
 extern ptr_curl_easy_strerror euapi_curl_easy_strerror;
 extern ptr_curl_easy_setopt euapi_curl_easy_setopt;
 extern ptr_curl_easy_perform euapi_curl_easy_perform;
@@ -106,7 +107,7 @@ extern ptr_curl_global_init euapi_curl_global_init;
 extern ptr_curl_easy_init euapi_curl_easy_init;
 extern ptr_curl_global_cleanup euapi_curl_global_cleanup;
 extern ptr_curl_easy_cleanup euapi_curl_easy_cleanup;
-extern bool libcurl_init(void);
+extern CURLcode libcurl_init(long flags);
 extern void libcurl_destory(void);
 
 extern int  get_cpu_works(void);
@@ -128,6 +129,7 @@ extern bool  get_name_self(LPWSTR lpstrName, DWORD wlen);
 extern bool  search_process(LPCWSTR names);
 extern char* url_decode(const char *input);
 extern uint64_t ini_read_uint64(const char *sec, const char *key, const char *ini);
+extern WCHAR* get_process_path(WCHAR *path, const int len);
 
 #ifdef __cplusplus
 }
