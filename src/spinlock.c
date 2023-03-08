@@ -643,3 +643,52 @@ libcurl_destory(void)
         euapi_curl_share_cleanup = NULL;
     }
 }
+
+HANDLE
+share_create(HANDLE handle, uint32_t dw_protect, size_t size, LPCWSTR name)
+{
+    DWORD hi = 0, lo = 0;
+    if (size > 0)
+    {
+        lo = (uint32_t) (size & 0xffffffff);
+        hi = (uint32_t) (((uint64_t) size >> 32) & 0xffffffff);
+    }
+    if (!handle)
+    {
+        return CreateFileMapping(INVALID_HANDLE_VALUE, NULL, dw_protect, hi, lo, name);
+    }
+    return CreateFileMapping(handle, NULL, dw_protect, hi, lo, name);
+}
+
+HANDLE
+share_open(uint32_t dw_access, LPCWSTR name)
+{
+    return OpenFileMapping(dw_access, false, name);
+}
+
+LPVOID
+share_map(HANDLE hmap, size_t bytes, uint32_t dw_access)
+{
+    return MapViewOfFile(hmap, dw_access, 0, 0, bytes);
+}
+
+void
+share_unmap(LPVOID memory)
+{
+    if (memory)
+    {
+        UnmapViewOfFile(memory);
+        memory = NULL;
+    }
+}
+
+void
+share_close(HANDLE handle)
+{
+    if ((intptr_t)handle > 0)
+    {
+        CloseHandle(handle);
+        handle = NULL;
+    }
+}
+

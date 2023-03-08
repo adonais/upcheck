@@ -131,6 +131,12 @@ extern char* url_decode(const char *input);
 extern uint64_t ini_read_uint64(const char *sec, const char *key, const char *ini);
 extern WCHAR* get_process_path(WCHAR *path, const int len);
 
+extern HANDLE share_create(HANDLE handle, uint32_t dw_protect, size_t size, LPCTSTR name);
+extern HANDLE share_open(uint32_t dw_access, LPCTSTR name);
+extern LPVOID share_map(HANDLE hmap, size_t bytes, uint32_t dw_access);
+extern void share_unmap(LPVOID memory);
+extern void share_close(HANDLE handle);
+
 #ifdef __cplusplus
 }
 #endif

@@ -25,6 +25,7 @@
 
 #define ABORT(...) (fprintf(stderr, __VA_ARGS__), exit(-1))
 #define VERIFY(x) (void)((x) || (ABORT("failed assert(%s): %s:%d\n", #x, __FILE__, __LINE__), 0))
+#define UPCHECK_LOCK_NAME L"_upcheck_handle_lock_"
 
 #ifdef __cplusplus
 extern "C" {

@@ -356,7 +356,7 @@ init_resolver(void)
     {
         FlushFileBuffers(pfile);
         WideCharToMultiByte(CP_UTF8, 0, temp_names, -1, ini_names, MAX_PATH, NULL, NULL);
-        if (file_info.ini_uri)
+        if (file_info.ini_uri[0])
         {
             res = ini_query_edit(ini_names);
         }

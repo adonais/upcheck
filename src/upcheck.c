@@ -15,6 +15,8 @@
 #include "cookies.h"
 #include "thunderagent.h"
 
+#define DOWN_NUM 10
+
 typedef HRESULT (WINAPI *SHGetKnownFolderIDListPtr)(REFKNOWNFOLDERID rfid,
         DWORD            dwFlags,
         HANDLE           hToken,
@@ -24,6 +26,7 @@ static int64_t downloaded_size;
 static int64_t total_size;
 static LOCK_MUTEXT g_mutex;
 static SHGetKnownFolderIDListPtr sSHGetKnownFolderIDListStub;
+static char g_download_url[DOWN_NUM][URL_LEN];
 
 file_info_t file_info;
 
@@ -1170,9 +1173,108 @@ thunder_lookup(void)
     return m_down;
 }
 
+static bool
+share_envent_set_url(void)
+{
+    bool ret = false;
+    if (file_info.url[0])
+    {
+        HANDLE hmap = share_open(FILE_MAP_WRITE | FILE_MAP_READ, UPCHECK_LOCK_NAME);
+        if (hmap)
+        {
+            char (*pmemory)[URL_LEN] = (char (*)[URL_LEN])share_map(hmap, sizeof(g_download_url), FILE_MAP_WRITE | FILE_MAP_READ);
+            if (pmemory)
+            {
+                int pos = -1;
+                for (int i = 0; i < DOWN_NUM; ++i)
+                {
+                    if (pmemory[i][0])
+                    {
+                        if (strcmp(file_info.url, pmemory[i]) == 0)
+                        {
+                            pos = -1;
+                            break;
+                        }
+                    }
+                    else if (pos < 0)
+                    {
+                        pos = i;
+                    }
+                }
+                if (pos >= 0)
+                {
+                    strncpy(pmemory[pos], file_info.url, URL_LEN - 1);
+                }
+                share_unmap(pmemory);
+                ret = (pos != -1);
+            }
+            share_close(hmap);
+        }
+    }
+    printf("ret = %d\n", ret);
+    return ret;
+}
+
+static void
+share_envent_close_url(HANDLE *phandle)
+{
+    if (file_info.url[0])
+    {
+        HANDLE hmap = share_open(FILE_MAP_WRITE | FILE_MAP_READ, UPCHECK_LOCK_NAME);
+        if (hmap)
+        {
+            char (*pmemory)[URL_LEN] = (char (*)[URL_LEN])share_map(hmap, sizeof(g_download_url), FILE_MAP_WRITE | FILE_MAP_READ);
+            if (pmemory)
+            {
+                for (int i = 0; i < DOWN_NUM; ++i)
+                {
+                    if (pmemory[i][0] && strcmp(file_info.url, pmemory[i]) == 0)
+                    {
+                        memset(pmemory[i], 0, sizeof(pmemory[i]));
+                    }
+                }
+                share_unmap(pmemory);
+            }
+            share_close(hmap);
+        }
+    }
+    share_close(*phandle);
+}
+
+static bool
+downloaded_lookup(HANDLE *pmapped)
+{
+    bool ret = false;
+    size_t url_size = sizeof(g_download_url);
+    if (file_info.url[0])
+    {
+        if ((*pmapped = share_create(NULL, PAGE_READWRITE, url_size, UPCHECK_LOCK_NAME)) == NULL)
+        {
+            return false;
+        }
+        else if (ERROR_ALREADY_EXISTS == GetLastError())
+        {
+            ret = share_envent_set_url();
+        }
+        else
+        {   // 建立共享内存, 保存下载链接
+            LPVOID phandle = share_map(*pmapped, url_size, FILE_MAP_WRITE | FILE_MAP_READ);
+            if (phandle)
+            {
+                strncpy(g_download_url[0], file_info.url, URL_LEN - 1);
+                memcpy(phandle, g_download_url, url_size);
+                share_unmap(phandle);
+                ret = true;
+            }
+        }
+    }
+    return ret;
+}
+
 static void
 msg_tips(void)
 {
+#ifndef EUAPI_LINK
     HWND fx = NULL;
     char *lpmsg = NULL;
     WCHAR msg[MAX_MESSAGE+1] = {0};
@@ -1187,6 +1289,7 @@ msg_tips(void)
     {
         free(lpmsg);
     }
+#endif
 }
 
 static void
@@ -1287,7 +1390,7 @@ update_task(void)
                           L"The update file is located in the user download directory,\n"
                           L"You may need to manually unzip to the installation directory";
             quit_progress();
-            MessageBoxW(NULL, msg, L"Warning:", MB_OK|MB_ICONWARNING);
+            MessageBoxW(NULL, msg, L"Warning:", MB_OK|MB_ICONWARNING|MB_SYSTEMMODAL);
             res = false;
             goto cleanup;
         }
@@ -1365,6 +1468,7 @@ wmain(int argc, wchar_t **argv)
     int ret = 0;
     bool result = false;
     wchar_t **wargv = NULL;
+    HANDLE mapped = NULL;
     const HMODULE hlib = GetModuleHandleW(L"kernel32.dll");
     SetDllDirectoryW(L"");
     if (hlib)
@@ -1494,6 +1598,14 @@ wmain(int argc, wchar_t **argv)
             ret = -1;
             break;
         }
+        if (!downloaded_lookup(&mapped))
+        {
+            *file_info.ini = '\0';
+            *file_info.process = L'\0';
+            ret = -1;
+            printf("Is it already being downloaded?\n");
+            break;
+        }
         if (!get_file_lenth(file_info.url, &length) && file_info.thread_num > 1) // 获取远程文件大小
         {
             printf("get_file_lenth return false\n");
@@ -1537,6 +1649,10 @@ wmain(int argc, wchar_t **argv)
     if (!file_info.up && strlen(file_info.ini) > 1)
     {
         logs_update(result);
+    }
+    if (mapped)
+    {
+        share_envent_close_url(&mapped);
     }
     if (wcslen(file_info.process) > 1)
     {
