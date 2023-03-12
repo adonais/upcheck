@@ -600,21 +600,40 @@ be_to_le(uint16_t *in)
     *in = tmp;
 }
 
-static bool
-open_to_mem(ini_list **li, const wchar_t *path, bool write_access)
+static wchar_t *
+fgetws_ex(wchar_t *string, int n, FILE *stream, str_encoding m_type)
 {
-    FILE *fp = NULL, *stream = NULL;
+    if (!string || !stream || feof(stream) || n <= 0)
+    {
+        return NULL;
+    }
+    int i = 0;
+    while (i < n - 1 && !feof(stream))
+    {
+        if (fread(&string[i], sizeof(wchar_t), 1, stream) != 1) break;
+        if (m_type == E_UNICODE_BIG)
+        {
+            be_to_le(&string[i]);
+        }
+        // Check the character readed, break if it's '\n'
+        if (string[i] == L'\n')
+        {
+            i++;
+            break;
+        }
+        i++;
+    }
+    string[i] = 0x0;
+    return string;
+}
+static bool
+open_to_mem(ini_list **li, const wchar_t *path, const bool write_access)
+{
+    FILE *fp = NULL;
     str_encoding m_type = E_OTHER;
     int m_line = 0;
-    int filesize = 0;
-    int buf_len = 0;
     size_t n = 0;
-    uint8_t *u8_buf = NULL;
-    void *pbuf = NULL;
-    if (!li)
-    {
-        return false;
-    }
+    char buf[MAX_COUNT+1] = {0};
     if (write_access)
     {
         fp = _wfopen(path, L"rb+");
@@ -625,114 +644,104 @@ open_to_mem(ini_list **li, const wchar_t *path, bool write_access)
     }
     if (!fp)
     {
-        printf("_wfopen failed\n");
+        printf("open_to_mem(), _wfopen failed\n");
         return false;
     }
-    m_type = get_file_type(fp);
-    stream = fp;
-    fseek(stream, 0, SEEK_END);
-    filesize = ftell(stream);
-    if (m_type == E_OTHER && filesize)
+    if ((m_type = get_file_type(fp)) == E_OTHER)
     {
-        printf("unkown file encode!\n");
-        fclose(fp);
-        return false;
-    }
-    if (write_access && !filesize)
-    {
-        (*li)->pf = fp;
-        return true;
-    }
-    if ((pbuf = calloc(1, filesize + 1)) == NULL)
-    {
-        fclose(fp);
-        return false;
+        FILE *fp_end = fp;
+        int filesize = fseek(fp_end, 0, SEEK_END);
+        if (filesize)
+        {
+            printf("unkown file encode!\n");
+            fclose(fp);
+            return false;
+        }
     }
     (*li)->codes = m_type;
-    stream= fp;
-    fseek(stream, 0L, SEEK_SET);
-    buf_len = (int)fread(pbuf, 1, filesize, stream);
-    if (buf_len > 0)
+    if (m_type == E_UNICODE || m_type == E_UNICODE_BIG)
     {
-        switch (m_type)
+        wchar_t wbuf[MAX_COUNT] = { 0 };
+        while (fgetws_ex(wbuf, MAX_COUNT, fp, m_type))
         {
-            case E_UNICODE_BIG:
+            n = wcslen(wbuf);
+            if (!write_access && (*wbuf == L';' || *wbuf == L'#' || *wbuf == L'\r' || *wbuf == L'\n'))
             {
-                wchar_t *tmp = (wchar_t *)pbuf;
-                for (int i = 1; i < buf_len/2 - 1; ++i)
-                {   // 转utf16-le
-                    be_to_le(&tmp[i]);
-                }
-                u8_buf = (uint8_t *)ini_utf16_utf8((const wchar_t *)&tmp[1], NULL);
-                (*li)->codes = m_type;
-                break;
+                continue;
             }
-            case E_UNICODE:
+            if (wbuf[n - 2] == L'\r')
             {
-                const wchar_t *tmp = (const wchar_t *)pbuf;
-                u8_buf = (uint8_t *)ini_utf16_utf8((const wchar_t *)&tmp[1], NULL);
-                (*li)->codes = m_type;
-                break;
-            }
-            case E_UTF8_BOM:
-            {
-                u8_buf = (uint8_t *)_strdup((const char *)((uint8_t *)pbuf + 3));
-                (*li)->codes = m_type;
-                break;
-            }
-            default:
-            {
-                if (!utf8_check((const uint8_t *)pbuf))
+                if (!m_line)
                 {
-                    u8_buf = (uint8_t *)ini_mbcs_utf8(-1, pbuf, NULL);
-                    (*li)->codes = E_ANSI;
+                    (*li)->breaks = CHR_WIN;
                 }
-                else
+                if (!write_access)
                 {
-                    u8_buf = (uint8_t *)_strdup(pbuf);
-                    (*li)->codes = E_UTF8;
+                    wbuf[n - 2] = L'\0';
                 }
-                break;
             }
+            else if (wbuf[n - 1] == L'\n')
+            {
+                if (!m_line)
+                {
+                    (*li)->breaks = CHR_UNIX;
+                }
+                if (!write_access)
+                {
+                    wbuf[n - 1] = L'\0';
+                }
+            }
+            if (ini_make_u8(wbuf, buf, MAX_COUNT)[0])
+            {
+                list_insert(&(*li)->pd, NULL, buf);
+            }
+            ++m_line;
         }
-        buf_len = u8_buf ? (int)strlen((const char *)u8_buf) : 0;
-        if (buf_len > 0)
+    }
+    else
+    {
+        while (fgets(buf, MAX_COUNT, fp))
         {
-            int index = 0;
-            uint8_t *p = u8_buf;
-            while ((index = (int)strcspn((const char *)p, "\r\n")) < (int)strlen((const char *)p) && index < MAX_COUNT)
+            char *data = NULL;
+            if (!write_access && (*buf == ';' || *buf == '#' || *buf == '\r' || *buf == '\n'))
             {
-                char buf[MAX_COUNT+1] = {0};
-                _snprintf(buf, index, "%s", p);
-                if (p[index] == 0x0D)
+                continue;
+            }
+            n = strlen(buf);
+            if (buf[n - 2] == '\r')
+            {
+                if (!m_line)
                 {
-                    if (!m_line)
-                    {
-                        (*li)->breaks = CHR_WIN;
-                    }
-                    if (write_access)
-                    {   // 如果是写入, 保留换行符
-                        strncat(buf, "\r\n", MAX_COUNT);
-                    }
-                    p += index + 2;
+                    (*li)->breaks = CHR_WIN;
                 }
-                else if (p[index] == 0x0A)
+                if (!write_access)
                 {
-                    if (!m_line)
-                    {
-                        (*li)->breaks = CHR_UNIX;
-                    }
-                    if (write_access)
-                    {
-                        strncat(buf, "\n", MAX_COUNT);
-                    }
-                    p += index + 1;
-                }
-                if (!list_insert(&(*li)->pd, NULL, buf))
-                {
-                    printf("list_add failed\n");
+                    buf[n - 2] = '\0';
                 }
             }
+            else if (buf[n - 1] == '\n')
+            {
+                if (!m_line)
+                {
+                    (*li)->breaks = CHR_UNIX;
+                }
+                if (!write_access)
+                {
+                    buf[n - 1] = '\0';
+                }
+            }
+            if ((m_type != E_UTF8_BOM) && !utf8_check((const uint8_t *)buf) &&
+               ((data = ini_mbcs_utf8(-1, buf, NULL)) != NULL))
+            {
+                strncpy(buf, data, MAX_COUNT);
+                free(data);
+                (*li)->codes = E_ANSI;
+            }
+            if (!list_insert(&(*li)->pd, NULL, buf))
+            {
+                printf("list_add failed\n");
+            }
+            ++m_line;
         }
     }
     if (!write_access)
@@ -744,8 +753,6 @@ open_to_mem(ini_list **li, const wchar_t *path, bool write_access)
     {
         (*li)->pf = fp;
     }
-    ini_safe_free(u8_buf);
-    ini_safe_free(pbuf);
     return true;
 }
 
