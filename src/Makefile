@@ -16,10 +16,11 @@ LDFLAGS = -LARGEADDRESSAWARE $(LDFLAGS)
 !ENDIF
 
 !IF "$(EUAPI_LINK)" == "1"
-DEP  = $(BIND)\zlib.lib  $(BIND)\lib7z.lib
+RFLAGS  = $(RFLAGS) -D "EUAPI_LINK"
+DEP     = $(BIND)\zlib.lib  $(BIND)\lib7z.lib
 !ELSE
-DEP  = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib  $(BIND)\lib7z.lib
-CFLAGS = $(CFLAGS) -DCURL_STATICLIB
+DEP     = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib  $(BIND)\lib7z.lib
+CFLAGS  = $(CFLAGS) -DCURL_STATICLIB
 LDFLAGS = -NODEFAULTLIB:MSVCRT $(LDFLAGS)
 !ENDIF
 

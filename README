@@ -19,6 +19,13 @@ or
 nmake CC=clang-cl clean
 nmake CC=clang-cl
 
+or
+
+supports the Skylark Editor:
+
+nmake CC=clang-cl clean
+nmake CC=clang-cl EUAPI_LINK=1
+
 --------------------
 
 about upcheck:
