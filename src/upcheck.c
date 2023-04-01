@@ -1406,15 +1406,7 @@ update_task(void)
             PROCESS_INFORMATION pi;
             STARTUPINFOW si;
             HANDLE h_self;
-            if (!PathFileExistsW(self))
-            {
-                printf("we change back to original name\n");
-                if (_wrename(sz_clone, self))
-                {
-                    printf("rename back false.\n");
-                }
-            }
-            else
+            if (PathFileExistsW(self))
             {
                 h_self = OpenProcess(SYNCHRONIZE, TRUE, GetCurrentProcessId());
                 if (!h_self)
@@ -1444,6 +1436,14 @@ cleanup:
     }
     if (!res)
     {
+        if (!PathFileExistsW(self))
+        {
+            printf("we change back to original name\n");
+            if (_wrename(sz_clone, self))
+            {
+                printf("rename back false.\n");
+            }
+        }
         ExitProcess(255);
     }
 }
