@@ -644,6 +644,22 @@ libcurl_destory(void)
     }
 }
 
+void
+libcurl_set_proxy(CURL *curl)
+{
+    if (curl && file_info.ini[0])
+    {
+        if (file_info.ini_proxy[0])
+        {
+            euapi_curl_easy_setopt(curl, CURLOPT_PROXY, file_info.ini_proxy);
+            if (file_info.ini_usewd[0])
+            {
+                euapi_curl_easy_setopt(curl, CURLOPT_PROXYUSERPWD, file_info.ini_usewd);
+            }
+        }
+    }
+}
+
 HANDLE
 share_create(HANDLE handle, uint32_t dw_protect, size_t size, LPCWSTR name)
 {

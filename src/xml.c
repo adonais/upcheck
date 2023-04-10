@@ -9,8 +9,6 @@
 
 #define INFO_LEN 16
 
-extern file_info_t file_info;
-
 typedef size_t (*fn_write_data)(void *contents, size_t size, size_t nmemb, void *userp);
 
 static size_t
@@ -39,6 +37,8 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
         euapi_curl_easy_setopt(curl_handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 60L);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 90L);
+        // 设置代理
+        libcurl_set_proxy(curl_handle);
         res = euapi_curl_easy_perform(curl_handle);
         if (res != CURLE_OK)
         {

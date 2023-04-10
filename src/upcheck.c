@@ -28,7 +28,7 @@ static LOCK_MUTEXT g_mutex;
 static SHGetKnownFolderIDListPtr sSHGetKnownFolderIDListStub;
 static char g_download_url[DOWN_NUM][URL_LEN];
 
-file_info_t file_info;
+file_info_t file_info = {0};
 
 static bool
 ini_path_init(void)
@@ -135,8 +135,7 @@ init_command_data(const int args, const wchar_t **pv)
                 WCHAR tmp[URL_LEN + 1] = { 0 };
                 _snwprintf(tmp, URL_LEN, L"%s", pv[i + 1]);
                 if (wcscmp(tmp, L"auto") == 0)
-                {
-                    // 自动分析ini文件下载
+                {   // 自动分析ini文件下载
                     if (!ini_path_init())
                     {
                         ret = false;
@@ -145,8 +144,7 @@ init_command_data(const int args, const wchar_t **pv)
                     continue;
                 }
                 else
-                {
-                    // 直接获得url参数, 转换成utf-8编码
+                {   // 直接获得url参数, 转换成utf-8编码
                     if (!WideCharToMultiByte(CP_UTF8, 0, tmp, -1, file_info.url, sizeof(file_info.url), NULL, NULL))
                     {
                         ret = false;
@@ -302,6 +300,31 @@ init_command_data(const int args, const wchar_t **pv)
                 path_parsing(path);
             }
             printf("download dir[%ls]\n", path);
+        }
+        if (ret && file_info.ini[0])
+        {
+            char *ini_proxy = NULL;
+            char *ini_usewd = NULL;
+            if (ini_read_string("proxy", "addr", &ini_proxy, file_info.ini))
+            {
+                ini_read_string("proxy", "user", &ini_usewd, file_info.ini);
+            }
+            if (ini_proxy && ini_proxy[0])
+            {
+                _snprintf(file_info.ini_proxy, MAX_PATH, "%s", ini_proxy);
+                if (ini_usewd && ini_usewd[0])
+                {
+                    _snprintf(file_info.ini_usewd, NAMES_LEN, "%s", ini_usewd);
+                }
+            }
+            if (ini_proxy)
+            {
+                free(ini_proxy);
+            }
+            if (ini_usewd)
+            {
+                free(ini_usewd);
+            }
         }
     } while(0);
     return ret;
@@ -586,6 +609,8 @@ run_thread(void *pdata)
             euapi_curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
             euapi_curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
         #endif
+            // 设置代理
+            libcurl_set_proxy(curl);
             euapi_curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
             euapi_curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
             euapi_curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
@@ -659,6 +684,8 @@ get_file_lenth(const char *url, int64_t *file_len)
         //不需要body, 只需要header头
         euapi_curl_easy_setopt(handle, CURLOPT_NOBODY, 1);
         euapi_curl_easy_setopt(handle, CURLOPT_HEADER, 1);
+        // 设置代理
+        libcurl_set_proxy(handle);
         if ((res = euapi_curl_easy_perform(handle)) == CURLE_OK)
         {
             if (dnld_params.file_len[0])

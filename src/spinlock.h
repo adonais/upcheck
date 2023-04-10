@@ -66,6 +66,8 @@ typedef struct _file_info_t
     char     md5[MD5_LEN+1];
     char     ini[MAX_PATH+1];
     char     url[URL_LEN+1];
+    char     ini_proxy[MAX_PATH+1];
+    char     ini_usewd[NAMES_LEN+1];
     bool     use_thunder;
     bool     extract;
     bool     re_bind;
@@ -93,6 +95,8 @@ typedef void (*ptr_curl_slist_free_all)(struct curl_slist *);
 typedef struct curl_slist* (*ptr_curl_slist_append)(struct curl_slist *, const char *);
 typedef CURLcode (*ptr_curl_easy_getinfo)(CURL *data, CURLINFO info, ...);
 
+extern file_info_t file_info;
+
 // for curl
 extern ptr_curl_easy_strerror euapi_curl_easy_strerror;
 extern ptr_curl_easy_setopt euapi_curl_easy_setopt;
@@ -110,6 +114,7 @@ extern ptr_curl_easy_cleanup euapi_curl_easy_cleanup;
 extern CURLcode libcurl_init(long flags);
 extern void libcurl_destory(void);
 
+extern void libcurl_set_proxy(CURL *curl);
 extern int  get_cpu_works(void);
 extern bool get_file_md5(LPCWSTR path, char* md5_str);
 extern bool path_combine(LPWSTR lpfile, int len);

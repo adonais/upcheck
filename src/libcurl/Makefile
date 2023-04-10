@@ -123,7 +123,6 @@ OBJS = \
     $(OBJD)\libcurl\curl_fnmatch.obj  \
     $(OBJD)\libcurl\fileinfo.obj      \
     $(OBJD)\libcurl\ftplistparser.obj \
-    $(OBJD)\libcurl\wildcard.obj      \
     $(OBJD)\libcurl\krb5.obj          \
     $(OBJD)\libcurl\memdebug.obj      \
     $(OBJD)\libcurl\http_chunks.obj   \
@@ -209,7 +208,7 @@ OBJS = \
     $(OBJD)\libcurl\setopt.obj           \
     $(OBJD)\libcurl\curl_path.obj        \
     $(OBJD)\libcurl\bufref.obj           \
-    $(OBJD)\libcurl\cf-http.obj          \
+    $(OBJD)\libcurl\cf-https-connect.obj \
     $(OBJD)\libcurl\cfilters.obj         \
     $(OBJD)\libcurl\cf-socket.obj        \
     $(OBJD)\libcurl\c-hyper.obj          \

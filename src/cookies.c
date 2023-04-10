@@ -17,7 +17,6 @@
         return 0;                          \
     }
 
-extern file_info_t file_info;
 extern char* ini_make_u8(const wchar_t *utf16, char *utf8, int len);
 static char baidu_login[MAX_PATH + 1];
 static char baidu_set[NAMES_LEN + 1];
