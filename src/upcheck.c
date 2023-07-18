@@ -1471,6 +1471,10 @@ cleanup:
                 printf("rename back false.\n");
             }
         }
+        else
+        {
+            DeleteFileW(sz_clone);
+        }
         ExitProcess(255);
     }
 }
@@ -1513,7 +1517,7 @@ wmain(int argc, wchar_t **argv)
     }
     if (argn < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
-        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.8\n",
+        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.0.9\n",
                "upcheck.exe");
         argn = 0;
     }

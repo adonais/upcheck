@@ -81,6 +81,13 @@ typedef struct _sql_node
     uint32_t   thread;
 } sql_node;
 
+typedef enum _sys_flag
+{
+    VARIABLES_NULL,
+    VARIABLES_APPEND,
+    VARIABLES_RESET
+} sys_flag;
+
 typedef const char* (*ptr_curl_easy_strerror)(CURLcode);
 typedef CURL* (*ptr_curl_easy_init)(void);
 typedef CURLcode (*ptr_curl_global_init)(long flags);
@@ -141,6 +148,7 @@ extern HANDLE share_open(uint32_t dw_access, LPCTSTR name);
 extern LPVOID share_map(HANDLE hmap, size_t bytes, uint32_t dw_access);
 extern void share_unmap(LPVOID memory);
 extern void share_close(HANDLE handle);
+extern bool enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag);
 
 #ifdef __cplusplus
 }

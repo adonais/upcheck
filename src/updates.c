@@ -195,7 +195,7 @@ move_file(LPCWSTR src_path, LPCWSTR dst_path)
     }
     attrs = GetFileAttributesW(dst_path);
     // 有只读属性
-    if(attrs & FILE_ATTRIBUTE_READONLY)
+    if (attrs & FILE_ATTRIBUTE_READONLY)
     {
         // 取消只读属性
         attrs &= ~FILE_ATTRIBUTE_READONLY;

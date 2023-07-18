@@ -564,13 +564,19 @@ get_process_path(WCHAR *path, const int len)
     return path;
 }
 
-
 CURLcode
 libcurl_init(long flags)
 {
 #if defined(EUAPI_LINK) && EUAPI_LINK > 0
     WCHAR path[MAX_PATH + 1] = {0};
+    WCHAR main_path[MAX_PATH + 1] = {0};
     if (!get_process_path(path, MAX_PATH)[0])
+    {
+        return CURLE_FAILED_INIT;
+    }
+    _snwprintf(main_path, MAX_PATH, L"%s", path);
+    PathRemoveFileSpecW(main_path);
+    if (!enviroment_variables_set(L"PATH", main_path, VARIABLES_APPEND))
     {
         return CURLE_FAILED_INIT;
     }
@@ -708,3 +714,77 @@ share_close(HANDLE handle)
     }
 }
 
+bool
+enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag)
+{
+    DWORD dw_err;
+    LPWSTR sz_val;
+    DWORD dw_result;
+    DWORD new_valsize;
+    /* 附加到指定环境变量末尾 */
+    if (dw_flag == VARIABLES_APPEND)
+    {
+        new_valsize = (wcslen(sz_newval) + 1) * 2;
+        sz_val = SYS_MALLOC(BUFSIZE);
+        /* 获取指定环境变量的值 */
+        dw_result = GetEnvironmentVariableW(szname, sz_val, BUFSIZE);
+        if (dw_result == 0) /* 出错处理 */
+        {
+            dw_err = GetLastError();
+            if (ERROR_ENVVAR_NOT_FOUND == dw_err)
+            {
+                printf("Environment variable %ls does not exist.\n", szname);
+            }
+            else
+            {
+                printf("error: %lu\n", dw_err);
+            }
+            SYS_FREE(sz_val);
+            return false;
+        }
+        if (BUFSIZE <= dw_result) /* 缓冲区太小 */
+        {
+            sz_val = (LPWSTR) HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sz_val, dw_result + new_valsize);
+            if (NULL == sz_val)
+            {
+                printf("Memory error\n");
+                return false;
+            }
+            dw_result = GetEnvironmentVariableW(szname, sz_val, dw_result);
+            if (!dw_result)
+            {
+                SYS_FREE(sz_val);
+                printf("GetEnvironmentVariable failed (%lu)\n", GetLastError());
+                return false;
+            }
+        }
+        wcscat(sz_val, L";");      /* 分隔符 */
+        wcscat(sz_val, sz_newval); /* 追加 */
+        if (!SetEnvironmentVariableW(szname, sz_val))
+        {
+            printf("Set Value Error %lu", GetLastError());
+            SYS_FREE(sz_val);
+            return false;
+        }
+        SYS_FREE(sz_val);
+    }
+    /* 设置新的环境变量 */
+    else if (dw_flag == VARIABLES_RESET)
+    {
+        if (!SetEnvironmentVariableW(szname, sz_newval))
+        {
+            printf("Set value error %lu\n", GetLastError());
+            return false;
+        }
+    }
+    /* 指定环境变量清零 */
+    else if (dw_flag == VARIABLES_NULL)
+    {
+        if (!SetEnvironmentVariableW(szname, NULL))
+        {
+            printf("Set value error %lu\n", GetLastError());
+            return false;
+        }
+    }
+    return true;
+}
