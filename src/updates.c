@@ -338,7 +338,7 @@ is_ice(void)
     {
         return false;
     }
-    res = _stricmp(names, "Iceweasel") == 0;
+    res = _strnicmp(names, "Iceweasel", 9) == 0;
     free(names);
     return res;
 }

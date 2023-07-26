@@ -142,6 +142,7 @@ extern bool  search_process(LPCWSTR names);
 extern char* url_decode(const char *input);
 extern uint64_t ini_read_uint64(const char *sec, const char *key, const char *ini);
 extern WCHAR* get_process_path(WCHAR *path, const int len);
+extern const uint32_t get_os_version(void);
 
 extern HANDLE share_create(HANDLE handle, uint32_t dw_protect, size_t size, LPCTSTR name);
 extern HANDLE share_open(uint32_t dw_access, LPCTSTR name);

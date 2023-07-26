@@ -94,9 +94,14 @@ RT_ERROR_CHECKING = -RTCsu
 # ----------------------------
 
 OBJS = \
+    $(OBJD)\libcurl\macos.obj         \
     $(OBJD)\libcurl\file.obj          \
     $(OBJD)\libcurl\timeval.obj       \
     $(OBJD)\libcurl\base64.obj        \
+    $(OBJD)\libcurl\bufq.obj          \
+    $(OBJD)\libcurl\cf-h1-proxy.obj   \
+    $(OBJD)\libcurl\cf-h2-proxy.obj   \
+    $(OBJD)\libcurl\cf-haproxy.obj    \
     $(OBJD)\libcurl\hostip.obj        \
     $(OBJD)\libcurl\progress.obj      \
     $(OBJD)\libcurl\formdata.obj      \
@@ -188,7 +193,6 @@ OBJS = \
     $(OBJD)\libcurl\rand.obj             \
     $(OBJD)\libcurl\curl_multibyte.obj   \
     $(OBJD)\libcurl\headers.obj          \
-    $(OBJD)\libcurl\h2h3.obj             \
     $(OBJD)\libcurl\fopen.obj            \
     $(OBJD)\libcurl\easyoptions.obj      \
     $(OBJD)\libcurl\easygetopt.obj       \
@@ -198,6 +202,8 @@ OBJS = \
     $(OBJD)\libcurl\timediff.obj         \
     $(OBJD)\libcurl\version_win32.obj    \
     $(OBJD)\libcurl\ws.obj               \
+    $(OBJD)\libcurl\dynhds.obj           \
+    $(OBJD)\libcurl\http1.obj            \
     $(OBJD)\libcurl\http2.obj            \
     $(OBJD)\libcurl\smb.obj              \
     $(OBJD)\libcurl\curl_endian.obj      \

@@ -7,7 +7,7 @@
 #include "ini_parser.h"
 #include "spinlock.h"
 
-#define INFO_LEN 16
+#define INFO_LEN 32
 
 typedef size_t (*fn_write_data)(void *contents, size_t size, size_t nmemb, void *userp);
 
@@ -270,6 +270,10 @@ ini_query_ice(const char *ini)
         printf("locales:en-US\n");
         strncat(info, "en-US", INFO_LEN);
     }
+    if (get_os_version() < 100)
+    {
+        strncat(info, ".esr", INFO_LEN);
+    }
     do
     {
         if (!init_file_strings(L"application.ini", app_ini))
@@ -290,7 +294,7 @@ ini_query_ice(const char *ini)
         if (!ini_read_string(info, "url", &url, ini))
         {
             printf("ini_read_string url return false\n");
-            res = -1;
+            res = strstr(info, ".esr") ? 1 :-1;
             break;
         }
         if (!ini_read_string(info, "md5", &c_md5, ini))

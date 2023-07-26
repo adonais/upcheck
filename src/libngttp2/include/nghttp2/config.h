@@ -88,5 +88,8 @@
 /* Define to 1 if you have enum bpf_stats_type in linux/bpf.h. */
 /* #undef HAVE_BPF_STATS_TYPE */
 
-/* Define to 1 if you have `libngtcp2_crypto_openssl` library. */
-/* #undef HAVE_LIBNGTCP2_CRYPTO_OPENSSL */
+/* Define to 1 if you have `libngtcp2_crypto_quictls` library. */
+/* #undef HAVE_LIBNGTCP2_CRYPTO_QUICTLS */
+
+/* Define to 1 if you have `libev` library. */
+/* #undef HAVE_LIBEV */

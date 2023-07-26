@@ -55,6 +55,8 @@ OBJS = \
     $(NGHTTP2_OBJDIR)\nghttp2_http.obj            \
     $(NGHTTP2_OBJDIR)\nghttp2_rcbuf.obj           \
     $(NGHTTP2_OBJDIR)\nghttp2_extpri.obj          \
+    $(NGHTTP2_OBJDIR)\nghttp2_debug.obj           \
+    $(NGHTTP2_OBJDIR)\sfparse.obj                 \
 
 ##############################################################################
 ##

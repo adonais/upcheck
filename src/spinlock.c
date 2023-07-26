@@ -724,7 +724,7 @@ enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag)
     /* 附加到指定环境变量末尾 */
     if (dw_flag == VARIABLES_APPEND)
     {
-        new_valsize = (wcslen(sz_newval) + 1) * 2;
+        new_valsize = (DWORD)((wcslen(sz_newval) + 1) * 2);
         sz_val = SYS_MALLOC(BUFSIZE);
         /* 获取指定环境变量的值 */
         dw_result = GetEnvironmentVariableW(szname, sz_val, BUFSIZE);
@@ -787,4 +787,28 @@ enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag)
         }
     }
     return true;
+}
+
+const uint32_t
+get_os_version(void)
+{
+    typedef void (WINAPI *RtlGetNtVersionNumbersPtr)(DWORD*, DWORD*, DWORD*);
+    RtlGetNtVersionNumbersPtr fnRtlGetNtVersionNumbers = NULL;
+    uint32_t major_ver, minor_ver, build_num;
+    uint32_t ver = 0;
+    HMODULE nt_dll = GetModuleHandleW(L"ntdll.dll");
+    if (nt_dll)
+    {
+        fnRtlGetNtVersionNumbers = (RtlGetNtVersionNumbersPtr)GetProcAddress(nt_dll, "RtlGetNtVersionNumbers");
+    }
+    if (fnRtlGetNtVersionNumbers)
+    {
+    #define VER_NUM 5
+        WCHAR pos[VER_NUM] = { 0 };
+        fnRtlGetNtVersionNumbers(&major_ver, &minor_ver,&build_num);
+        _snwprintf(pos, VER_NUM, L"%u%d%u", major_ver, 0, minor_ver);
+        ver = wcstol(pos, NULL, 10);
+    #undef VER_NUM
+    }
+    return ver;
 }
