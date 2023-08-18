@@ -25,7 +25,7 @@
 
 #define MAX_MESSAGE 1024
 #define BUFSIZE     1024*16
-#define BUFF_MAX    1024*100
+#define BUFF_MAX    0x2000000
 #define MD5_LEN     64
 #define NAMES_LEN   64
 #define VALUE_LEN   128

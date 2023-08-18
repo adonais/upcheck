@@ -151,22 +151,14 @@ leave_spinlock(void)
 static char *
 memstr(char *full_data, int full_data_len, const char *substr)
 {
-    if (full_data == NULL || full_data_len <= 0 || substr == NULL)
+    if (full_data == NULL || full_data_len <= 0 || substr == NULL || *substr == '\0')
     {
         return NULL;
     }
-
-    if (*substr == '\0')
-    {
-        return NULL;
-    }
-
-    int sublen = (int)strlen(substr);
-
-    int i;
+    const int sublen = (const int)strlen(substr);
     char *cur = full_data;
     int last_possible = full_data_len - sublen + 1;
-    for (i = 0; i < last_possible; i++)
+    for (int i = 0; i < last_possible; i++)
     {
         if (*cur == *substr)
         {
@@ -207,30 +199,38 @@ init_file_strings(LPCWSTR names, char *out_path)
 }
 
 bool
-find_local_str(char *result, int len)
+find_local_str(char *result, const int len)
 {
     FILE *fp = NULL;
     char *u = NULL;
     bool found = false;
-    const char *ctags = "/global/intl.css";
-    char buff[BUFF_MAX+1] = {0};
+    size_t buf_len = 0;
+    char *buff = NULL;
     char omni[MAX_PATH] = {0};
+    const char *ctags = "/global/intl.css";
     if (!init_file_strings(L"omni.ja", omni))
     {
         return false;
     }
-    fp = fopen(omni, "rb");
-    if (fp == NULL)
+    if (len < 5)
+    {
+        return false;
+    }
+    if ((fp = fopen(omni, "rb")) == NULL)
     {
         printf("open omni.ja false\n");
         return false;
     }
-    while (fread(buff, BUFF_MAX, 1, fp) > 0)
+    if ((buff = (char *)calloc(1, BUFF_MAX)) == NULL)
     {
-        if ((u = memstr(buff, BUFF_MAX, ctags)) != NULL)
+        fclose(fp);
+        return false;
+    }
+    if ((buf_len = fread(buff, 1, BUFF_MAX - 1, fp)) > 0)
+    {
+        if ((u = memstr(buff, (int)buf_len, ctags)) != NULL && u - buff > 5)
         {
             found = true;
-            break;
         }
     }
     if (found)
@@ -241,6 +241,7 @@ find_local_str(char *result, int len)
     {
         fclose(fp);
     }
+    free(buff);
     return found;
 }
 
