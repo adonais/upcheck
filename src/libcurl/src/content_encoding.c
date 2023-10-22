@@ -1045,22 +1045,3 @@ char *Curl_all_content_encodings(void)
 }
 
 #endif /* CURL_DISABLE_HTTP */
-#ifdef HAVE_LIBZ
-CURL_EXTERN unsigned long
-zlib_compressBound(unsigned long sourceLen)
-{
-    return compressBound(sourceLen);
-}
-
-CURL_EXTERN int
-zlib_compress2(uint8_t *dest, unsigned long *destLen, const uint8_t *source, unsigned long sourceLen, int level)
-{
-    return compress2(dest, destLen, source, sourceLen, level);
-}
-
-CURL_EXTERN int 
-zlib_uncompress2(uint8_t  *dest, unsigned long *destLen, const uint8_t *source, unsigned long *sourceLen)
-{
-    return uncompress2(dest, destLen, source, sourceLen);
-}
-#endif
