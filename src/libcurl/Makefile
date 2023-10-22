@@ -198,7 +198,7 @@ OBJS = \
     $(OBJD)\libcurl\easygetopt.obj       \
     $(OBJD)\libcurl\dynbuf.obj           \
     $(OBJD)\libcurl\conncache.obj        \
-    $(OBJD)\libcurl\curl_log.obj         \
+    $(OBJD)\libcurl\curl_trc.obj         \
     $(OBJD)\libcurl\timediff.obj         \
     $(OBJD)\libcurl\version_win32.obj    \
     $(OBJD)\libcurl\ws.obj               \
@@ -245,13 +245,11 @@ OBJS = \
     $(OBJD)\libcurl\vssh/libssh2.obj            \
     $(OBJD)\libcurl\vssh/wolfssh.obj            \
     $(OBJD)\libcurl\vtls/bearssl.obj            \
-    $(OBJD)\libcurl\vtls/gskit.obj              \
     $(OBJD)\libcurl\vtls/gtls.obj               \
     $(OBJD)\libcurl\vtls/hostcheck.obj          \
     $(OBJD)\libcurl\vtls/keylog.obj             \
     $(OBJD)\libcurl\vtls/mbedtls.obj            \
     $(OBJD)\libcurl\vtls/mbedtls_threadlock.obj \
-    $(OBJD)\libcurl\vtls/nss.obj                \
     $(OBJD)\libcurl\vtls/openssl.obj            \
     $(OBJD)\libcurl\vtls/rustls.obj             \
     $(OBJD)\libcurl\vtls/schannel.obj           \
