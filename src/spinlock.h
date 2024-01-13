@@ -140,7 +140,6 @@ extern bool  exec_ppv(LPCSTR wcmd, LPCSTR pcd, int flags);
 extern bool  get_name_self(LPWSTR lpstrName, DWORD wlen);
 extern bool  search_process(LPCWSTR names);
 extern char* url_decode(const char *input);
-extern uint64_t ini_read_uint64(const char *sec, const char *key, const char *ini);
 extern WCHAR* get_process_path(WCHAR *path, const int len);
 extern const uint32_t get_os_version(void);
 

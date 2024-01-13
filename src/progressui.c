@@ -253,7 +253,7 @@ set_ui_strings(void)
     {
         return false;
     }
-    if (!ini_read_string("App", "RemotingName", &names, ini))
+    if (!ini_read_string("App", "RemotingName", &names, ini, true))
     {
         return false;
     }

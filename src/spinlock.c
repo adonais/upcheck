@@ -27,19 +27,6 @@ ptr_curl_easy_init euapi_curl_easy_init = NULL;
 ptr_curl_global_cleanup euapi_curl_global_cleanup = NULL;
 ptr_curl_easy_cleanup euapi_curl_easy_cleanup = NULL;
 
-uint64_t
-ini_read_uint64(const char *sec, const char *key, const char *ini)
-{
-    char *m_str = NULL;
-    uint64_t result = 0;
-    if (ini_read_string(sec, key, &m_str, ini))
-    {
-        result = _strtoui64(m_str, NULL, 10);
-        free(m_str);
-    }
-    return result;
-}
-
 void
 wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
 {

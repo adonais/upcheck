@@ -532,6 +532,97 @@ utf8_to_utf16be(uint8_t *outb, int *outlen, const uint8_t *in, int *inlen)
     return (*outlen);
 }
 
+static int
+utf16be_to_utf8(unsigned char *out, int *outlen, const unsigned char *inb, int *inlenb)
+{
+    unsigned char *outstart = out;
+    const unsigned char *processed = inb;
+    unsigned char *outend = out + *outlen;
+    unsigned short *in = (unsigned short *) inb;
+    unsigned short *inend;
+    unsigned int c, d, inlen;
+    unsigned char *tmp;
+    int bits;
+
+    if ((*inlenb % 2) == 1) (*inlenb)--;
+    inlen = *inlenb / 2;
+    inend = in + inlen;
+    while (in < inend)
+    {
+        if (true)
+        {
+            tmp = (unsigned char *) in;
+            c = *tmp++;
+            c = c << 8;
+            c = c | (unsigned int) *tmp;
+            in++;
+        }
+        if ((c & 0xFC00) == 0xD800)
+        { /* surrogates */
+            if (in >= inend)
+            { /* (in > inend) shouldn't happens */
+                *outlen = (int)(out - outstart);
+                *inlenb = (int)(processed - inb);
+                return (-2);
+            }
+            if (true)
+            {
+                tmp = (unsigned char *) in;
+                d = *tmp++;
+                d = d << 8;
+                d = d | (unsigned int) *tmp;
+                in++;
+            }
+            if ((d & 0xFC00) == 0xDC00)
+            {
+                c &= 0x03FF;
+                c <<= 10;
+                c |= d & 0x03FF;
+                c += 0x10000;
+            }
+            else
+            {
+                *outlen = (int)(out - outstart);
+                *inlenb = (int)(processed - inb);
+                return (-2);
+            }
+        }
+
+        /* assertion: c is a single UTF-4 value */
+        if (out >= outend) break;
+        if (c < 0x80)
+        {
+            *out++ = c;
+            bits = -6;
+        }
+        else if (c < 0x800)
+        {
+            *out++ = ((c >> 6) & 0x1F) | 0xC0;
+            bits = 0;
+        }
+        else if (c < 0x10000)
+        {
+            *out++ = ((c >> 12) & 0x0F) | 0xE0;
+            bits = 6;
+        }
+        else
+        {
+            *out++ = ((c >> 18) & 0x07) | 0xF0;
+            bits = 12;
+        }
+
+        for (; bits >= 0; bits -= 6)
+        {
+            if (out >= outend) break;
+            *out++ = ((c >> bits) & 0x3F) | 0x80;
+        }
+        processed = (const unsigned char *) in;
+    }
+    *outlen = (int)(out - outstart);
+    *inlenb = (int)(processed - inb);
+    return (*outlen);
+}
+
 static bool
 utf8_check(const uint8_t *str)
 {
@@ -593,6 +684,54 @@ get_file_type(FILE *fp)
     return m_type;
 }
 
+static str_encoding
+get_block_type(const uint8_t *buf, const int size)
+{
+    if (!buf || size <= 0)
+    {
+        return E_OTHER;
+    }
+    if (memcmp(buf, "\xEF\xBB\xBF", 3) == 0)
+    {
+        return E_UTF8_BOM;
+    }
+    else if (memcmp(buf, "\xFF\xFE", 2) == 0)
+    {
+        return E_UNICODE;
+    }
+    else if (memcmp(buf, "\xFE\xFF", 2) == 0)
+    {
+        return E_UNICODE_BIG;
+    }
+    else if (utf8_check(buf))
+    {
+        return E_UTF8;
+    }
+    return E_ANSI;
+}
+
+static str_line
+get_block_eol(const char *str, const int len)
+{
+    char *p = NULL;
+    if (!str || len <= 0)
+    {
+        return CHR_UNKOWN;
+    }
+    if ((p = strchr(str, '\n')))
+    {
+        if (p > str && *(p - 1) == '\r')
+        {
+            return CHR_WIN;
+        }
+        else
+        {
+            return CHR_UNIX;
+        }
+    }
+    return CHR_UNKOWN;
+}
+
 static inline void
 be_to_le(uint16_t *in)
 {
@@ -600,17 +739,20 @@ be_to_le(uint16_t *in)
     *in = tmp;
 }
 
-static wchar_t *
+static wchar_t*
 fgetws_ex(wchar_t *string, int n, FILE *stream, str_encoding m_type)
 {
+    int i = 0;
     if (!string || !stream || feof(stream) || n <= 0)
     {
         return NULL;
     }
-    int i = 0;
     while (i < n - 1 && !feof(stream))
     {
-        if (fread(&string[i], sizeof(wchar_t), 1, stream) != 1) break;
+        if (fread(&string[i], sizeof(wchar_t), 1, stream) != 1)
+        {
+            break;
+        }
         if (m_type == E_UNICODE_BIG)
         {
             be_to_le(&string[i]);
@@ -618,14 +760,44 @@ fgetws_ex(wchar_t *string, int n, FILE *stream, str_encoding m_type)
         // Check the character readed, break if it's '\n'
         if (string[i] == L'\n')
         {
-            i++;
+            ++i;
             break;
         }
-        i++;
+        ++i;
     }
-    string[i] = 0x0;
+    string[i] = 0;
     return string;
 }
+
+static bool
+read_lines(char *text, const int len, char **ptr)
+{
+    char *p = NULL;
+    if (!(**ptr))
+    {
+        return false;
+    }
+    if ((p = strchr((*ptr), '\n')))
+    {
+        if (p > (*ptr) && (*(p - 1) == '\r'))
+        {
+            *(p - 1) = 0;
+        }
+        else
+        {
+            *p = 0;
+        }
+        _snprintf(text, len - 1, "%s", *ptr);
+        ++p;
+        (*ptr) = p;
+    }
+    else
+    {
+        **ptr = 0;
+    }
+    return true;
+}
+
 static bool
 open_to_mem(ini_list **li, const wchar_t *path, const bool write_access)
 {
@@ -993,7 +1165,7 @@ iniparser_destroy_cache(ini_cache *pli)
  * ini 必须是utf8文件名
  */
 static bool
-ini_parser_create(const char *ini, ini_list **ini_table, bool write_access)
+iniparser_from_file(const char *ini, ini_list **ini_table, const bool write_access)
 {
     bool res = false;
     wchar_t *u16_path = NULL;
@@ -1032,13 +1204,96 @@ ini_parser_create(const char *ini, ini_list **ini_table, bool write_access)
     return res;
 }
 
+static bool
+iniparser_from_memory(const char *buf, const int size, ini_list **ini_table)
+{
+    bool ret = false;
+    char *ptxt = NULL;
+    str_line eol = CHR_UNKOWN;
+    str_encoding type = get_block_type((const uint8_t *)buf, size);
+    switch (type)
+    {
+        case E_UTF8:
+        {
+            ptxt = _strdup(buf);
+            break;
+        }
+        case E_UTF8_BOM:
+        {
+            if ((ptxt = (char *)calloc(1, size)))
+            {
+                memcpy(ptxt, &buf[3], size - 3);
+            }
+            break;
+        }
+        case E_UNICODE:
+        {
+            ptxt = ini_utf16_utf8((const wchar_t *)&buf[2], NULL);
+            break;
+        }
+        case E_UNICODE_BIG:
+        {
+            int inlen = size - 2;
+            int outlen = inlen * 4;
+            if ((ptxt = (char *)calloc(1, outlen + 2)))
+            {
+                int result = utf16be_to_utf8((uint8_t *)ptxt, &outlen, (const uint8_t *)&buf[2], &inlen);
+                if (result < 0)
+                {
+                    free(ptxt);
+                    ptxt = NULL;
+                }
+            }
+            break;
+        }
+        case E_ANSI:
+        {
+            ptxt = ini_mbcs_utf8(-1, buf, NULL);
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
+    if (ptxt && (eol = get_block_eol(ptxt, (const int)strlen(ptxt))) && list_init(ini_table))
+    {
+        char *tmp = ptxt;
+        char text[MAX_COUNT+1] = {0};
+        (*ini_table)->codes = type;
+        (*ini_table)->breaks = eol;
+        while ((*tmp) && read_lines(text, MAX_COUNT, &tmp))
+        {
+            if (*text == ';' || *text == '#')
+            {
+                continue;
+            }
+            if (!list_insert(&(*ini_table)->pd, NULL, text))
+            {
+                printf("list_add failed\n");
+                break;
+            }
+        }
+        ret = true;
+    }
+    ini_safe_free(ptxt);
+    return ret;
+}
+
 ini_cache
-iniparser_create_cache(const char *ini, bool write_access)
+iniparser_create_cache(const char *ini, const int access_or_size, const bool isfile)
 {
     ini_cache ini_handle = NULL;
-    if (ini_parser_create(ini, &ini_handle, write_access))
+    if (isfile)
     {
-        ini_handle->write = write_access;
+        if (iniparser_from_file(ini, &ini_handle, (const bool)access_or_size))
+        {
+            ini_handle->write = (const bool)access_or_size;
+        }
+    }
+    else if (iniparser_from_memory(ini, access_or_size, &ini_handle))
+    {
+        ini_handle->write = false;
     }
     return ini_handle;
 }
@@ -1081,7 +1336,7 @@ bool
 ini_delete_section(const char *sec, const char *path)
 {
     bool res = false;
-    ini_cache plist = iniparser_create_cache(path, true);
+    ini_cache plist = iniparser_create_cache(path, true, true);
     if (!plist)
     {
         return false;
@@ -1179,7 +1434,7 @@ bool
 ini_new_section(const char *value, const char *path)
 {
     bool res = false;
-    ini_cache plist = iniparser_create_cache(path, true);
+    ini_cache plist = iniparser_create_cache(path, true, true);
     if (!plist)
     {
         return false;
@@ -1258,7 +1513,7 @@ ini_write_string(const char *sec, const char *key, const char *new_value, const 
 {
     bool res = false;
     ini_cache plist = NULL;
-    if ((plist = iniparser_create_cache(path, true)) != NULL)
+    if ((plist = iniparser_create_cache(path, true, true)) != NULL)
     {
         res = inicache_write_string(sec, key, new_value, &plist);
         iniparser_destroy_cache(&plist);
@@ -1283,10 +1538,10 @@ inicache_read_string(const char *sec, const char *key, char **buf, ini_cache *in
 }
 
 bool
-ini_read_string(const char *sec, const char *key, char **buf, const char *path)
+ini_read_string(const char *sec, const char *key, char **buf, const char *path, const bool isfile)
 {
     bool res = false;
-    ini_cache plist = iniparser_create_cache(path, false);
+    ini_cache plist = iniparser_create_cache(path, false, isfile);
     if (!plist)
     {
         return false;
@@ -1296,12 +1551,41 @@ ini_read_string(const char *sec, const char *key, char **buf, const char *path)
     return res;
 }
 
+uint64_t
+ini_read_uint64(const char *sec, const char *key, const char *path, const bool isfile)
+{
+    char *m_str = NULL;
+    uint64_t result = 0;
+    if (ini_read_string(sec, key, &m_str, path, isfile))
+    {
+        result = _strtoui64(m_str, NULL, 10);
+        free(m_str);
+    }
+    return result;
+}
+
+uint64_t
+inicache_read_uint64(const char *sec, const char *key, ini_cache *ini)
+{
+    uint64_t res = 0;
+    char *value = NULL;
+    if (inicache_read_string(sec, key, &value, ini))
+    {
+        res = _strtoui64(value, NULL, 10);
+    }
+    if (value)
+    {
+        free(value);
+    }
+    return res;
+}
+
 int
-ini_read_int(const char *sec, const char *key, const char *path)
+ini_read_int(const char *sec, const char *key, const char *path, const bool isfile)
 {
     int res = 0;
     char *value = NULL;
-    if (ini_read_string(sec, key, &value, path))
+    if (ini_read_string(sec, key, &value, path, isfile))
     {
         res = atoi(value);
     }
@@ -1388,10 +1672,11 @@ bool
 ini_foreach_key(const char *sec,
                 char (*lpdata)[129],
                 const int line,
-                const char *path)
+                const char *path,
+                const bool isfile)
 {
     bool res = false;
-    ini_cache plist = iniparser_create_cache(path, false);
+    ini_cache plist = iniparser_create_cache(path, false, isfile);
     if (!plist)
     {
         return false;
@@ -1405,10 +1690,11 @@ bool
 ini_foreach_wkey(const char *sec,
                 wchar_t (*lpdata)[129],
                 const int line,
-                const char *path)
+                const char *path,
+                const bool isfile)
 {
     bool res = false;
-    ini_cache plist = iniparser_create_cache(path, false);
+    ini_cache plist = iniparser_create_cache(path, false, isfile);
     if (!plist)
     {
         return false;
@@ -1478,10 +1764,11 @@ bool
 ini_foreach_string(const char *sec,
                    char (*lpdata)[129],
                    const int line,
-                   const char *path)
+                   const char *path,
+                   const bool isfile)
 {
     bool res = false;
-    ini_cache plist = iniparser_create_cache(path, false);
+    ini_cache plist = iniparser_create_cache(path, false, isfile);
     if (!plist)
     {
         return false;
@@ -1495,10 +1782,11 @@ bool
 ini_foreach_wstring(const char *sec,
                     wchar_t (*lpdata)[129],
                     const int line,
-                    const char *path)
+                    const char *path,
+                    const bool isfile)
 {
     bool res = false;
-    ini_cache plist = iniparser_create_cache(path, false);
+    ini_cache plist = iniparser_create_cache(path, false, isfile);
     if (!plist)
     {
         return false;
@@ -1531,10 +1819,10 @@ inicache_search_string(const char *key, char **buf, ini_cache *ini)
 }
 
 bool
-ini_search_string(const char *key, char **buf, const char *path)
+ini_search_string(const char *key, char **buf, const char *path, const bool isfile)
 {
     bool res = false;
-    ini_cache plist = iniparser_create_cache(path, false);
+    ini_cache plist = iniparser_create_cache(path, false, isfile);
     if (!plist)
     {
         return false;

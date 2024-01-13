@@ -305,9 +305,9 @@ init_command_data(const int args, const wchar_t **pv)
         {
             char *ini_proxy = NULL;
             char *ini_usewd = NULL;
-            if (ini_read_string("proxy", "addr", &ini_proxy, file_info.ini))
+            if (ini_read_string("proxy", "addr", &ini_proxy, file_info.ini, true))
             {
-                ini_read_string("proxy", "user", &ini_usewd, file_info.ini);
+                ini_read_string("proxy", "user", &ini_usewd, file_info.ini, true);
             }
             if (ini_proxy && ini_proxy[0])
             {
@@ -949,10 +949,15 @@ init_download(const char *url, int64_t length)
             printf("get the file size error...\n");
             length = 0;
         }
-        if (fill_file_name(url) && length)
+        if (fill_file_name(url))
         {
             _snwprintf(sql_name, MAX_PATH, L"%s%s", file_info.names, L".sinfo");
-            if (PathFileExistsW(sql_name))
+            if (PathFileExistsW(file_info.names) && strlen(file_info.md5) > 1 && md5_sum())
+            {
+                *file_info.md5 = '\0';
+                return true;
+            }
+            else if (PathFileExistsW(sql_name) && length > 0)
             {
                 if (!PathFileExistsW(file_info.names))
                 {
@@ -962,11 +967,6 @@ init_download(const char *url, int64_t length)
                 {
                     return resume_download(url, length, sql_name);
                 }
-            }
-            else if (PathFileExistsW(file_info.names) && strlen(file_info.md5) > 1 && md5_sum())
-            {
-                *file_info.md5 = '\0';
-                return true;
             }
         } // 长度未知时,不启用sql日志文件
         if (!length || init_sql_logs(sql_name))
@@ -1305,7 +1305,7 @@ msg_tips(void)
     HWND fx = NULL;
     char *lpmsg = NULL;
     WCHAR msg[MAX_MESSAGE+1] = {0};
-    if (ini_read_string("update", "msg", &lpmsg, file_info.ini) &&
+    if (ini_read_string("update", "msg", &lpmsg, file_info.ini, true) &&
         MultiByteToWideChar(CP_UTF8, 0, lpmsg, -1, msg, MAX_MESSAGE) > 0)
     {
         fx = get_moz_hwnd();
@@ -1327,7 +1327,7 @@ logs_update(const bool res)
         char *str_time = NULL;
         uint64_t diff = 3600 * 24;
         uint64_t m_time1 = (uint64_t) time(NULL);
-        uint64_t m_time2 = ini_read_uint64("update", "last_check", file_info.ini);
+        uint64_t m_time2 = ini_read_uint64("update", "last_check", file_info.ini, false);
         if (m_time1 - m_time2 > diff)
         {
             char s_time[FILE_LEN] = { 0 };
@@ -1542,7 +1542,7 @@ wmain(int argc, wchar_t **argv)
         {
             return false;
         }
-        if (ini_read_string("player", "command", &command, file_info.ini))
+        if (ini_read_string("player", "command", &command, file_info.ini, true))
         {   // 优先调用命令行参数
             char dl[URL_LEN] = {0};
             char *p1 = NULL,*p2 = NULL;

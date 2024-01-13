@@ -9,14 +9,31 @@
 
 #define INFO_LEN 32
 
+typedef struct _xml_buffer
+{
+    int size;
+    int cur;
+    char str[MAX_BUFFER_SIZE];
+}xml_buffer;
+
 typedef size_t (*fn_write_data)(void *contents, size_t size, size_t nmemb, void *userp);
 
 static size_t
-write_data(void *ptr, size_t size, size_t nmemb, void *stream)
+write_data_callback(void *ptr, size_t size, size_t nmemb, void *stream)
 {
-    DWORD written;
-    WriteFile(stream, ptr, (DWORD)(size * nmemb), &written, NULL);
-    return written;
+    xml_buffer *pbuf = (xml_buffer *)stream;
+    int written = (int)(size * nmemb);
+    if (written < pbuf->size)
+    {
+        memcpy(&pbuf->str[pbuf->cur], ptr, written);
+        pbuf->cur += written;
+        pbuf->size -= written;
+    }
+    else
+    {
+        written = 0;
+    }
+    return (size_t)written;
 }
 
 int
@@ -182,13 +199,14 @@ get_file_bits(void)
 }
 
 static int
-ini_query_edit(const char *ini)
+ini_query_edit(xml_buffer *pbuf)
 {
     int res = -1;
     char *c_md5 = NULL;
     char *url = NULL;
     char info[INFO_LEN + 1] = {0};
     uint64_t dt_remote = 0;
+    ini_cache ini_handler = NULL;
     int  bits = get_file_bits();
     if (bits == 64)
     {
@@ -205,18 +223,23 @@ ini_query_edit(const char *ini)
         printf("unknown platform\n");
         return res;
     }
-    while (file_info.dt_local > 0 && (dt_remote = ini_read_uint64("updates", info, ini)) > 0)
+    if (!(ini_handler = iniparser_create_cache(pbuf->str, pbuf->cur, false)))
+    {
+        printf("iniparser_create_cache return false\n");
+        return res;
+    }
+    while (file_info.dt_local > 0 && (dt_remote = inicache_read_uint64("updates", info, &ini_handler)) > 0)
     {
         res = dt_remote > file_info.dt_local ? 0 : 1;
         if (res == 0)
         {
-            if (!ini_read_string(info, "url", &url, ini))
+            if (!inicache_read_string(info, "url", &url, &ini_handler))
             {
                 printf("ini_read_string url return false\n");
                 res = -1;
                 break;
             }
-            if (!ini_read_string(info, "md5", &c_md5, ini))
+            if (!inicache_read_string(info, "md5", &c_md5, &ini_handler))
             {
                 printf("ini_read_string md5 return false\n");
                 res = -1;
@@ -229,11 +252,12 @@ ini_query_edit(const char *ini)
     }
     ini_safe_free(c_md5);
     ini_safe_free(url);
+    iniparser_destroy_cache(&ini_handler);
     return res;
 }
 
 static int
-ini_query_ice(const char *ini)
+ini_query_ice(xml_buffer *pbuf)
 {
 
     int res = -1;
@@ -244,6 +268,7 @@ ini_query_ice(const char *ini)
     char info[INFO_LEN + 1] = {0};
     char *url = NULL;
     char *c_md5 = NULL;
+    ini_cache ini_handler = NULL;
     int   bits = get_file_bits();
     if (bits == 64)
     {
@@ -276,14 +301,19 @@ ini_query_ice(const char *ini)
     }
     do
     {
+        if (!(ini_handler = iniparser_create_cache(pbuf->str, pbuf->cur, false)))
+        {
+            printf("iniparser_create_cache return false\n");
+            break;
+        }
         if (!init_file_strings(L"application.ini", app_ini))
         {
             printf("init_file_strings application.ini return false\n");
             break;
         }
-        if ((dt_locale = ini_read_uint64("App", "BuildID", app_ini)) > 0)
+        if ((dt_locale = ini_read_uint64("App", "BuildID", app_ini, true)) > 0)
         {
-            dt_remote = ini_read_uint64("updates", info, ini);
+            dt_remote = inicache_read_uint64("updates", info, &ini_handler);
         }
         if (dt_locale >= dt_remote)
         {
@@ -291,24 +321,26 @@ ini_query_ice(const char *ini)
             res = 1;
             break;
         }
-        if (!ini_read_string(info, "url", &url, ini))
+        if (!inicache_read_string(info, "url", &url, &ini_handler))
         {
-            printf("ini_read_string url return false\n");
+            printf("inicache_read_string url return false\n");
             res = strstr(info, ".esr") ? 1 :-1;
             break;
         }
-        if (!ini_read_string(info, "md5", &c_md5, ini))
+        if (!inicache_read_string(info, "md5", &c_md5, &ini_handler))
         {
-            printf("ini_read_string md5 return false\n");
+            printf("inicache_read_string md5 return false\n");
             res = -1;
             break;
         }
         strncpy(file_info.md5, c_md5, MD5_LEN);
         strncpy(file_info.url, url, URL_LEN);
+        printf("dt_locale = %I64u, dt_remote = %I64u, c_md5 = %s, app_url = %s\n", dt_locale, dt_remote, c_md5, url);
         res = 0;
     }while(0);
     ini_safe_free(c_md5);
     ini_safe_free(url);
+    iniparser_destroy_cache(&ini_handler);
     return res;
 }
 
@@ -318,22 +350,10 @@ ini_query_ice(const char *ini)
 int
 init_resolver(void)
 {
-    HANDLE pfile;
-    WCHAR temp_path[MAX_PATH];
-    WCHAR temp_names[MAX_PATH];
-    char  ini_names[MAX_PATH + 1] = {0};
     char* url = NULL;
     int   res = -1;
-    if (!GetTempPathW(MAX_PATH, temp_path))
-    {
-        return res;
-    }
-    if (!GetTempFileNameW(temp_path, L"INI", 0, temp_names))
-    {
-        printf("GetTempFileNameW return false\n");
-        return res;
-    }
-    if (*file_info.ini && !ini_read_string("update", "url", &url, file_info.ini))
+    xml_buffer xbuf = {MAX_BUFFER_SIZE};
+    if (*file_info.ini && !ini_read_string("update", "url", &url, file_info.ini, true))
     {
         printf("ini_read_string portable.ini update return false\n");
         return res;
@@ -343,33 +363,22 @@ init_resolver(void)
         printf("file_info.ini_uri maybe null\n");
         return res;
     }
-    pfile = CreateFileW(temp_names, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_TEMPORARY, NULL);
-    if (pfile == INVALID_HANDLE_VALUE)
+    if ((res = init_process(url, &write_data_callback, &xbuf)) != CURLE_OK)
     {
-        ini_safe_free(url);
-        printf("CreateFileW temp file return false\n");
-        return res;
-    }
-    res = init_process(url, &write_data, pfile);
-    CloseHandle(pfile);
-    if (res != CURLE_OK)
-    {
+        printf("init_process[%s] error, cause: %d\n", url, res);
         res = -1;
     }
     else
     {
-        FlushFileBuffers(pfile);
-        WideCharToMultiByte(CP_UTF8, 0, temp_names, -1, ini_names, MAX_PATH, NULL, NULL);
         if (file_info.ini_uri[0])
         {
-            res = ini_query_edit(ini_names);
+            res = ini_query_edit(&xbuf);
         }
         else
         {
-            res = ini_query_ice(ini_names);
+            res = ini_query_ice(&xbuf);
         }
     }
     ini_safe_free(url);
-    DeleteFileW(temp_names);
     return res;
 }
