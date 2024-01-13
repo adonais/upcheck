@@ -85,7 +85,6 @@ dirs:
     @if not exist "$(INCD)" mkdir "$(INCD)" && echo.   Created $(INCD)
 
 $(STATICLIB): $(CARES_OBJS)
-	echo we build
 	$(AR) $(ARFLAGS) -out:$@ $(CARES_OBJS)
 	
 $(INCD)\ares.h : include\ares.h
