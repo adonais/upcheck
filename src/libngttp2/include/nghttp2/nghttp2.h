@@ -36,14 +36,6 @@
 #  define __has_declspec_attribute(x) 0
 #endif
 
-#ifdef BUILDING_NGHTTP2
-#if defined(_WIN64)
-typedef long int ssize_t;
-#else
-typedef int ssize_t;
-#endif
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
