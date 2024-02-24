@@ -237,27 +237,29 @@ OBJS = \
     $(OBJD)\libcurl\vauth\oauth2.obj            \
     $(OBJD)\libcurl\vauth\spnego_gssapi.obj     \
     $(OBJD)\libcurl\vauth\spnego_sspi.obj       \
-    $(OBJD)\libcurl\vquic/curl_msh3.obj         \
-    $(OBJD)\libcurl\vquic/curl_ngtcp2.obj       \
-    $(OBJD)\libcurl\vquic/curl_quiche.obj       \
-    $(OBJD)\libcurl\vquic/vquic.obj             \
-    $(OBJD)\libcurl\vssh/libssh.obj             \
-    $(OBJD)\libcurl\vssh/libssh2.obj            \
-    $(OBJD)\libcurl\vssh/wolfssh.obj            \
-    $(OBJD)\libcurl\vtls/bearssl.obj            \
-    $(OBJD)\libcurl\vtls/gtls.obj               \
-    $(OBJD)\libcurl\vtls/hostcheck.obj          \
-    $(OBJD)\libcurl\vtls/keylog.obj             \
-    $(OBJD)\libcurl\vtls/mbedtls.obj            \
-    $(OBJD)\libcurl\vtls/mbedtls_threadlock.obj \
-    $(OBJD)\libcurl\vtls/openssl.obj            \
-    $(OBJD)\libcurl\vtls/rustls.obj             \
-    $(OBJD)\libcurl\vtls/schannel.obj           \
-    $(OBJD)\libcurl\vtls/schannel_verify.obj    \
-    $(OBJD)\libcurl\vtls/sectransp.obj          \
-    $(OBJD)\libcurl\vtls/vtls.obj               \
-    $(OBJD)\libcurl\vtls/wolfssl.obj            \
-    $(OBJD)\libcurl\vtls/x509asn1.obj           \
+    $(OBJD)\libcurl\vquic\curl_msh3.obj         \
+    $(OBJD)\libcurl\vquic\curl_ngtcp2.obj       \
+    $(OBJD)\libcurl\vquic\curl_osslq.obj        \
+    $(OBJD)\libcurl\vquic\curl_quiche.obj       \
+    $(OBJD)\libcurl\vquic\vquic.obj             \
+    $(OBJD)\libcurl\vquic\vquic-tls.obj         \
+    $(OBJD)\libcurl\vssh\libssh.obj             \
+    $(OBJD)\libcurl\vssh\libssh2.obj            \
+    $(OBJD)\libcurl\vssh\wolfssh.obj            \
+    $(OBJD)\libcurl\vtls\bearssl.obj            \
+    $(OBJD)\libcurl\vtls\gtls.obj               \
+    $(OBJD)\libcurl\vtls\hostcheck.obj          \
+    $(OBJD)\libcurl\vtls\keylog.obj             \
+    $(OBJD)\libcurl\vtls\mbedtls.obj            \
+    $(OBJD)\libcurl\vtls\mbedtls_threadlock.obj \
+    $(OBJD)\libcurl\vtls\openssl.obj            \
+    $(OBJD)\libcurl\vtls\rustls.obj             \
+    $(OBJD)\libcurl\vtls\schannel.obj           \
+    $(OBJD)\libcurl\vtls\schannel_verify.obj    \
+    $(OBJD)\libcurl\vtls\sectransp.obj          \
+    $(OBJD)\libcurl\vtls\vtls.obj               \
+    $(OBJD)\libcurl\vtls\wolfssl.obj            \
+    $(OBJD)\libcurl\vtls\x509asn1.obj           \
 
 # --------------------------------
 # Only our custom inference rules
