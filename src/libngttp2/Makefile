@@ -43,7 +43,7 @@ OBJS = \
     $(NGHTTP2_OBJDIR)\nghttp2_session.obj         \
     $(NGHTTP2_OBJDIR)\nghttp2_submit.obj          \
     $(NGHTTP2_OBJDIR)\nghttp2_helper.obj          \
-    $(NGHTTP2_OBJDIR)\nghttp2_npn.obj             \
+    $(NGHTTP2_OBJDIR)\nghttp2_alpn.obj            \
     $(NGHTTP2_OBJDIR)\nghttp2_hd.obj              \
     $(NGHTTP2_OBJDIR)\nghttp2_hd_huffman.obj      \
     $(NGHTTP2_OBJDIR)\nghttp2_hd_huffman_data.obj \
