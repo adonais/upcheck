@@ -105,14 +105,8 @@
 /*                        OTHER HEADER INFO                         */
 /* ---------------------------------------------------------------- */
 
-/* Define if sig_atomic_t is an available typedef. */
-#define HAVE_SIG_ATOMIC_T 1
-
 /* Define if you have the ANSI C header files. */
 #define STDC_HEADERS 1
-
-/* Define if you can safely include both <sys/time.h> and <time.h>. */
-/* #define TIME_WITH_SYS_TIME 1 */
 
 /* ---------------------------------------------------------------- */
 /*                             FUNCTIONS                            */
@@ -237,17 +231,6 @@
 /*                       TYPEDEF REPLACEMENTS                       */
 /* ---------------------------------------------------------------- */
 
-/* Define if in_addr_t is not an available 'typedefed' type. */
-#define in_addr_t unsigned long
-
-/* Define to the return type of signal handlers (int or void). */
-#define RETSIGTYPE void
-
-#ifdef __cplusplus
-/* Compiling headers in C++ mode means bool is available */
-#  define HAVE_BOOL_T
-#endif
-
 /* ---------------------------------------------------------------- */
 /*                            TYPE SIZES                            */
 /* ---------------------------------------------------------------- */
@@ -277,22 +260,18 @@
 #  define _CRT_NONSTDC_NO_DEPRECATE 1
 #endif
 
-/* Set the Target to Vista. However, any symbols required above Win2000
- * should be loaded via LoadLibrary() */
+/* Set the Target to Win8 */
 #if defined(_MSC_VER) && (_MSC_VER >= 1500)
-#  define VS2008_MIN_TARGET 0x0600
+#  define MSVC_MIN_TARGET 0x0600
 #endif
 
-/* VS2008 default target settings and minimum build target check. */
+/* MSVC default target settings */
 #if defined(_MSC_VER) && (_MSC_VER >= 1500)
 #  ifndef _WIN32_WINNT
-#    define _WIN32_WINNT VS2008_MIN_TARGET
+#    define _WIN32_WINNT MSVC_MIN_TARGET
 #  endif
 #  ifndef WINVER
-#    define WINVER VS2008_MIN_TARGET
-#  endif
-#  if (_WIN32_WINNT < VS2008_MIN_TARGET) || (WINVER < VS2008_MIN_TARGET)
-#    error VS2008 does not support Windows build targets prior to Windows 2000
+#    define WINVER MSVC_MIN_TARGET
 #  endif
 #endif
 
@@ -360,7 +339,7 @@
 
 /* Define if you have sockaddr_in6 with scopeid. */
 #ifdef HAVE_WS2TCPIP_H
-#  define HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID 1
+#  define HAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID 1
 #endif
 
 #if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600) && !defined(__WATCOMC__)

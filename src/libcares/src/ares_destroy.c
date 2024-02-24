@@ -57,6 +57,8 @@ void ares_destroy(ares_channel_t *channel)
     node = next;
   }
 
+  ares_queue_notify_empty(channel);
+
 #ifndef NDEBUG
   /* Freeing the query should remove it from all the lists in which it sits,
    * so all query lists should be empty now.
@@ -74,6 +76,11 @@ void ares_destroy(ares_channel_t *channel)
 
   /* No more callbacks will be triggered after this point, unlock */
   ares__channel_unlock(channel);
+
+  /* Shut down the event thread */
+  if (channel->optmask & ARES_OPT_EVENT_THREAD) {
+    ares_event_thread_destroy(channel);
+  }
 
   if (channel->domains) {
     for (i = 0; i < channel->ndomains; i++) {

@@ -50,13 +50,6 @@
 #  define INADDR_NONE 0xffffffff
 #endif
 
-#ifdef CARES_EXPOSE_STATICS
-/* Make some internal functions visible for testing */
-#  define STATIC_TESTABLE
-#else
-#  define STATIC_TESTABLE static
-#endif
-
 /* By using a double cast, we can get rid of the bogus warning of
  * warning: cast from 'const struct sockaddr *' to 'const struct sockaddr_in6 *'
  * increases required alignment from 1 to 4 [-Wcast-align]
@@ -124,6 +117,7 @@ typedef struct ares_rand_state ares_rand_state;
 #include "ares__buf.h"
 #include "ares_dns_private.h"
 #include "ares__iface_ips.h"
+#include "ares__threads.h"
 
 #ifndef HAVE_GETENV
 #  include "ares_getenv.h"
@@ -144,9 +138,9 @@ typedef struct ares_rand_state ares_rand_state;
 #endif
 
 /********* EDNS defines section ******/
-#define EDNSPACKETSZ                                                  \
-  1280                   /* Reasonable UDP payload size, as suggested \
-                            in RFC2671 */
+#define EDNSPACKETSZ                                          \
+  1232 /* Reasonable UDP payload size, as agreed by operators \
+          https://www.dnsflagday.net/2020/#faq */
 #define MAXENDSSZ   4096 /* Maximum (local) limit for edns packet size */
 #define EDNSFIXEDSZ 11   /* Size of EDNS header */
 
@@ -238,9 +232,6 @@ typedef struct ares__qcache ares__qcache_t;
 struct ares_hosts_file;
 typedef struct ares_hosts_file ares_hosts_file_t;
 
-struct ares__thread_mutex;
-typedef struct ares__thread_mutex ares__thread_mutex_t;
-
 struct ares_channeldata {
   /* Configuration data */
   unsigned int          flags;
@@ -260,6 +251,7 @@ struct ares_channeldata {
   char                 *lookups;
   size_t                ednspsz;
   unsigned int          qcache_max_ttl;
+  ares_evsys_t          evsys;
   unsigned int          optmask;
 
   /* For binding to local devices and/or IP addresses.  Leave
@@ -271,6 +263,9 @@ struct ares_channeldata {
 
   /* Thread safety lock */
   ares__thread_mutex_t *lock;
+
+  /* Conditional to wake waiters when queue is empty */
+  ares__thread_cond_t  *cond_empty;
 
   /* Server addresses and communications state. Sorted by least consecutive
    * failures, followed by the configuration order if failures are equal. */
@@ -364,9 +359,9 @@ void ares__rand_bytes(ares_rand_state *state, unsigned char *buf, size_t len);
 
 unsigned short ares__generate_new_id(ares_rand_state *state);
 struct timeval ares__tvnow(void);
-void ares__timeval_remaining(struct timeval *remaining,
-                             const struct timeval *now,
-                             const struct timeval *tout);
+void           ares__timeval_remaining(struct timeval       *remaining,
+                                       const struct timeval *now,
+                                       const struct timeval *tout);
 ares_status_t  ares__expand_name_validated(const unsigned char *encoded,
                                            const unsigned char *abuf,
                                            size_t alen, char **s, size_t *enclen,
@@ -540,6 +535,16 @@ ares_status_t ares__dns_name_write(ares__buf_t *buf, ares__llist_t **list,
                                    ares_bool_t validate_hostname,
                                    const char *name);
 
+/*! Check if the queue is empty, if so, wake any waiters.  This is only
+ *  effective if built with threading support.
+ *
+ *  Must be holding a channel lock when calling this function.
+ *
+ *  \param[in]  channel Initialized ares channel object
+ */
+void          ares_queue_notify_empty(ares_channel_t *channel);
+
+
 #define ARES_SWAP_BYTE(a, b)           \
   do {                                 \
     unsigned char swapByte = *(a);     \
@@ -587,6 +592,13 @@ ares_status_t ares__channel_threading_init(ares_channel_t *channel);
 void          ares__channel_threading_destroy(ares_channel_t *channel);
 void          ares__channel_lock(ares_channel_t *channel);
 void          ares__channel_unlock(ares_channel_t *channel);
+
+struct ares_event_thread;
+typedef struct ares_event_thread ares_event_thread_t;
+
+void          ares_event_thread_destroy(ares_channel_t *channel);
+ares_status_t ares_event_thread_init(ares_channel_t *channel);
+
 
 #ifdef _MSC_VER
 typedef __int64          ares_int64_t;

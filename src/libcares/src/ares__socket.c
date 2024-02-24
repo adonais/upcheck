@@ -106,7 +106,7 @@ static int setsocknonblock(ares_socket_t sockfd, /* operate on this */
   /* most recent unix versions */
   int flags;
   flags = fcntl(sockfd, F_GETFL, 0);
-  if (FALSE != nonblock) {
+  if (nonblock) {
     return fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
   } else {
     return fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK)); /* LCOV_EXCL_LINE */
@@ -177,7 +177,7 @@ static int configure_socket(ares_socket_t s, struct server_state *server)
     return 0;
   }
 
-  (void)setsocknonblock(s, TRUE);
+  (void)setsocknonblock(s, 1);
 
 #if defined(FD_CLOEXEC) && !defined(MSDOS)
   /* Configure the socket fd as close-on-exec. */
@@ -253,6 +253,12 @@ ares_status_t ares__open_connection(ares_channel_t      *channel,
   struct server_connection *conn;
   ares__llist_node_t       *node;
   int                       type = is_tcp ? SOCK_STREAM : SOCK_DGRAM;
+#ifdef __OpenBSD__
+  if ((is_tcp && server->tcp_port == 53) ||
+      (!is_tcp && server->udp_port == 53)) {
+    type |= SOCK_DNS;
+  }
+#endif
 
   switch (server->addr.family) {
     case AF_INET:
@@ -272,7 +278,7 @@ ares_status_t ares__open_connection(ares_channel_t      *channel,
       saddr.sa6.sin6_port = htons(is_tcp ? server->tcp_port : server->udp_port);
       memcpy(&saddr.sa6.sin6_addr, &server->addr.addr.addr6,
              sizeof(saddr.sa6.sin6_addr));
-#ifdef HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID
+#ifdef HAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID
       saddr.sa6.sin6_scope_id = server->ll_scope;
 #endif
       break;
@@ -444,6 +450,9 @@ ares_ssize_t ares__socket_write(ares_channel_t *channel, ares_socket_t s,
 void ares_set_socket_callback(ares_channel_t           *channel,
                               ares_sock_create_callback cb, void *data)
 {
+  if (channel == NULL) {
+    return;
+  }
   channel->sock_create_cb      = cb;
   channel->sock_create_cb_data = data;
 }
@@ -452,6 +461,9 @@ void ares_set_socket_configure_callback(ares_channel_t           *channel,
                                         ares_sock_config_callback cb,
                                         void                     *data)
 {
+  if (channel == NULL || channel->optmask & ARES_OPT_EVENT_THREAD) {
+    return;
+  }
   channel->sock_config_cb      = cb;
   channel->sock_config_cb_data = data;
 }
@@ -460,6 +472,9 @@ void ares_set_socket_functions(ares_channel_t                     *channel,
                                const struct ares_socket_functions *funcs,
                                void                               *data)
 {
+  if (channel == NULL || channel->optmask & ARES_OPT_EVENT_THREAD) {
+    return;
+  }
   channel->sock_funcs        = funcs;
   channel->sock_func_cb_data = data;
 }

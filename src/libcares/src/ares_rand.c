@@ -29,13 +29,22 @@
 #include "ares_private.h"
 #include <stdlib.h>
 
+/* Older MacOS versions require including AvailabilityMacros.h before
+ * sys/random.h */
+#ifdef HAVE_AVAILABILITYMACROS_H
+#  include <AvailabilityMacros.h>
+#endif
+
+#ifdef HAVE_SYS_RANDOM_H
+#  include <sys/random.h>
+#endif
+
 
 typedef enum {
   ARES_RAND_OS   = 1 << 0, /* OS-provided such as RtlGenRandom or arc4random */
   ARES_RAND_FILE = 1 << 1, /* OS file-backed random number generator */
   ARES_RAND_RC4  = 1 << 2, /* Internal RC4 based PRNG */
 } ares_rand_backend;
-
 
 #define ARES_RC4_KEY_LEN 32 /* 256 bits */
 
@@ -134,7 +143,6 @@ static void ares_rc4_prng(ares_rand_rc4 *rc4_state, unsigned char *buf,
   rc4_state->i = i;
   rc4_state->j = j;
 }
-
 
 struct ares_rand_state {
   ares_rand_backend type;
