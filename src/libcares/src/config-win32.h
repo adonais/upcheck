@@ -262,7 +262,7 @@
 
 /* Set the Target to Win8 */
 #if defined(_MSC_VER) && (_MSC_VER >= 1500)
-#  define MSVC_MIN_TARGET 0x0600
+#  define MSVC_MIN_TARGET 0x0602
 #endif
 
 /* MSVC default target settings */
@@ -279,10 +279,10 @@
    target is Windows Vista. */
 #if defined(__POCC__) && (__POCC__ >= 500)
 #  ifndef _WIN32_WINNT
-#    define _WIN32_WINNT 0x0600
+#    define _WIN32_WINNT 0x0602
 #  endif
 #  ifndef WINVER
-#    define WINVER 0x0600
+#    define WINVER 0x0602
 #  endif
 #endif
 

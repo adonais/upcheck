@@ -187,7 +187,7 @@ OBJS = \
     $(OBJD)\libcurl\asyn-thread.obj      \
     $(OBJD)\libcurl\curl_gssapi.obj      \
     $(OBJD)\libcurl\http_ntlm.obj        \
-    $(OBJD)\libcurl\curl_ntlm_wb.obj     \
+    $(OBJD)\libcurl\curl_sha512_256.obj     \
     $(OBJD)\libcurl\curl_ntlm_core.obj   \
     $(OBJD)\libcurl\curl_sasl.obj        \
     $(OBJD)\libcurl\rand.obj             \
@@ -224,6 +224,8 @@ OBJS = \
     $(OBJD)\libcurl\urlapi.obj           \
     $(OBJD)\libcurl\curl_get_line.obj    \
     $(OBJD)\libcurl\altsvc.obj           \
+    $(OBJD)\libcurl\cw-out.obj           \
+    $(OBJD)\libcurl\request.obj          \
     $(OBJD)\libcurl\vauth\vauth.obj             \
     $(OBJD)\libcurl\vauth\cleartext.obj         \
     $(OBJD)\libcurl\vauth\cram.obj              \
@@ -260,6 +262,7 @@ OBJS = \
     $(OBJD)\libcurl\vtls\vtls.obj               \
     $(OBJD)\libcurl\vtls\wolfssl.obj            \
     $(OBJD)\libcurl\vtls\x509asn1.obj           \
+    $(OBJD)\libcurl\vtls\cipher_suite.obj       \
 
 # --------------------------------
 # Only our custom inference rules

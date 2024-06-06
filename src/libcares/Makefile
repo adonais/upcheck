@@ -99,8 +99,8 @@ clean:
 	-del /q $(CARES_OBJDIR)\*.res 2>nul
 	-del /q $(INCD)\ares.h 2>nul
 	-del /q $(INCD)\ares_build.h 2>nul
+	-del /q $(INCD)\ares_rules.h 2>nul
 	-del /q $(INCD)\ares_dns.h 2>nul
 	-del /q $(INCD)\ares_nameser.h 2>nul
-	-del /q $(INCD)\ares_rules.h 2>nul
 	-del /q $(INCD)\ares_version.h 2>nul
 	-rd  /s /q "$(CARES_OBJDIR)" 2>nul
