@@ -3,6 +3,7 @@
 #
 # The toplevel directory of the source tree.
 #
+MY_NO_UNICODE = true
 ROOT = ..\..
 !include "$(ROOT)\system.mak"
 
