@@ -61,6 +61,7 @@ RT_ERROR_CHECKING = -RTCsu
 !ERROR Problem generating CARES_OBJS list.
 !ENDIF
 CARES_OBJS = $(CARES_OBJS:.c=.obj)
+CARES_OBJS = $(CARES_OBJS:/=\)
 
 # --------------------------------
 # Only our custom inference rules
@@ -71,6 +72,24 @@ CARES_OBJS = $(CARES_OBJS:.c=.obj)
 
 {$(SRCDIR)}.c{$(CARES_OBJDIR)}.obj:
     $(CC) $(CFLAGS) -Fo$@ -c $<
+
+{$(SRCDIR)\dsa}.c{$(CARES_OBJDIR)\dsa}.obj:
+    $(CC) $(CFLAGS) -I$(SRCDIR) -Fo$@ -c $<
+
+{$(SRCDIR)\event}.c{$(CARES_OBJDIR)\event}.obj:
+    $(CC) $(CFLAGS) -I$(SRCDIR)  -Fo$@ -c $<
+
+{$(SRCDIR)\legacy}.c{$(CARES_OBJDIR)\legacy}.obj:
+    $(CC) $(CFLAGS) -I$(SRCDIR)  -Fo$@ -c $<
+
+{$(SRCDIR)\record}.c{$(CARES_OBJDIR)\record}.obj:
+    $(CC) $(CFLAGS) -I$(SRCDIR)  -Fo$@ -c $<
+
+{$(SRCDIR)\str}.c{$(CARES_OBJDIR)\str}.obj:
+    $(CC) $(CFLAGS) -I$(SRCDIR)  -Fo$@ -c $<
+
+{$(SRCDIR)\util}.c{$(CARES_OBJDIR)\util}.obj:
+    $(CC) $(CFLAGS) -I$(SRCDIR)  -Fo$@ -c $<
 
 # ---------------------------------------------------------------------
 # Targets only available when a proper CFG library type has been given
@@ -83,6 +102,13 @@ dirs:
     @if not exist "$(BIND)" mkdir "$(BIND)" && echo.   Created $(BIND)
     @if not exist "$(OBJD)" mkdir "$(OBJD)" && echo.   Created $(OBJD)
     @if not exist "$(CARES_OBJDIR)" mkdir "$(CARES_OBJDIR)" && echo.   Created $(CARES_OBJDIR)
+    @if not exist "$(CARES_OBJDIR)\dsa" mkdir "$(CARES_OBJDIR)\dsa" && echo.   Created $(CARES_OBJDIR)\dsa
+    @if not exist "$(CARES_OBJDIR)\event" mkdir "$(CARES_OBJDIR)\event" && echo.   Created $(CARES_OBJDIR)\event
+    @if not exist "$(CARES_OBJDIR)\legacy" mkdir "$(CARES_OBJDIR)\legacy" && echo.   Created $(CARES_OBJDIR)\legacy
+    @if not exist "$(CARES_OBJDIR)\record" mkdir "$(CARES_OBJDIR)\record" && echo.   Created $(CARES_OBJDIR)\record
+    @if not exist "$(CARES_OBJDIR)\str" mkdir "$(CARES_OBJDIR)\str" && echo.   Created $(CARES_OBJDIR)\str
+    @if not exist "$(CARES_OBJDIR)\thirdparty" mkdir "$(CARES_OBJDIR)\thirdparty" && echo.   Created $(CARES_OBJDIR)\thirdparty
+    @if not exist "$(CARES_OBJDIR)\util" mkdir "$(CARES_OBJDIR)\util" && echo.   Created $(CARES_OBJDIR)\util
     @if not exist "$(INCD)" mkdir "$(INCD)" && echo.   Created $(INCD)
 
 $(STATICLIB): $(CARES_OBJS)
@@ -93,15 +119,16 @@ $(INCD)\ares.h : include\ares.h
 
 # cleanup
 clean:
-	-del /q $(STATICLIB) 2>nul
+	-del /q $(STATICLIB) 2>nul 2>nul
+	-del /q $(BIND)\*.pdb 2>nul
 	-del /q $(CARES_OBJDIR)\*.pdb 2>nul
 	-del /q $(CARES_OBJDIR)\*.idb 2>nul
 	-del /q $(CARES_OBJDIR)\*.obj 2>nul
 	-del /q $(CARES_OBJDIR)\*.res 2>nul
 	-del /q $(INCD)\ares.h 2>nul
 	-del /q $(INCD)\ares_build.h 2>nul
-	-del /q $(INCD)\ares_rules.h 2>nul
 	-del /q $(INCD)\ares_dns.h 2>nul
+	-del /q $(INCD)\ares_dns_record.h 2>nul
 	-del /q $(INCD)\ares_nameser.h 2>nul
 	-del /q $(INCD)\ares_version.h 2>nul
 	-rd  /s /q "$(CARES_OBJDIR)" 2>nul
