@@ -78,6 +78,7 @@ typedef struct _sql_node
 {
     int64_t    startidx;
     int64_t    endidx;
+    int64_t    szdown;
     uint32_t   thread;
 } sql_node;
 

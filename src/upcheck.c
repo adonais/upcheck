@@ -22,11 +22,11 @@ typedef HRESULT (WINAPI *SHGetKnownFolderIDListPtr)(REFKNOWNFOLDERID rfid,
         HANDLE           hToken,
         PIDLIST_ABSOLUTE *ppidl);
 
-static int64_t downloaded_size;
-static int64_t total_size;
-static LOCK_MUTEXT g_mutex;
-static SHGetKnownFolderIDListPtr sSHGetKnownFolderIDListStub;
-static char g_download_url[DOWN_NUM][URL_LEN];
+static int64_t downloaded_size = 0;
+static int64_t total_size = 0;
+static LOCK_MUTEXT g_mutex = {0};
+static SHGetKnownFolderIDListPtr sSHGetKnownFolderIDListStub = NULL;
+static char g_download_url[DOWN_NUM][URL_LEN] = {0};
 
 file_info_t file_info = {0};
 
@@ -352,7 +352,7 @@ curl_set_cookies(CURL *curl)
     }
     else
     {
-        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.34.0");
+        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.36.0");
         euapi_curl_easy_setopt(curl, CURLOPT_COOKIE, "");
     }
 }
@@ -510,33 +510,33 @@ download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
     enter_spinlock();
     curl_node *node = (curl_node *) userdata;
     size_t written = 0;
+    int64_t real_size = size * nmemb;
     if (!total_size)
     {
-        written = fwrite(ptr, 1, nmemb * size, node->fp);
+        written = fwrite(ptr, 1, (size_t)real_size, node->fp);
     }
-    else if (node->startidx <= node->endidx)
+    else if (node->szdown < node->endidx)
     {
-        int64_t real_size = size * nmemb;
-        if (node->startidx + real_size > node->endidx)
+        int64_t tsize = size * nmemb;
+        if (node->szdown + tsize > node->endidx)
         {
-            real_size = node->endidx - node->startidx + 1;
+            tsize = node->endidx - node->szdown;
         }
-
-        if (fseek(node->fp, node->startidx, SEEK_SET) != 0)
+        if (fseek(node->fp, node->szdown, SEEK_SET) != 0)
         {
-            ;
+            printf("fseek error!\n");
         }
-        else
+        else if (tsize > 0)
         {
-            written = fwrite(ptr, 1, (size_t) real_size, node->fp);
-            node->startidx += real_size;
+            written = fwrite(ptr, 1, (size_t) tsize, node->fp);
+            node->szdown += written;
         }
-        downloaded_size += real_size;
+        downloaded_size += written;
     }
     leave_spinlock();
     if (total_size > 0)
     {
-        update_ranges(node->tid, node->startidx, downloaded_size);
+        update_ranges(node->tid, node->szdown, downloaded_size);
     }
     return written;
 }
@@ -576,7 +576,7 @@ run_thread(void *pdata)
                 {
                     break;
                 }
-                _snprintf(m_ranges, FILE_LEN, "%I64d-%I64d", pnode->startidx, pnode->endidx);
+                _snprintf(m_ranges, FILE_LEN, "%I64d-%I64d", pnode->szdown, pnode->endidx);
                 euapi_curl_easy_setopt(curl, CURLOPT_RANGE, m_ranges);
                 printf("\n[%s] setup \n", m_ranges);
                 curl_set_cookies(curl);
@@ -587,7 +587,7 @@ run_thread(void *pdata)
                 SYS_FREE(m_ranges);
             }
             // 设置重定向的最大次数,301、302跳转跟随location
-            euapi_curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5);
+            euapi_curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 3);
             euapi_curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
         #if defined(USE_ARES)
             euapi_curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
@@ -597,7 +597,15 @@ run_thread(void *pdata)
         #endif
             // 关掉CLOSE_WAIT
             euapi_curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
-            euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+            if (strncmp(pnode->url, "https://sourceforge.net", 23) == 0)
+            {
+                euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "deflate");
+                printf("\ncontent encoding use deflate\n");
+            }
+            else
+            {
+                euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+            }
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
             //euapi_curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -616,37 +624,32 @@ run_thread(void *pdata)
             euapi_curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
             res = euapi_curl_easy_perform(curl);
             euapi_curl_easy_cleanup(curl);
-            if (res == CURLE_WRITE_ERROR)
+            if (res == CURLE_OK)
             {
-                printf("\nerror:failed writing received data to disk\n");
-                pnode->error = true;
+                pnode->error = false;
+                printf("\ndownload message: ok, %u thread exit\n", pnode->tid);
                 break;
             }
-            else if (res == CURLE_PARTIAL_FILE || res == CURLE_OPERATION_TIMEDOUT)
+            if (res == CURLE_WRITE_ERROR && pnode->endidx != pnode->szdown)
+            {
+                printf("\ndownload error: start = %I64d, end = %I64d\n", pnode->startidx, pnode->endidx);
+                pnode->error = true;
+                printf("\ndownload error: failed writing received data to disk\n");
+                break;
+            }
+            if (pnode->endidx > pnode->szdown)  // CURLE_PARTIAL_FILE, CURLE_OPERATION_TIMEDOUT
             {
                 pnode->error = true;
-                printf("\ndownload error code: %d, retry...\n", res);
+                printf("\ndownload error: code[%d], retry...\n", res);
                 enter_spinlock();
                 if (!file_info.re_bind)
                 {
                     file_info.re_bind = 1;
-                    i = URL_ITERATIONS - 9;
                 }
                 leave_spinlock();
             }
-            else if (res == CURLE_OK)
-            {
-                pnode->error = false;
-                break;
-            }
-            else
-            {
-                const char *err_string = euapi_curl_easy_strerror(res);
-                printf("\ndownload error: %s\n\nurl = %s\n", err_string, pnode->url);
-                pnode->error = true;
-            }
         } // 非严重错误时自动重试8次
-    } while (file_info.re_bind && i++ < URL_ITERATIONS);
+    } while (file_info.re_bind && ++i < URL_ITERATIONS);
     if (!pnode->error && total_size > 0)
     {
         update_status(pnode->tid, 1);
@@ -835,6 +838,7 @@ init_resume(const char *url, int64_t length)
             m_node[i].fp = fp;
             m_node[i].startidx = s_node[i].startidx;
             m_node[i].endidx = s_node[i].endidx;
+            m_node[i].szdown = s_node[i].szdown;
             m_node[i].share = share;
             m_node[i].tid = s_node[i].thread;
             m_node[i].url = url;
@@ -902,14 +906,14 @@ resume_download(const char *url, int64_t length, LPCWSTR path)
         {
             break;
         }
-        fn = check_status(&size);
+        fn = get_down_size(&size);
         if (!fn)
         {
             break;
         }
-        if (size != length)
+        if (size == length)
         {
-            printf("file size different, not resume download.\n");
+            printf("file size eaual, not resume download.\n");
             break;
         }
         fn = init_resume(url, length);
@@ -1027,12 +1031,13 @@ init_download(const char *url, int64_t length)
             m_node[i].startidx = i * gap;
             if (i == file_info.thread_num - 1)
             {
-                m_node[i].endidx = length - 1;
+                m_node[i].endidx = length;
             }
             else
             {
-                m_node[i].endidx = m_node[i].startidx + gap - 1;
+                m_node[i].endidx = m_node[i].startidx + gap;
             }
+            m_node[i].szdown = m_node[i].startidx;
             m_node[i].fp = fp;
             m_node[i].url = url;
             m_node[i].share = share;
@@ -1044,7 +1049,7 @@ init_download(const char *url, int64_t length)
                 m_error = true;
                 break;
             }
-            else if (!thread_insert(url, m_node[i].startidx, m_node[i].endidx, 0, total_size, m_node[i].tid, GetCurrentProcessId(), 0))
+            else if (!thread_insert(url, m_node[i].startidx, m_node[i].endidx, m_node[i].startidx, 0, m_node[i].tid, GetCurrentProcessId(), 0))
             {
                 printf("thread_insert() false.\n");
                 m_error = true;
@@ -1517,7 +1522,7 @@ wmain(int argc, wchar_t **argv)
     }
     if (argn < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
-        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.2.0\n",
+        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.3.0\n",
                "upcheck.exe");
         argn = 0;
     }

@@ -6,7 +6,7 @@
 #define MAX_THREAD 32
 #define FILE_LEN 256
 #define UINT_LEN 66
-#define URL_ITERATIONS 11235
+#define URL_ITERATIONS 9
 
 #ifdef _MSC_VER
 #define strcasestr  StrStrIA
@@ -36,6 +36,7 @@ typedef struct _curl_node
     FILE       *fp;
     int64_t    startidx;
     int64_t    endidx;
+    int64_t    szdown;
     CURLSH     *share;
     uint32_t   tid;
     const char *url;

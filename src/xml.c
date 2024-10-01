@@ -48,7 +48,7 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
         euapi_curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, userdata);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
-        euapi_curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.34.0");
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.36.0");
         euapi_curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);

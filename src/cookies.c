@@ -190,13 +190,13 @@ get_down_size(int64_t *psize)
 {
     int  rc = 0;
     char *msg = NULL;
-    const char *m_sql = "select max(szDown) AS szDown from download_info;";
+    const char *m_sql = "select max(szTotal) AS szTotal from download_info;";
     if (NULL == file_info.sql)
     {
         return 0;
     }
     rc = sqlite3_exec(file_info.sql, m_sql, back_downloaded, psize, &msg);
-    CHECK_RC(rc, "get szDown error", msg, file_info.sql);
+    CHECK_RC(rc, "get szTotal error", msg, file_info.sql);
     return true;
 }
 
@@ -208,12 +208,13 @@ get_ranges(sql_node *node)
     uint32_t szThread;
     int64_t  szBegin;
     int64_t  szEnd;
+    int64_t  szDown;
     int      szStatus;
     int  col = 0;
     sqlite3_stmt *pstmt;
     char *msg = NULL;
     const char *tail;
-    const char *m_sql = "select szBegin,szEnd,szThread,szStatus from download_info;";
+    const char *m_sql = "select szBegin,szEnd,szDown,szThread,szStatus from download_info;";
     if (NULL == file_info.sql)
     {
         return 0;
@@ -230,43 +231,21 @@ get_ranges(sql_node *node)
         col = 0;
         szBegin = sqlite3_column_int64(pstmt,col++);
         szEnd = sqlite3_column_int64(pstmt,col++);
+        szDown = sqlite3_column_int64(pstmt,col++);
         szThread = (uint32_t)sqlite3_column_int64(pstmt,col++);
         szStatus = sqlite3_column_int(pstmt,col++);
 
         if (!szStatus)
         {
-            node[num].startidx = szBegin-1;
+            node[num].startidx = szBegin;
             node[num].endidx = szEnd;
+            node[num].szdown = szDown;
             node[num].thread = szThread;
             num++;
         }
     }
     sqlite3_finalize(pstmt);
     return num;
-}
-
-bool
-check_status(int64_t *psize)
-{
-    int  rc = 0;
-    char *msg = NULL;
-    int64_t size = 0;
-    const char *m_sql = "select szPid from download_info where szId=1;";
-    if (NULL == file_info.sql)
-    {
-        return false;
-    }
-    rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
-    if (rc == SQLITE_BUSY)   // SQLITE_BUSY
-    {
-        printf("other process downloading now!\n");
-        sqlite3_free(msg);
-        return false;
-    }
-    CHECK_RC(rc, "you can download it again", msg, file_info.sql);
-    rc = sqlite3_exec(file_info.sql, "select szTotal from download_info where szId=1;", back_downloaded, psize, &msg);
-    CHECK_RC(rc, "get szTotal error", msg, file_info.sql);
-    return true;
 }
 
 bool
@@ -297,7 +276,7 @@ update_ranges(uint32_t thread, int64_t begin, int64_t size)
     }
     rc = sqlite3_exec(file_info.sql, "PRAGMA journal_mode=OFF;", 0, 0, &msg);
     CHECK_RC(rc, "journal_mode=OFF error", msg, file_info.sql);
-    _snprintf(m_sql, VALUE_LEN - 1, "update download_info set szBegin=%I64d,szDown=%I64d where szThread=%u;" ,begin, size, thread);
+    _snprintf(m_sql, VALUE_LEN - 1, "update download_info set szDown=%I64d,szTotal=%I64d where szThread=%u;" ,begin, size, thread);
     rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
     CHECK_RC(rc, "update ranges error", msg, file_info.sql);
     return true;
