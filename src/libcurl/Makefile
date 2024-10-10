@@ -24,7 +24,7 @@ ROOT = ..\..
 
 STATICLIB = $(BIND)\lib$(NAME).lib
 CFLAGS = -nologo -O2 -DCURL_STATICLIB -I. -Isrc -Iinclude -W4 -wd4127 -EHsc -c \
-         -Zi -Fd"$(BIND)\libcurl" -DBUILDING_LIBCURL -D_WIN32_WINNT=0x0600 \
+         -Zi -Fd"$(BIND)\libcurl" -DBUILDING_LIBCURL \
          -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
 RC_CMD_REL = rc.exe -l 0x409 -d "NDEBUG"
 LINK_CMD_LIB = link.exe -lib -nologo

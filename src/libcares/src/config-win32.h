@@ -187,6 +187,9 @@
 /* Define if you have the send function. */
 #define HAVE_SEND 1
 
+/* Define if you have the sendto function. */
+#define HAVE_SENDTO 1
+
 /* Define to the type of arg 1 for send. */
 #define SEND_TYPE_ARG1 SOCKET
 
@@ -272,7 +275,7 @@
 
 /* Set the Target to Win8 */
 #if defined(_MSC_VER) && (_MSC_VER >= 1500)
-#  define MSVC_MIN_TARGET 0x0601
+#  define MSVC_MIN_TARGET 0x0602
 #endif
 
 /* MSVC default target settings */

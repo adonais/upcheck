@@ -795,13 +795,17 @@ init_resume(const char *url, int64_t length)
     FILE *fp = NULL;
     int num = 0;
     bool res = true;
-    sql_node s_node[MAX_THREAD];
+    sql_node s_node[MAX_THREAD] = {0};
     CURLSH *share = NULL;
     num = get_ranges(s_node);
     if (!num)
     {
         printf("get_ranges() return 0\n");
         return false;
+    }
+    else
+    {
+        printf("init_resume function, num = %d, szDown = %I64d\n", num, s_node[0].szdown);
     }
     if (!get_down_size(&downloaded_size))
     {
@@ -876,7 +880,7 @@ init_resume(const char *url, int64_t length)
 }
 
 static bool
-md5_sum(void)
+md5_sum(const bool mdel)
 {
     bool res = false;
     char md5_str[MD5_DIGEST_LENGTH * 2 + 1] = { 0 };
@@ -888,7 +892,10 @@ md5_sum(void)
     else
     {
         res = false;
-        DeleteFileW(file_info.names);
+        if (mdel)
+        {
+            DeleteFileW(file_info.names);
+        }
         printf("package md5[%s] sum error! cause file [%s]\n", md5_str, file_info.md5);
     }
     return res;
@@ -904,11 +911,12 @@ resume_download(const char *url, int64_t length, LPCWSTR path)
         fn = init_sql_logs(path);
         if (!fn)
         {
+            printf("init_sql_logs return false.\n");
             break;
         }
-        fn = get_down_size(&size);
-        if (!fn)
+        if (!get_down_size(&size))
         {
+            printf("get_down_size return false.\n");
             break;
         }
         if (size == length)
@@ -916,8 +924,7 @@ resume_download(const char *url, int64_t length, LPCWSTR path)
             printf("file size eaual, not resume download.\n");
             break;
         }
-        fn = init_resume(url, length);
-        if (fn)
+        if ((fn = init_resume(url, length)))
         {
             printf("\nresume download succed......\n");
         }
@@ -956,7 +963,7 @@ init_download(const char *url, int64_t length)
         if (fill_file_name(url))
         {
             _snwprintf(sql_name, MAX_PATH, L"%s%s", file_info.names, L".sinfo");
-            if (PathFileExistsW(file_info.names) && strlen(file_info.md5) > 1 && md5_sum())
+            if (PathFileExistsW(file_info.names) && strlen(file_info.md5) > 1 && md5_sum(false))
             {
                 *file_info.md5 = '\0';
                 return true;
@@ -1243,7 +1250,6 @@ share_envent_set_url(void)
             share_close(hmap);
         }
     }
-    printf("ret = %d\n", ret);
     return ret;
 }
 
@@ -1282,11 +1288,13 @@ downloaded_lookup(HANDLE *pmapped)
     {
         if ((*pmapped = share_create(NULL, PAGE_READWRITE, url_size, UPCHECK_LOCK_NAME)) == NULL)
         {
+            printf("downloaded_lookup function, share_create return false\n");
             return false;
         }
         else if (ERROR_ALREADY_EXISTS == GetLastError())
         {
             ret = share_envent_set_url();
+            printf("downloaded_lookup function, ret = %d\n", ret);
         }
         else
         {   // 建立共享内存, 保存下载链接
@@ -1297,6 +1305,7 @@ downloaded_lookup(HANDLE *pmapped)
                 memcpy(phandle, g_download_url, url_size);
                 share_unmap(phandle);
                 ret = true;
+                printf("downloaded_lookup function, share_create ok, copy data to phandle\n");
             }
         }
     }
@@ -1522,7 +1531,7 @@ wmain(int argc, wchar_t **argv)
     }
     if (argn < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
-        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.3.0\n",
+        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.4.0\n",
                "upcheck.exe");
         argn = 0;
     }
@@ -1638,7 +1647,7 @@ wmain(int argc, wchar_t **argv)
         {
             *file_info.ini = '\0';
             *file_info.process = L'\0';
-            ret = -1;
+            ret = -2;
             printf("Is it already being downloaded?\n");
             break;
         }
@@ -1660,7 +1669,7 @@ wmain(int argc, wchar_t **argv)
         }
         if (strlen(file_info.md5) > 1) // 核对文件md5值
         {
-            result = md5_sum();
+            result = md5_sum(true);
         }
         if (result && file_info.extract) // 解压缩升级包
         {
@@ -1688,7 +1697,14 @@ wmain(int argc, wchar_t **argv)
     }
     if (mapped)
     {
-        share_envent_close_url(&mapped);
+        if (ret == -2)
+        {
+            share_close(mapped);
+        }
+        else
+        {
+            share_envent_close_url(&mapped);
+        }
     }
     if (wcslen(file_info.process) > 1)
     {

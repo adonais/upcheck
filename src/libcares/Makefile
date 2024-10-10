@@ -16,8 +16,8 @@ ROOT = ..\..
 # --------------------------
 CARES_OBJDIR = $(OBJD)\libcares
 STATICLIB = $(BIND)\lib$(NAME).lib
-CFLAGS = -nologo -I. -Iinclude -W3 -EHsc -O2 -Zi -Fd"$(BIND)\libcares" -DCARES_BUILDING_LIBRARY \
-         -DCARES_STATICLIB -D_WIN32_WINNT=0x0600 -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
+CFLAGS = -nologo -I. -Iinclude -Isrc\include -W3 -EHsc -O2 -Zi -Fd"$(BIND)\libcares" -DCARES_BUILDING_LIBRARY \
+         -DCARES_STATICLIB -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS) 
 !if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
 !ELSE
