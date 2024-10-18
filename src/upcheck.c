@@ -597,15 +597,8 @@ run_thread(void *pdata)
         #endif
             // 关掉CLOSE_WAIT
             euapi_curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
-            if (strncmp(pnode->url, "https://sourceforge.net", 23) == 0)
-            {
-                euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "deflate");
-                printf("\ncontent encoding use deflate\n");
-            }
-            else
-            {
-                euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
-            }
+            // enable all supported built-in compressions
+            euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
             //euapi_curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -624,7 +617,7 @@ run_thread(void *pdata)
             euapi_curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
             res = euapi_curl_easy_perform(curl);
             euapi_curl_easy_cleanup(curl);
-            if (res == CURLE_OK)
+            if (res == CURLE_OK || pnode->endidx == pnode->szdown)
             {
                 pnode->error = false;
                 printf("\ndownload message: ok, %u thread exit\n", pnode->tid);
@@ -637,16 +630,10 @@ run_thread(void *pdata)
                 printf("\ndownload error: failed writing received data to disk\n");
                 break;
             }
-            if (pnode->endidx > pnode->szdown)  // CURLE_PARTIAL_FILE, CURLE_OPERATION_TIMEDOUT
+            if (true)  // CURLE_PARTIAL_FILE, CURLE_OPERATION_TIMEDOUT
             {
                 pnode->error = true;
                 printf("\ndownload error: code[%d], retry...\n", res);
-                enter_spinlock();
-                if (!file_info.re_bind)
-                {
-                    file_info.re_bind = 1;
-                }
-                leave_spinlock();
             }
         } // 非严重错误时自动重试8次
     } while (file_info.re_bind && ++i < URL_ITERATIONS);
@@ -999,34 +986,28 @@ init_download(const char *url, int64_t length)
             downloaded_size = 0;
             printf("we download with single thread!\n");
             run_thread(&m_node[0]);
-            if (m_node[0].error)
-            {
-                m_error = true;
-            }
+            m_error = m_node[0].error;
             break;
         }
         if (file_info.thread_num == 0)
         {
             file_info.thread_num = get_cpu_works();
         }
-
-        gap = length / file_info.thread_num;
-        total_size = length;
-        downloaded_size = 0;
-
         if (file_info.thread_num > MAX_THREAD)
         {
             file_info.thread_num = MAX_THREAD;
         }
-        share = euapi_curl_share_init();
-        if (NULL == share)
+        if ((share = euapi_curl_share_init()) == NULL)
         {
             printf("euapi_curl_share_init() error.\n");
             m_error = true;
             break;
         }
-        else
+        if (true)
         {
+            gap = length / file_info.thread_num;
+            total_size = length;
+            downloaded_size = 0;
             euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
             euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
             euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
@@ -1121,6 +1102,8 @@ remove_files(LPCWSTR dir)
                                L"maintenanceservice.exe",
                                L"maintenanceservice_installer.exe",
                                L"minidump-analyzer.exe",
+                               L"nmhproxy.exe",
+                               L"notificationserver.dll",
                                L"updater.exe",
                                L"updater.ini",
                                L"update-settings.ini",
@@ -1624,6 +1607,10 @@ wmain(int argc, wchar_t **argv)
             if (ret == 0)
             {
                 printf("init_resolver ok.\n");
+                if ((strstr(file_info.url, "sourceforge.net") || strstr(file_info.url, "github.com")) && (file_info.re_bind == 0))
+                {
+                    file_info.re_bind = 1;
+                }
             }
             else if (ret > 0)
             {
