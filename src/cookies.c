@@ -5,6 +5,7 @@
 #include <windows.h>
 #include "spinlock.h"
 #include "sqlite3.h"
+#include "ini_parser.h"
 
 #define LDOWRD 8
 #define LINE_SIZE 2048
@@ -17,7 +18,6 @@
         return 0;                          \
     }
 
-extern char* ini_make_u8(const wchar_t *utf16, char *utf8, int len);
 static char baidu_login[MAX_PATH + 1];
 static char baidu_set[NAMES_LEN + 1];
 

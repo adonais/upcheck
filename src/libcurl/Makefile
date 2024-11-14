@@ -212,7 +212,6 @@ OBJS = \
     $(OBJD)\libcurl\mime.obj             \
     $(OBJD)\libcurl\sha256.obj           \
     $(OBJD)\libcurl\setopt.obj           \
-    $(OBJD)\libcurl\curl_path.obj        \
     $(OBJD)\libcurl\bufref.obj           \
     $(OBJD)\libcurl\cf-https-connect.obj \
     $(OBJD)\libcurl\cfilters.obj         \
@@ -245,6 +244,7 @@ OBJS = \
     $(OBJD)\libcurl\vquic\curl_quiche.obj       \
     $(OBJD)\libcurl\vquic\vquic.obj             \
     $(OBJD)\libcurl\vquic\vquic-tls.obj         \
+    $(OBJD)\libcurl\vssh\curl_path.obj          \
     $(OBJD)\libcurl\vssh\libssh.obj             \
     $(OBJD)\libcurl\vssh\libssh2.obj            \
     $(OBJD)\libcurl\vssh\wolfssh.obj            \
