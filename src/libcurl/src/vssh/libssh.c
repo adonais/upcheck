@@ -161,6 +161,7 @@ const struct Curl_handler Curl_handler_scp = {
   ZERO_NULL,                    /* write_resp_hd */
   ZERO_NULL,                    /* connection_check */
   ZERO_NULL,                    /* attach connection */
+  ZERO_NULL,                    /* follow */
   PORT_SSH,                     /* defport */
   CURLPROTO_SCP,                /* protocol */
   CURLPROTO_SCP,                /* family */
@@ -189,6 +190,7 @@ const struct Curl_handler Curl_handler_sftp = {
   ZERO_NULL,                            /* write_resp_hd */
   ZERO_NULL,                            /* connection_check */
   ZERO_NULL,                            /* attach connection */
+  ZERO_NULL,                            /* follow */
   PORT_SSH,                             /* defport */
   CURLPROTO_SFTP,                       /* protocol */
   CURLPROTO_SFTP,                       /* family */
@@ -340,17 +342,11 @@ static int myssh_is_known(struct Curl_easy *data)
   struct curl_khkey *knownkeyp = NULL;
   curl_sshkeycallback func =
     data->set.ssh_keyfunc;
-
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0,9,0)
   struct ssh_knownhosts_entry *knownhostsentry = NULL;
   struct curl_khkey knownkey;
-#endif
 
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0,8,0)
   rc = ssh_get_server_publickey(sshc->ssh_session, &pubkey);
-#else
-  rc = ssh_get_publickey(sshc->ssh_session, &pubkey);
-#endif
+
   if(rc != SSH_OK)
     return rc;
 
@@ -386,7 +382,6 @@ static int myssh_is_known(struct Curl_easy *data)
 
   if(data->set.str[STRING_SSH_KNOWNHOSTS]) {
 
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0,9,0)
     /* Get the known_key from the known hosts file */
     vstate = ssh_session_get_known_hosts_entry(sshc->ssh_session,
                                                &knownhostsentry);
@@ -444,22 +439,6 @@ static int myssh_is_known(struct Curl_easy *data)
       break;
     }
 
-#else
-    vstate = ssh_is_server_known(sshc->ssh_session);
-    switch(vstate) {
-    case SSH_SERVER_KNOWN_OK:
-      keymatch = CURLKHMATCH_OK;
-      break;
-    case SSH_SERVER_FILE_NOT_FOUND:
-    case SSH_SERVER_NOT_KNOWN:
-      keymatch = CURLKHMATCH_MISSING;
-      break;
-    default:
-      keymatch = CURLKHMATCH_MISMATCH;
-      break;
-    }
-#endif
-
     if(func) { /* use callback to determine action */
       rc = ssh_pki_export_pubkey_base64(pubkey, &found_base64);
       if(rc != SSH_OK)
@@ -476,18 +455,14 @@ static int myssh_is_known(struct Curl_easy *data)
         foundkey.keytype = CURLKHTYPE_RSA1;
         break;
       case SSH_KEYTYPE_ECDSA:
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0,9,0)
       case SSH_KEYTYPE_ECDSA_P256:
       case SSH_KEYTYPE_ECDSA_P384:
       case SSH_KEYTYPE_ECDSA_P521:
-#endif
         foundkey.keytype = CURLKHTYPE_ECDSA;
         break;
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0,7,0)
       case SSH_KEYTYPE_ED25519:
         foundkey.keytype = CURLKHTYPE_ED25519;
         break;
-#endif
       case SSH_KEYTYPE_DSS:
         foundkey.keytype = CURLKHTYPE_DSS;
         break;
@@ -504,11 +479,7 @@ static int myssh_is_known(struct Curl_easy *data)
 
       switch(rc) {
       case CURLKHSTAT_FINE_ADD_TO_FILE:
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0,8,0)
         rc = ssh_session_update_known_hosts(sshc->ssh_session);
-#else
-        rc = ssh_write_knownhost(sshc->ssh_session);
-#endif
         if(rc != SSH_OK) {
           goto cleanup;
         }
@@ -539,11 +510,9 @@ cleanup:
   if(hash)
     ssh_clean_pubkey_hash(&hash);
   ssh_key_free(pubkey);
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0,9,0)
   if(knownhostsentry) {
     ssh_knownhosts_entry_free(knownhostsentry);
   }
-#endif
   return rc;
 }
 
@@ -1368,7 +1337,9 @@ static CURLcode myssh_statemach_act(struct Curl_easy *data, bool *block)
          state machine to move on as soon as possible so we set a very short
          timeout here */
       Curl_expire(data, 0, EXPIRE_RUN_NOW);
-
+#if LIBSSH_VERSION_INT > SSH_VERSION_INT(0, 11, 0)
+      sshc->sftp_send_state = 0;
+#endif
       state(data, SSH_STOP);
       break;
     }
@@ -1772,6 +1743,13 @@ static CURLcode myssh_statemach_act(struct Curl_easy *data, bool *block)
       /* during times we get here due to a broken transfer and then the
          sftp_handle might not have been taken down so make sure that is done
          before we proceed */
+      ssh_set_blocking(sshc->ssh_session, 0);
+#if LIBSSH_VERSION_INT > SSH_VERSION_INT(0, 11, 0)
+      if(sshc->sftp_aio) {
+        sftp_aio_free(sshc->sftp_aio);
+        sshc->sftp_aio = NULL;
+      }
+#endif
 
       if(sshc->sftp_file) {
         sftp_close(sshc->sftp_file);
@@ -1837,7 +1815,7 @@ static CURLcode myssh_statemach_act(struct Curl_easy *data, bool *block)
       }
 
       rc = ssh_scp_push_file(sshc->scp_session, protop->path,
-                             data->state.infilesize,
+                             (size_t)data->state.infilesize,
                              (int)data->set.new_file_perms);
       if(rc != SSH_OK) {
         err_msg = ssh_get_error(sshc->ssh_session);
@@ -2191,7 +2169,14 @@ static CURLcode myssh_connect(struct Curl_easy *data, bool *done)
     return CURLE_FAILED_INIT;
   }
 
-  rc = ssh_options_set(ssh->ssh_session, SSH_OPTIONS_HOST, conn->host.name);
+  if(conn->bits.ipv6_ip) {
+    char ipv6[MAX_IPADR_LEN];
+    msnprintf(ipv6, sizeof(ipv6), "[%s]", conn->host.name);
+    rc = ssh_options_set(ssh->ssh_session, SSH_OPTIONS_HOST, ipv6);
+  }
+  else
+    rc = ssh_options_set(ssh->ssh_session, SSH_OPTIONS_HOST, conn->host.name);
+
   if(rc != SSH_OK) {
     failf(data, "Could not set remote host");
     return CURLE_FAILED_INIT;
@@ -2563,7 +2548,39 @@ static ssize_t sftp_send(struct Curl_easy *data, int sockindex,
    */
   if(len > 32768)
     len = 32768;
-
+#if LIBSSH_VERSION_INT > SSH_VERSION_INT(0, 11, 0)
+  switch(conn->proto.sshc.sftp_send_state) {
+    case 0:
+      sftp_file_set_nonblocking(conn->proto.sshc.sftp_file);
+      if(sftp_aio_begin_write(conn->proto.sshc.sftp_file, mem, len,
+                              &conn->proto.sshc.sftp_aio) == SSH_ERROR) {
+        *err = CURLE_SEND_ERROR;
+        return -1;
+      }
+      conn->proto.sshc.sftp_send_state = 1;
+      FALLTHROUGH();
+    case 1:
+      nwrite = sftp_aio_wait_write(&conn->proto.sshc.sftp_aio);
+      myssh_block2waitfor(conn, (nwrite == SSH_AGAIN) ? TRUE : FALSE);
+      if(nwrite == SSH_AGAIN) {
+        *err = CURLE_AGAIN;
+        return 0;
+      }
+      else if(nwrite < 0) {
+        *err = CURLE_SEND_ERROR;
+        return -1;
+      }
+      if(conn->proto.sshc.sftp_aio) {
+        sftp_aio_free(conn->proto.sshc.sftp_aio);
+        conn->proto.sshc.sftp_aio = NULL;
+      }
+      conn->proto.sshc.sftp_send_state = 0;
+      return nwrite;
+    default:
+      /* we never reach here */
+      return -1;
+  }
+#else
   nwrite = sftp_write(conn->proto.sshc.sftp_file, mem, len);
 
   myssh_block2waitfor(conn, FALSE);
@@ -2581,6 +2598,7 @@ static ssize_t sftp_send(struct Curl_easy *data, int sockindex,
   }
 
   return nwrite;
+#endif
 }
 
 /*

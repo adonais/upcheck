@@ -41,6 +41,7 @@
 #include "schannel_int.h"
 #include "vtls.h"
 #include "vtls_int.h"
+#include "vtls_scache.h"
 #include "strcase.h"
 #include "sendf.h"
 #include "connect.h" /* for the connect timeout */
@@ -76,7 +77,7 @@
    https://technet.microsoft.com/en-us/library/hh831771%28v=ws.11%29.aspx
 */
 #if defined(_MSC_VER) && (_MSC_VER >= 1800) && !defined(_USING_V110_SDK71_)
-#  define HAS_ALPN 1
+#  define HAS_ALPN_SCHANNEL
 #endif
 
 #ifndef BCRYPT_CHACHA20_POLY1305_ALGORITHM
@@ -148,7 +149,7 @@
  */
 
 #ifndef CALG_SHA_256
-#  define CALG_SHA_256 0x0000800c
+#define CALG_SHA_256 0x0000800c
 #endif
 
 #ifndef PKCS12_NO_PERSIST_KEY
@@ -450,11 +451,6 @@ get_cert_location(TCHAR *path, DWORD *store_name, TCHAR **store_path,
   return CURLE_OK;
 }
 #endif
-
-static bool algo(const char *check, char *namep, size_t nlen)
-{
-  return (strlen(check) == nlen) && !strncmp(check, namep, nlen);
-}
 
 static CURLcode
 schannel_acquire_credential_handle(struct Curl_cfilter *cf,
@@ -781,187 +777,14 @@ schannel_acquire_credential_handle(struct Curl_cfilter *cf,
      curlx_verify_windows_version(10, 0, 17763, PLATFORM_WINNT,
                                   VERSION_GREATER_THAN_EQUAL)) {
 
-    char *ciphers13 = 0;
-
-    bool disable_aes_gcm_sha384 = FALSE;
-    bool disable_aes_gcm_sha256 = FALSE;
-    bool disable_chacha_poly = FALSE;
-    bool disable_aes_ccm_8_sha256 = FALSE;
-    bool disable_aes_ccm_sha256 = FALSE;
-
     SCH_CREDENTIALS credentials = { 0 };
     TLS_PARAMETERS tls_parameters = { 0 };
-    CRYPTO_SETTINGS crypto_settings[4] = { { 0 } };
-    UNICODE_STRING blocked_ccm_modes[1] = { { 0 } };
-    UNICODE_STRING blocked_gcm_modes[1] = { { 0 } };
-
-    int crypto_settings_idx = 0;
-
-
-    /* If TLS 1.3 ciphers are explicitly listed, then
-     * disable all the ciphers and re-enable which
-     * ciphers the user has provided.
-     */
-    ciphers13 = conn_config->cipher_list13;
-    if(ciphers13) {
-      const int remaining_ciphers = 5;
-
-      /* detect which remaining ciphers to enable
-         and then disable everything else.
-      */
-
-      char *startCur = ciphers13;
-      int algCount = 0;
-      char *nameEnd;
-
-      disable_aes_gcm_sha384 = TRUE;
-      disable_aes_gcm_sha256 = TRUE;
-      disable_chacha_poly = TRUE;
-      disable_aes_ccm_8_sha256 = TRUE;
-      disable_aes_ccm_sha256 = TRUE;
-
-      while(startCur && (0 != *startCur) && (algCount < remaining_ciphers)) {
-        size_t n;
-        char *namep;
-        nameEnd = strchr(startCur, ':');
-        n = nameEnd ? (size_t)(nameEnd - startCur) : strlen(startCur);
-        namep = startCur;
-
-        if(disable_aes_gcm_sha384 &&
-           algo("TLS_AES_256_GCM_SHA384", namep, n)) {
-          disable_aes_gcm_sha384 = FALSE;
-        }
-        else if(disable_aes_gcm_sha256
-                && algo("TLS_AES_128_GCM_SHA256", namep, n)) {
-          disable_aes_gcm_sha256 = FALSE;
-        }
-        else if(disable_chacha_poly
-                && algo("TLS_CHACHA20_POLY1305_SHA256", namep, n)) {
-          disable_chacha_poly = FALSE;
-        }
-        else if(disable_aes_ccm_8_sha256
-                && algo("TLS_AES_128_CCM_8_SHA256", namep, n)) {
-          disable_aes_ccm_8_sha256 = FALSE;
-        }
-        else if(disable_aes_ccm_sha256
-                && algo("TLS_AES_128_CCM_SHA256", namep, n)) {
-          disable_aes_ccm_sha256 = FALSE;
-        }
-        else {
-          failf(data, "schannel: Unknown TLS 1.3 cipher: %.*s", (int)n, namep);
-          return CURLE_SSL_CIPHER;
-        }
-
-        startCur = nameEnd;
-        if(startCur)
-          startCur++;
-
-        algCount++;
-      }
-    }
-
-    if(disable_aes_gcm_sha384 && disable_aes_gcm_sha256
-       && disable_chacha_poly && disable_aes_ccm_8_sha256
-       && disable_aes_ccm_sha256) {
-      failf(data, "schannel: All available TLS 1.3 ciphers were disabled");
-      return CURLE_SSL_CIPHER;
-    }
-
-    /* Disable TLS_AES_128_CCM_8_SHA256 and/or TLS_AES_128_CCM_SHA256 */
-    if(disable_aes_ccm_8_sha256 || disable_aes_ccm_sha256) {
-      /*
-        Disallow AES_CCM algorithm.
-      */
-      blocked_ccm_modes[0].Length = sizeof(BCRYPT_CHAIN_MODE_CCM);
-      blocked_ccm_modes[0].MaximumLength = sizeof(BCRYPT_CHAIN_MODE_CCM);
-      blocked_ccm_modes[0].Buffer = (PWSTR)BCRYPT_CHAIN_MODE_CCM;
-
-      crypto_settings[crypto_settings_idx].eAlgorithmUsage =
-        TlsParametersCngAlgUsageCipher;
-      crypto_settings[crypto_settings_idx].rgstrChainingModes =
-        blocked_ccm_modes;
-      crypto_settings[crypto_settings_idx].cChainingModes =
-        ARRAYSIZE(blocked_ccm_modes);
-      crypto_settings[crypto_settings_idx].strCngAlgId.Length =
-        sizeof(BCRYPT_AES_ALGORITHM);
-      crypto_settings[crypto_settings_idx].strCngAlgId.MaximumLength =
-        sizeof(BCRYPT_AES_ALGORITHM);
-      crypto_settings[crypto_settings_idx].strCngAlgId.Buffer =
-        (PWSTR)BCRYPT_AES_ALGORITHM;
-
-      /* only disabling one of the CCM modes */
-      if(disable_aes_ccm_8_sha256 != disable_aes_ccm_sha256) {
-        if(disable_aes_ccm_8_sha256)
-          crypto_settings[crypto_settings_idx].dwMinBitLength = 128;
-        else /* disable_aes_ccm_sha256 */
-          crypto_settings[crypto_settings_idx].dwMaxBitLength = 64;
-      }
-
-      crypto_settings_idx++;
-    }
-
-    /* Disable TLS_AES_256_GCM_SHA384 and/or TLS_AES_128_GCM_SHA256 */
-    if(disable_aes_gcm_sha384 || disable_aes_gcm_sha256) {
-
-      /*
-        Disallow AES_GCM algorithm
-      */
-      blocked_gcm_modes[0].Length = sizeof(BCRYPT_CHAIN_MODE_GCM);
-      blocked_gcm_modes[0].MaximumLength = sizeof(BCRYPT_CHAIN_MODE_GCM);
-      blocked_gcm_modes[0].Buffer = (PWSTR)BCRYPT_CHAIN_MODE_GCM;
-
-      /* if only one is disabled, then explicitly disable the
-         digest cipher suite (sha384 or sha256) */
-      if(disable_aes_gcm_sha384 != disable_aes_gcm_sha256) {
-        crypto_settings[crypto_settings_idx].eAlgorithmUsage =
-          TlsParametersCngAlgUsageDigest;
-        crypto_settings[crypto_settings_idx].strCngAlgId.Length =
-          sizeof(disable_aes_gcm_sha384 ?
-                 BCRYPT_SHA384_ALGORITHM : BCRYPT_SHA256_ALGORITHM);
-        crypto_settings[crypto_settings_idx].strCngAlgId.MaximumLength =
-          sizeof(disable_aes_gcm_sha384 ?
-                 BCRYPT_SHA384_ALGORITHM : BCRYPT_SHA256_ALGORITHM);
-        crypto_settings[crypto_settings_idx].strCngAlgId.Buffer =
-          (PWSTR)(disable_aes_gcm_sha384 ?
-                  BCRYPT_SHA384_ALGORITHM : BCRYPT_SHA256_ALGORITHM);
-      }
-      else { /* Disable both AES_GCM ciphers */
-        crypto_settings[crypto_settings_idx].eAlgorithmUsage =
-          TlsParametersCngAlgUsageCipher;
-        crypto_settings[crypto_settings_idx].strCngAlgId.Length =
-          sizeof(BCRYPT_AES_ALGORITHM);
-        crypto_settings[crypto_settings_idx].strCngAlgId.MaximumLength =
-          sizeof(BCRYPT_AES_ALGORITHM);
-        crypto_settings[crypto_settings_idx].strCngAlgId.Buffer =
-          (PWSTR)BCRYPT_AES_ALGORITHM;
-      }
-
-      crypto_settings[crypto_settings_idx].rgstrChainingModes =
-        blocked_gcm_modes;
-      crypto_settings[crypto_settings_idx].cChainingModes = 1;
-
-      crypto_settings_idx++;
-    }
-
-    /*
-      Disable ChaCha20-Poly1305.
-    */
-    if(disable_chacha_poly) {
-      crypto_settings[crypto_settings_idx].eAlgorithmUsage =
-        TlsParametersCngAlgUsageCipher;
-      crypto_settings[crypto_settings_idx].strCngAlgId.Length =
-        sizeof(BCRYPT_CHACHA20_POLY1305_ALGORITHM);
-      crypto_settings[crypto_settings_idx].strCngAlgId.MaximumLength =
-        sizeof(BCRYPT_CHACHA20_POLY1305_ALGORITHM);
-      crypto_settings[crypto_settings_idx].strCngAlgId.Buffer =
-        (PWSTR)BCRYPT_CHACHA20_POLY1305_ALGORITHM;
-      crypto_settings_idx++;
-    }
+    CRYPTO_SETTINGS crypto_settings[1] = { { 0 } };
 
     tls_parameters.pDisabledCrypto = crypto_settings;
 
     /* The number of blocked suites */
-    tls_parameters.cDisabledCrypto = (DWORD)crypto_settings_idx;
+    tls_parameters.cDisabledCrypto = (DWORD)0;
     credentials.pTlsParameters = &tls_parameters;
     credentials.cTlsParameters = 1;
 
@@ -986,9 +809,8 @@ schannel_acquire_credential_handle(struct Curl_cfilter *cf,
                                          &backend->cred->time_stamp);
   }
   else {
-    /* Pre-Windows 10 1809 or the user set a legacy algorithm list. Although MS
-       does not document it, currently Schannel will not negotiate TLS 1.3 when
-       SCHANNEL_CRED is used. */
+    /* Pre-Windows 10 1809 or the user set a legacy algorithm list.
+       Schannel will not negotiate TLS 1.3 when SCHANNEL_CRED is used. */
     ALG_ID algIds[NUM_CIPHERS];
     char *ciphers = conn_config->cipher_list;
     SCHANNEL_CRED schannel_cred = { 0 };
@@ -998,15 +820,9 @@ schannel_acquire_credential_handle(struct Curl_cfilter *cf,
 
     if(ciphers) {
       if((enabled_protocols & SP_PROT_TLS1_3_CLIENT)) {
-        infof(data, "schannel: WARNING: This version of Schannel may "
-              "negotiate a less-secure TLS version than TLS 1.3 because the "
+        infof(data, "schannel: WARNING: This version of Schannel "
+              "negotiates a less-secure TLS version than TLS 1.3 because the "
               "user set an algorithm cipher list.");
-      }
-      if(conn_config->cipher_list13) {
-        failf(data, "schannel: This version of Schannel does not support "
-              "setting an algorithm cipher list and TLS 1.3 cipher list at "
-              "the same time");
-        return CURLE_SSL_CIPHER;
       }
       result = set_ssl_ciphers(&schannel_cred, ciphers, algIds);
       if(CURLE_OK != result) {
@@ -1072,7 +888,7 @@ schannel_connect_step1(struct Curl_cfilter *cf, struct Curl_easy *data)
   SecBufferDesc outbuf_desc;
   SecBuffer inbuf;
   SecBufferDesc inbuf_desc;
-#ifdef HAS_ALPN
+#ifdef HAS_ALPN_SCHANNEL
   unsigned char alpn_buffer[128];
 #endif
   SECURITY_STATUS sspi_status = SEC_E_OK;
@@ -1092,7 +908,7 @@ schannel_connect_step1(struct Curl_cfilter *cf, struct Curl_easy *data)
           "connect to some servers due to lack of SNI, algorithms, etc.");
   }
 
-#ifdef HAS_ALPN
+#ifdef HAS_ALPN_SCHANNEL
   /* ALPN is only supported on Windows 8.1 / Server 2012 R2 and above.
      Also it does not seem to be supported for WINE, see curl bug #983. */
   backend->use_alpn = connssl->alpn &&
@@ -1139,9 +955,9 @@ schannel_connect_step1(struct Curl_cfilter *cf, struct Curl_easy *data)
 
   /* check for an existing reusable credential handle */
   if(ssl_config->primary.cache_session) {
-    Curl_ssl_sessionid_lock(data);
-    if(!Curl_ssl_getsessionid(cf, data, &connssl->peer,
-                              (void **)&old_cred, NULL, NULL)) {
+    Curl_ssl_scache_lock(data);
+    if(Curl_ssl_scache_get_obj(cf, data, connssl->peer.scache_key,
+                               (void **)&old_cred)) {
       backend->cred = old_cred;
       DEBUGF(infof(data, "schannel: reusing existing credential handle"));
 
@@ -1151,7 +967,7 @@ schannel_connect_step1(struct Curl_cfilter *cf, struct Curl_easy *data)
                    "schannel: incremented credential handle refcount = %d",
                    backend->cred->refcount));
     }
-    Curl_ssl_sessionid_unlock(data);
+    Curl_ssl_scache_unlock(data);
   }
 
   if(!backend->cred) {
@@ -1175,7 +991,7 @@ schannel_connect_step1(struct Curl_cfilter *cf, struct Curl_easy *data)
     infof(data, "schannel: using IP address, SNI is not supported by OS.");
   }
 
-#ifdef HAS_ALPN
+#ifdef HAS_ALPN_SCHANNEL
   if(backend->use_alpn) {
     int cur = 0;
     int list_start_index = 0;
@@ -1223,7 +1039,7 @@ schannel_connect_step1(struct Curl_cfilter *cf, struct Curl_easy *data)
     InitSecBuffer(&inbuf, SECBUFFER_EMPTY, NULL, 0);
     InitSecBufferDesc(&inbuf_desc, &inbuf, 1);
   }
-#else /* HAS_ALPN */
+#else /* HAS_ALPN_SCHANNEL */
   InitSecBuffer(&inbuf, SECBUFFER_EMPTY, NULL, 0);
   InitSecBufferDesc(&inbuf_desc, &inbuf, 1);
 #endif
@@ -1686,12 +1502,11 @@ add_cert_to_certinfo(const CERT_CONTEXT *ccert_context, bool reverse_order,
   return args->result == CURLE_OK;
 }
 
-static void schannel_session_free(void *sessionid, size_t idsize)
+static void schannel_session_free(void *sessionid)
 {
   /* this is expected to be called under sessionid lock */
   struct Curl_schannel_cred *cred = sessionid;
 
-  (void)idsize;
   if(cred) {
     cred->refcount--;
     if(cred->refcount == 0) {
@@ -1718,7 +1533,7 @@ schannel_connect_step3(struct Curl_cfilter *cf, struct Curl_easy *data)
   CURLcode result = CURLE_OK;
   SECURITY_STATUS sspi_status = SEC_E_OK;
   CERT_CONTEXT *ccert_context = NULL;
-#ifdef HAS_ALPN
+#ifdef HAS_ALPN_SCHANNEL
   SecPkgContext_ApplicationProtocol alpn_result;
 #endif
 
@@ -1747,7 +1562,7 @@ schannel_connect_step3(struct Curl_cfilter *cf, struct Curl_easy *data)
     return CURLE_SSL_CONNECT_ERROR;
   }
 
-#ifdef HAS_ALPN
+#ifdef HAS_ALPN_SCHANNEL
   if(backend->use_alpn) {
     sspi_status =
       Curl_pSecFn->QueryContextAttributes(&backend->ctxt->ctxt_handle,
@@ -1784,14 +1599,12 @@ schannel_connect_step3(struct Curl_cfilter *cf, struct Curl_easy *data)
 
   /* save the current session data for possible reuse */
   if(ssl_config->primary.cache_session) {
-    Curl_ssl_sessionid_lock(data);
+    Curl_ssl_scache_lock(data);
     /* Up ref count since call takes ownership */
     backend->cred->refcount++;
-    result = Curl_ssl_set_sessionid(cf, data, &connssl->peer, NULL,
-                                    backend->cred,
-                                    sizeof(struct Curl_schannel_cred),
-                                    schannel_session_free);
-    Curl_ssl_sessionid_unlock(data);
+    result = Curl_ssl_scache_add_obj(cf, data, connssl->peer.scache_key,
+                                     backend->cred, schannel_session_free);
+    Curl_ssl_scache_unlock(data);
     if(result)
       return result;
   }
@@ -2460,11 +2273,11 @@ static bool schannel_data_pending(struct Curl_cfilter *cf,
   DEBUGASSERT(backend);
 
   if(backend->ctxt) /* SSL/TLS is in use */
-    return (backend->decdata_offset > 0 ||
-            (backend->encdata_offset > 0 && !backend->encdata_is_incomplete) ||
-            backend->recv_connection_closed ||
-            backend->recv_sspi_close_notify ||
-            backend->recv_unrecoverable_err);
+    return backend->decdata_offset > 0 ||
+           (backend->encdata_offset > 0 && !backend->encdata_is_incomplete) ||
+           backend->recv_connection_closed ||
+           backend->recv_sspi_close_notify ||
+           backend->recv_unrecoverable_err;
   else
     return FALSE;
 }
@@ -2554,7 +2367,6 @@ static CURLcode schannel_shutdown(struct Curl_cfilter *cf,
       Curl_pSecFn->FreeContextBuffer(outbuf.pvBuffer);
       if(!result) {
         if(written < (ssize_t)outbuf.cbBuffer) {
-          /* TODO: handle partial sends */
           failf(data, "schannel: failed to send close msg: %s"
                 " (bytes written: %zd)", curl_easy_strerror(result), written);
           result = CURLE_SEND_ERROR;
@@ -2630,9 +2442,9 @@ static void schannel_close(struct Curl_cfilter *cf, struct Curl_easy *data)
 
   /* free SSPI Schannel API credential handle */
   if(backend->cred) {
-    Curl_ssl_sessionid_lock(data);
-    schannel_session_free(backend->cred, 0);
-    Curl_ssl_sessionid_unlock(data);
+    Curl_ssl_scache_lock(data);
+    schannel_session_free(backend->cred);
+    Curl_ssl_scache_unlock(data);
     backend->cred = NULL;
   }
 
@@ -2654,7 +2466,7 @@ static void schannel_close(struct Curl_cfilter *cf, struct Curl_easy *data)
 
 static int schannel_init(void)
 {
-  return (Curl_sspi_global_init() == CURLE_OK ? 1 : 0);
+  return Curl_sspi_global_init() == CURLE_OK ? 1 : 0;
 }
 
 static void schannel_cleanup(void)
@@ -2974,7 +2786,6 @@ const struct Curl_ssl Curl_ssl_schannel = {
 #ifndef CURL_WINDOWS_UWP
   SSLSUPP_PINNEDPUBKEY |
 #endif
-  SSLSUPP_TLS13_CIPHERSUITES |
   SSLSUPP_CA_CACHE |
   SSLSUPP_HTTPS_PROXY |
   SSLSUPP_CIPHER_LIST,
@@ -2984,24 +2795,21 @@ const struct Curl_ssl Curl_ssl_schannel = {
   schannel_init,                     /* init */
   schannel_cleanup,                  /* cleanup */
   schannel_version,                  /* version */
-  Curl_none_check_cxn,               /* check_cxn */
   schannel_shutdown,                 /* shutdown */
   schannel_data_pending,             /* data_pending */
   schannel_random,                   /* random */
-  Curl_none_cert_status_request,     /* cert_status_request */
+  NULL,                              /* cert_status_request */
   schannel_connect,                  /* connect */
   schannel_connect_nonblocking,      /* connect_nonblocking */
   Curl_ssl_adjust_pollset,           /* adjust_pollset */
   schannel_get_internals,            /* get_internals */
   schannel_close,                    /* close_one */
-  Curl_none_close_all,               /* close_all */
-  Curl_none_set_engine,              /* set_engine */
-  Curl_none_set_engine_default,      /* set_engine_default */
-  Curl_none_engines_list,            /* engines_list */
-  Curl_none_false_start,             /* false_start */
+  NULL,                              /* close_all */
+  NULL,                              /* set_engine */
+  NULL,                              /* set_engine_default */
+  NULL,                              /* engines_list */
+  NULL,                              /* false_start */
   schannel_sha256sum,                /* sha256sum */
-  NULL,                              /* associate_connection */
-  NULL,                              /* disassociate_connection */
   schannel_recv,                     /* recv decrypted data */
   schannel_send,                     /* send data to encrypt */
   NULL,                              /* get_channel_binding */

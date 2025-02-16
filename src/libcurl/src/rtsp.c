@@ -24,7 +24,7 @@
 
 #include "curl_setup.h"
 
-#if !defined(CURL_DISABLE_RTSP) && !defined(USE_HYPER)
+#if !defined(CURL_DISABLE_RTSP)
 
 #include "urldata.h"
 #include <curl/curl.h>
@@ -117,6 +117,7 @@ const struct Curl_handler Curl_handler_rtsp = {
   ZERO_NULL,                            /* write_resp_hd */
   rtsp_conncheck,                       /* connection_check */
   ZERO_NULL,                            /* attach connection */
+  Curl_http_follow,                     /* follow */
   PORT_RTSP,                            /* defport */
   CURLPROTO_RTSP,                       /* protocol */
   CURLPROTO_RTSP,                       /* family */
@@ -213,6 +214,11 @@ static CURLcode rtsp_done(struct Curl_easy *data,
        (data->conn->proto.rtspc.rtp_channel == -1)) {
       infof(data, "Got an RTP Receive with a CSeq of %ld", CSeq_recv);
     }
+    if(data->set.rtspreq == RTSPREQ_RECEIVE &&
+       data->req.eos_written) {
+      failf(data, "Server prematurely closed the RTSP connection.");
+      return CURLE_RECV_ERROR;
+    }
   }
 
   return httpStatus;
@@ -225,6 +231,7 @@ static CURLcode rtsp_do(struct Curl_easy *data, bool *done)
   Curl_RtspReq rtspreq = data->set.rtspreq;
   struct RTSP *rtsp = data->req.p.rtsp;
   struct dynbuf req_buffer;
+  unsigned char httpversion = 11; /* RTSP is close to HTTP/1.1, sort of... */
 
   const char *p_request = NULL;
   const char *p_session_id = NULL;
@@ -494,7 +501,7 @@ static CURLcode rtsp_do(struct Curl_easy *data, bool *done)
       goto out;
   }
 
-  result = Curl_add_custom_headers(data, FALSE, &req_buffer);
+  result = Curl_add_custom_headers(data, FALSE, httpversion, &req_buffer);
   if(result)
     goto out;
 
@@ -580,7 +587,7 @@ static CURLcode rtsp_do(struct Curl_easy *data, bool *done)
   Curl_xfer_setup1(data, CURL_XFER_SENDRECV, -1, TRUE);
 
   /* issue the request */
-  result = Curl_req_send(data, &req_buffer);
+  result = Curl_req_send(data, &req_buffer, httpversion);
   if(result) {
     failf(data, "Failed sending RTSP request");
     goto out;
@@ -1038,4 +1045,4 @@ CURLcode rtsp_parse_transport(struct Curl_easy *data, const char *transport)
 }
 
 
-#endif /* CURL_DISABLE_RTSP or using Hyper */
+#endif /* CURL_DISABLE_RTSP */

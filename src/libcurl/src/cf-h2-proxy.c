@@ -277,6 +277,8 @@ static int proxy_h2_client_new(struct Curl_cfilter *cf,
 {
   struct cf_h2_proxy_ctx *ctx = cf->ctx;
   nghttp2_option *o;
+  nghttp2_mem mem = {NULL, Curl_nghttp2_malloc, Curl_nghttp2_free,
+                     Curl_nghttp2_calloc, Curl_nghttp2_realloc};
 
   int rc = nghttp2_option_new(&o);
   if(rc)
@@ -289,7 +291,7 @@ static int proxy_h2_client_new(struct Curl_cfilter *cf,
      HTTP field value. */
   nghttp2_option_set_no_rfc9113_leading_and_trailing_ws_validation(o, 1);
 #endif
-  rc = nghttp2_session_client_new2(&ctx->h2, cbs, cf, o);
+  rc = nghttp2_session_client_new3(&ctx->h2, cbs, cf, o, &mem);
   nghttp2_option_del(o);
   return rc;
 }
@@ -863,7 +865,9 @@ static int tunnel_recv_callback(nghttp2_session *session, uint8_t flags,
   if(nwritten < 0) {
     if(result != CURLE_AGAIN)
       return NGHTTP2_ERR_CALLBACK_FAILURE;
+#ifdef DEBUGBUILD
     nwritten = 0;
+#endif
   }
   DEBUGASSERT((size_t)nwritten == len);
   return 0;
@@ -1404,7 +1408,7 @@ static ssize_t cf_h2_proxy_send(struct Curl_cfilter *cf,
   ssize_t nwritten;
   CURLcode result;
 
-  (void)eos; /* TODO, maybe useful for blocks? */
+  (void)eos;
   if(ctx->tunnel.state != H2_TUNNEL_ESTABLISHED) {
     *err = CURLE_SEND_ERROR;
     return -1;
