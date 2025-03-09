@@ -59,7 +59,7 @@ int nghttp2_map_each(const nghttp2_map *map, int (*func)(void *data, void *ptr),
     return 0;
   }
 
-  tablelen = (size_t)1 << map->hashbits;
+  tablelen = 1u << map->hashbits;
 
   for (i = 0; i < tablelen; ++i) {
     bkt = &map->table[i];
@@ -153,14 +153,14 @@ static int map_resize(nghttp2_map *map, size_t new_hashbits) {
   int rv;
   (void)rv;
 
-  new_table = nghttp2_mem_calloc(map->mem, (size_t)1 << new_hashbits,
+  new_table = nghttp2_mem_calloc(map->mem, 1u << new_hashbits,
                                  sizeof(nghttp2_map_bucket));
   if (new_table == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
   if (map->size) {
-    tablelen = (size_t)1 << map->hashbits;
+    tablelen = 1u << map->hashbits;
 
     for (i = 0; i < tablelen; ++i) {
       bkt = &map->table[i];
@@ -295,7 +295,7 @@ void nghttp2_map_clear(nghttp2_map *map) {
     return;
   }
 
-  memset(map->table, 0, sizeof(*map->table) * ((size_t)1 << map->hashbits));
+  memset(map->table, 0, sizeof(*map->table) * (1u << map->hashbits));
   map->size = 0;
 }
 
