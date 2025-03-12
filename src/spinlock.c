@@ -158,31 +158,55 @@ memstr(char *full_data, int full_data_len, const char *substr)
         }
         cur++;
     }
-
     return NULL;
 }
 
-bool
-init_file_strings(LPCWSTR names, char *out_path)
+static inline size_t
+get_file_lenth(LPCWSTR path)
 {
-    WCHAR filename[MAX_PATH];
-    if (!GetModuleFileNameW(NULL, filename, MAX_PATH))
+    struct _stati64 statbuf;
+    return (_wstati64(path, &statbuf) < 0 ? (size_t)0 : (size_t)statbuf.st_size);
+}
+
+WCHAR*
+init_file_strings(LPCWSTR names, size_t *psize)
+{
+    bool ret = false;
+    WCHAR *path = NULL;
+    do
     {
-        return false;
-    }
-    if (!PathRemoveFileSpecW(filename))
+        if ((path = (WCHAR *)calloc(1, sizeof(WCHAR) * URL_LEN)) == NULL)
+        {
+            break;
+        }
+        if (!GetModuleFileNameW(NULL, path, URL_LEN))
+        {
+            break;
+        }
+        if (!PathRemoveFileSpecW(path))
+        {
+            break;
+        }
+        if (!PathAppendW(path, names))
+        {
+            break;
+        }
+        if (!PathFileExistsW(path))
+        {
+            break;
+        }
+        if (psize)
+        {
+            *psize = get_file_lenth(path);
+        }
+        ret = true;
+    } while (0);
+    if (!ret)
     {
-        return false;
+        free(path);
+        path = NULL;
     }
-    if (!PathAppendW(filename,names))
-    {
-        return false;
-    }
-    if (!PathFileExistsW(filename))
-    {
-        return false;
-    }
-    return (WideCharToMultiByte(CP_UTF8, 0, filename, -1, out_path, MAX_PATH, NULL, NULL)>0);
+    return path;
 }
 
 bool
@@ -193,41 +217,44 @@ find_local_str(char *result, const int len)
     bool found = false;
     size_t buf_len = 0;
     char *buff = NULL;
-    char omni[MAX_PATH] = {0};
-    const char *ctags = "/global/intl.css";
-    if (!init_file_strings(L"omni.ja", omni))
+    WCHAR *omni = NULL;
+    const char *ctags = "chrome/zh-CN";
+    if ((omni = init_file_strings(L"omni.ja", &buf_len)) == NULL)
     {
+        printf("%s, init_file_strings() return false\n", __FUNCTION__);
         return false;
     }
-    if (len < 5)
+    if (len < 5 || buf_len < 5)
     {
+        free(omni);
         return false;
     }
-    if ((fp = fopen(omni, "rb")) == NULL)
+    if ((fp = _wfopen(omni, L"rb")) == NULL)
     {
         printf("open omni.ja false\n");
+        free(omni);
         return false;
     }
-    if ((buff = (char *)calloc(1, BUFF_MAX)) == NULL)
+    if ((buff = (char *)malloc(buf_len)) == NULL)
     {
         fclose(fp);
+        free(omni);
         return false;
     }
-    if ((buf_len = fread(buff, 1, BUFF_MAX - 1, fp)) > 0)
+    if ((buf_len = fread(buff, 1, buf_len, fp)) > 0)
     {
-        if ((u = memstr(buff, (int)buf_len, ctags)) != NULL && u - buff > 5)
+        if ((u = memstr(buff, (int)buf_len, ctags)) != NULL)
         {
+            u += strlen("chrome/");
             found = true;
         }
     }
     if (found)
     {
-        strncpy(result, u-5, 5);
+        strncpy(result, u, 5);
     }
-    if (fp)
-    {
-        fclose(fp);
-    }
+    fclose(fp);
+    free(omni);
     free(buff);
     return found;
 }
@@ -382,18 +409,6 @@ merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name)
         fclose(fp3);
     }
     return res;
-}
-
-bool
-get_files_lenth(LPCWSTR path, int64_t *psize)
-{
-    struct _stati64 statbuf;
-    if (_wstati64(path,&statbuf))
-    {
-        return false;
-    }
-    *psize = statbuf.st_size;
-    return true;
 }
 
 bool
@@ -799,4 +814,25 @@ get_os_version(void)
     #undef VER_NUM
     }
     return ver;
+}
+
+char*
+str_replace(char *in, const size_t in_size, const char *pattern, const char *by)
+{
+    char *in_ptr = in;
+    char res[URL_LEN] = {0};
+    size_t offset = 0;
+    char *needle;
+    while ((needle = strstr(in, pattern)) && offset < in_size && offset < URL_LEN)
+    {
+        strncpy(res + offset, in, needle - in);
+        offset += needle - in;
+        in = needle + (int) strlen(pattern);
+        strncpy(res + offset, by, URL_LEN - offset);
+        offset += (int) strlen(by);
+    }
+    strncpy(res + offset, in, URL_LEN - offset);
+    _snprintf(in_ptr, in_size, "%s", res);
+    in = in_ptr;
+    return in;
 }

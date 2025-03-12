@@ -352,8 +352,9 @@ curl_set_cookies(CURL *curl)
     }
     else
     {
-        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.36.0");
+        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.37.0");
         euapi_curl_easy_setopt(curl, CURLOPT_COOKIE, "");
+        printf("user_agent[%s]\n", "aria2/1.37.0");
     }
 }
 
@@ -436,9 +437,10 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
 {
     const size_t cb = size * nmemb;
     const char *hdr_str = hdr;
-    const char *cdtag = "Content-Disposition:";
-    const char *lentag = "Content-Length:";
-    const char *lctag = "Location:";
+    const char *p = NULL;
+    const char *cdtag = "Content-Disposition: ";
+    const char *lentag = "Content-Length: ";
+    const char *lctag = "Location: ";
     dnld_params_t *dnld_params = (dnld_params_t *) userdata;
     /* Example: Ranges supports
      * Accept-Ranges: bytes
@@ -447,33 +449,64 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     {
         printf("this server Accept-Ranges: bytes\n");
     }
-    if (strcasestr(hdr_str, cdtag) && strncasecmp(hdr_str, cdtag, strlen(cdtag)) == 0)
+    if ((p = strcasestr(hdr_str, lctag)) != NULL && strcasestr(p, "dl.sourceforge.net") != NULL)
     {
-        int ret;
-        printf("Found c-d: %s\n", hdr_str);
-        ret = get_name_from_cd(hdr_str + strlen(cdtag), dnld_params->remote_fname);
-        if (ret)
+        p += strlen(lctag);
+        if (strncasecmp(p, file_info.url, strlen(file_info.url)))
         {
+            char re[NAMES_LEN + 1] = {0};
+            _snprintf(file_info.url, URL_LEN, "%s", p);
+            if (file_info.url[strlen(file_info.url) - 2] == '\r')
+            {
+                file_info.url[strlen(file_info.url) - 2] = 0;
+            }
+            else if (file_info.url[strlen(file_info.url) - 1] == '\n')
+            {
+                file_info.url[strlen(file_info.url) - 1] = 0;
+            }
+            if ((p = strstr(file_info.url, ".")) != NULL)
+            {
+                strncpy(re, file_info.url, p - file_info.url);
+            }
+            if (re[0])
+            {
+                str_replace(file_info.url, URL_LEN, re, "https://liquidtelecom");
+            }
+            printf("Redirecting to[%s]\n", file_info.url);
+        }
+    }
+    do
+    {
+        int ret = 0;
+        if (strncasecmp(hdr_str, cdtag, strlen(cdtag)) == 0)
+        {
+            printf("Found c-d: [%s]\n", hdr_str);
+            ret = get_name_from_cd(hdr_str + strlen(cdtag), dnld_params->remote_fname);
+            if (!ret)
+            {
+                break;
+            }
             printf("ERR: bad remote name\n");
         }
-    }
-    else if (strcasestr(hdr_str, lctag) && strncasecmp(hdr_str, lctag, strlen(lctag)) == 0)
-    {
-        int ret = get_name_from_url(hdr_str + strlen(lctag), dnld_params->remote_fname);
-        if (ret)
+        if (strncasecmp(hdr_str, lctag, strlen(lctag)) == 0)
         {
+            ret = get_name_from_url(hdr_str + strlen(lctag), dnld_params->remote_fname);
+            if (!ret)
+            {
+                break;
+            }
             printf("ERR: bad url name\n");
         }
-    }
-    else if (strncasecmp(hdr_str, lentag, strlen(lentag)) == 0)
-    {
-        const char *p = hdr_str + strlen(lentag);
-        if (strlen(p) > 1)
+        if (strncasecmp(hdr_str, lentag, strlen(lentag)) == 0)
         {
-            _snprintf(dnld_params->file_len, UINT_LEN, "%s", &p[1]);
-            printf("file_len = %s\n", dnld_params->file_len);
+            p = hdr_str + strlen(lentag);
+            if (strlen(p) > 1)
+            {
+                _snprintf(dnld_params->file_len, UINT_LEN, "%s", &p[0]);
+                printf("file_len = %s\n", dnld_params->file_len);
+            }
         }
-    }
+    } while (0);
     if (strlen(dnld_params->remote_fname) > 1)
     {
         _snprintf(file_info.remote_names, MAX_PATH, "%s", dnld_params->remote_fname);

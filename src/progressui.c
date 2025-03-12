@@ -242,38 +242,48 @@ euapi_get_string(void)
 bool
 set_ui_strings(void)
 {
-    bool ret = true;
+    bool ret = false;
 #if EUAPI_LINK
     ret = euapi_get_string();
 #else
     char *names = NULL;
-    char ini[MAX_PATH + 1] = {0};
+    char *app_ini = NULL;
+    WCHAR *pini = NULL;
     char result[6] = { 0 };
-    if (!init_file_strings(L"application.ini", ini))
+    do
     {
-        return false;
-    }
-    if (!ini_read_string("App", "RemotingName", &names, ini, true))
+        if ((pini = init_file_strings(L"application.ini", NULL)) == NULL)
+        {
+            break;
+        }
+        if ((app_ini = ini_utf16_utf8(pini, NULL)) == NULL)
+        {
+            break;
+        }
+        if (!ini_read_string("App", "RemotingName", &names, app_ini, true))
+        {
+            break;
+        }
+        ret = true;
+    } while(0);
+    if (ret)
     {
-        return false;
+        wcsncat(sUIStrings.title, L" ", MAX_PATH);
+        wcsncpy(sUIStrings.info, sUIStrings.title, MAX_PATH);
+        if (find_local_str(result, 5) && strcmp(result, "zh-CN") == 0)
+        {
+            wcsncat(sUIStrings.title, L"更新", MAX_PATH);
+            wcsncat(sUIStrings.info, L"正在安装更新，将于稍后启动…", MAX_PATH);
+        }
+        else
+        {
+            wcsncat(sUIStrings.title, L"Update", MAX_PATH);
+            wcsncat(sUIStrings.info, L"Is Installing Your Updates And Will Start In A Few Moments…", MAX_PATH);
+        }
     }
-    if (!MultiByteToWideChar(CP_UTF8, 0, names, -1, sUIStrings.title, MAX_PATH))
-    {
-        return false;
-    }
-    wcsncat(sUIStrings.title, L" ", MAX_PATH);
-    wcsncpy(sUIStrings.info, sUIStrings.title, MAX_PATH);
-    if (find_local_str(result, 5) && strcmp(result, "zh-CN") == 0)
-    {
-        wcsncat(sUIStrings.title, L"更新", MAX_PATH);
-        wcsncat(sUIStrings.info, L"正在安装更新，将于稍后启动…", MAX_PATH);
-    }
-    else
-    {
-        wcsncat(sUIStrings.title, L"Update", MAX_PATH);
-        wcsncat(sUIStrings.info, L"Is Installing Your Updates And Will Start In A Few Moments…", MAX_PATH);
-    }
-    free(names);
+    ini_safe_free(names);
+    ini_safe_free(pini);
+    ini_safe_free(app_ini);
 #endif
     return ret;
 }

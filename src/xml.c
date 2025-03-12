@@ -137,7 +137,7 @@ static int
 get_file_bits(void)
 {
     int  bits = 0;
-    char *dll = NULL;
+    WCHAR *dll = NULL;
     HANDLE hProcess = NULL;
     bool x64 = is_64bit_os();
     do
@@ -150,30 +150,23 @@ get_file_bits(void)
         }
         if ((hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, false, file_info.pid)) == NULL)
         {
-            char dll[MAX_PATH+1] = {0};
-            WCHAR wdll[MAX_PATH+1] = {0};
             printf("OpenProcess(%u) failed, cause: %lu\n", file_info.pid, GetLastError());
         #if EUAPI_LINK
-            if (!init_file_strings(L"libcurl.dll", dll))
+            if ((dll = init_file_strings(L"libcurl.dll", NULL)) == NULL)
             {
                 printf("init_file_strings libcurl.dll return false\n");
                 break;
             }
         #else
-            if (!init_file_strings(L"mozglue.dll", dll))
+            if ((dll = init_file_strings(L"mozglue.dll", NULL)) == NULL)
             {
                 printf("init_file_strings mozglue.dll return false\n");
                 break;
             }
         #endif
-            if (!MultiByteToWideChar(CP_UTF8, 0, dll, -1, wdll, MAX_PATH))
+            if ((bits = search_file_bits(dll)) == 0)
             {
-                printf("MultiByteToWideChar return false\n");
-                break;
-            }
-            if ((bits = search_file_bits(wdll)) == 0)
-            {
-                printf("search_file_bits mozglue.dll return false\n");
+                printf("search_file_bits [mozglue.dll|libcurl.dll] return false\n");
             }
             break;
         }
@@ -194,6 +187,10 @@ get_file_bits(void)
     if (hProcess)
     {
         CloseHandle(hProcess);
+    }
+    if (dll)
+    {
+        free(dll);
     }
     return bits;
 }
@@ -264,10 +261,11 @@ ini_query_ice(xml_buffer *pbuf)
     uint64_t dt_remote = 0;
     uint64_t dt_locale = 0;
     char result[6] = { 0 };
-    char app_ini[MAX_PATH + 1] = {0};
     char info[INFO_LEN + 1] = {0};
     char *url = NULL;
     char *c_md5 = NULL;
+    char *app_ini = NULL;
+    WCHAR *pini = NULL;
     ini_cache ini_handler = NULL;
     int   bits = get_file_bits();
     if (bits == 64)
@@ -306,9 +304,13 @@ ini_query_ice(xml_buffer *pbuf)
             printf("iniparser_create_cache return false\n");
             break;
         }
-        if (!init_file_strings(L"application.ini", app_ini))
+        if ((pini = init_file_strings(L"application.ini", NULL)) == NULL)
         {
             printf("init_file_strings application.ini return false\n");
+            break;
+        }
+        if ((app_ini = ini_utf16_utf8(pini, NULL)) == NULL)
+        {
             break;
         }
         if ((dt_locale = ini_read_uint64("App", "BuildID", app_ini, true)) > 0)
@@ -340,6 +342,8 @@ ini_query_ice(xml_buffer *pbuf)
     }while(0);
     ini_safe_free(c_md5);
     ini_safe_free(url);
+    ini_safe_free(pini);
+    ini_safe_free(app_ini);
     iniparser_destroy_cache(&ini_handler);
     return res;
 }

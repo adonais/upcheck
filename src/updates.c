@@ -329,17 +329,27 @@ is_ice(void)
 {
     bool res = false;
     char *names = NULL;
-    char ini[MAX_PATH+1] = {0};
-    if (!init_file_strings(L"application.ini", ini))
+    char *app_ini = NULL;
+    WCHAR *pini = NULL;
+    do
     {
-        return false;
-    }
-    if (!ini_read_string("App", "RemotingName", &names, ini, true))
-    {
-        return false;
-    }
-    res = _strnicmp(names, "Iceweasel", 9) == 0;
-    free(names);
+        if ((pini = init_file_strings(L"application.ini", NULL)) == NULL)
+        {
+            break;
+        }
+        if ((app_ini = ini_utf16_utf8(pini, NULL)) == NULL)
+        {
+            break;
+        }
+        if (!ini_read_string("App", "RemotingName", &names, app_ini, true))
+        {
+            break;
+        }
+    } while(0);
+    res = names ? (_strnicmp(names, "Iceweasel", 9) == 0) : false;
+    ini_safe_free(names);
+    ini_safe_free(pini);
+    ini_safe_free(app_ini);
     return res;
 }
 

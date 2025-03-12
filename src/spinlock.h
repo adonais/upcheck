@@ -133,16 +133,16 @@ extern void __cdecl logmsg(const char *format, ...);
 extern void init_logs(void);
 extern void enter_spinlock(void);
 extern void leave_spinlock(void);
-extern bool init_file_strings(LPCWSTR names, char *out_path);
 extern bool find_local_str(char *result, int len);
 extern bool merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name);
-extern bool get_files_lenth(LPCWSTR path, int64_t *psize);
 extern bool  exec_ppv(LPCSTR wcmd, LPCSTR pcd, int flags);
 extern bool  get_name_self(LPWSTR lpstrName, DWORD wlen);
 extern bool  search_process(LPCWSTR names);
 extern char* url_decode(const char *input);
+extern WCHAR* init_file_strings(LPCWSTR names, size_t *psize);
 extern WCHAR* get_process_path(WCHAR *path, const int len);
 extern const uint32_t get_os_version(void);
+extern char* str_replace(char *in, const size_t in_size, const char *pattern, const char *by);
 
 extern HANDLE share_create(HANDLE handle, uint32_t dw_protect, size_t size, LPCTSTR name);
 extern HANDLE share_open(uint32_t dw_access, LPCTSTR name);
