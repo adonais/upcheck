@@ -50,8 +50,7 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
         euapi_curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.36.0");
         euapi_curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
-        euapi_curl_easy_setopt(curl_handle, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
-        euapi_curl_easy_setopt(curl_handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+        libcurl_set_ssl(curl_handle);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 60L);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 90L);
         // 设置代理
@@ -293,7 +292,7 @@ ini_query_ice(xml_buffer *pbuf)
         printf("locales:en-US\n");
         strncat(info, "en-US", INFO_LEN);
     }
-    if (get_os_version() < 100)
+    if (get_os_version() < 1000)
     {
         strncat(info, ".esr", INFO_LEN);
     }

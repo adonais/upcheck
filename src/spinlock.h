@@ -42,6 +42,10 @@
 #define EUAPI_CERT CURLSSLOPT_AUTO_CLIENT_CERT
 #endif
 
+#if defined(LOG_DEBUG)
+#define printf logmsg
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -123,6 +127,7 @@ extern CURLcode libcurl_init(long flags);
 extern void libcurl_destory(void);
 
 extern void libcurl_set_proxy(CURL *curl);
+extern void libcurl_set_ssl(CURL *curl);
 extern int  get_cpu_works(void);
 extern bool get_file_md5(LPCWSTR path, char* md5_str);
 extern bool path_combine(LPWSTR lpfile, int len);

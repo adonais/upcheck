@@ -354,7 +354,7 @@ curl_set_cookies(CURL *curl)
     {
         euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.37.0");
         euapi_curl_easy_setopt(curl, CURLOPT_COOKIE, "");
-        printf("user_agent[%s]\n", "aria2/1.37.0");
+        // printf("user_agent[%s]\n", "aria2/1.37.0");
     }
 }
 
@@ -442,12 +442,14 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     const char *lentag = "Content-Length: ";
     const char *lctag = "Location: ";
     dnld_params_t *dnld_params = (dnld_params_t *) userdata;
+    file_info.thread_num = 1;
     /* Example: Ranges supports
      * Accept-Ranges: bytes
     */
     if (strcasestr(hdr_str, "Accept-Ranges: bytes"))
     {
         printf("this server Accept-Ranges: bytes\n");
+        file_info.thread_num = 0;
     }
     if ((p = strcasestr(hdr_str, lctag)) != NULL && strcasestr(p, "dl.sourceforge.net") != NULL)
     {
@@ -540,37 +542,34 @@ unlock_cb(CURL *handle, curl_lock_data data, void *userptr)
 static size_t
 download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-    enter_spinlock();
     curl_node *node = (curl_node *) userdata;
     size_t written = 0;
     int64_t real_size = size * nmemb;
-    if (!total_size)
+    enter_spinlock();
+    do
     {
-        written = fwrite(ptr, 1, (size_t)real_size, node->fp);
-    }
-    else if (node->szdown < node->endidx)
-    {
-        int64_t tsize = size * nmemb;
-        if (node->szdown + tsize > node->endidx)
+        if (!total_size)
         {
-            tsize = node->endidx - node->szdown;
+            written = fwrite(ptr, 1, (size_t)real_size, node->fp);
         }
-        if (fseek(node->fp, node->szdown, SEEK_SET) != 0)
+        else if (fseek(node->fp, node->szdown, SEEK_SET) != 0)
         {
-            printf("fseek error!\n");
+            printf("%s: fseek error!\n", __FUNCTION__);
+            break;
         }
-        else if (tsize > 0)
+        else
         {
-            written = fwrite(ptr, 1, (size_t) tsize, node->fp);
+            written = fwrite(ptr, 1, (size_t)real_size, node->fp);
             node->szdown += written;
+            // printf("[thread: %u], node->szdown = %zd\n", node->tid, node->szdown);
         }
-        downloaded_size += written;
-    }
-    leave_spinlock();
+    } while (0);
+    downloaded_size += written;
     if (total_size > 0)
     {
         update_ranges(node->tid, node->szdown, downloaded_size);
     }
+    leave_spinlock();
     return written;
 }
 
@@ -611,7 +610,7 @@ run_thread(void *pdata)
                 }
                 _snprintf(m_ranges, FILE_LEN, "%I64d-%I64d", pnode->szdown, pnode->endidx);
                 euapi_curl_easy_setopt(curl, CURLOPT_RANGE, m_ranges);
-                printf("\n[%s] setup \n", m_ranges);
+                printf("\nthead: %u[%s] setup \n", pnode->tid, m_ranges);
                 curl_set_cookies(curl);
                 euapi_curl_easy_setopt(curl, CURLOPT_SHARE, pnode->share);
             }
@@ -631,13 +630,10 @@ run_thread(void *pdata)
             // 关掉CLOSE_WAIT
             euapi_curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
             // enable all supported built-in compressions
-            euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+            // euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
-            //euapi_curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-            //euapi_curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-            euapi_curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
-            euapi_curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+            libcurl_set_ssl(curl);
             euapi_curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
         #if defined(APP_DEBUG)
             euapi_curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
@@ -650,20 +646,13 @@ run_thread(void *pdata)
             euapi_curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
             res = euapi_curl_easy_perform(curl);
             euapi_curl_easy_cleanup(curl);
-            if (res == CURLE_OK || pnode->endidx == pnode->szdown)
+            if (res == CURLE_OK)
             {
                 pnode->error = false;
                 printf("\ndownload message: ok, %u thread exit\n", pnode->tid);
                 break;
             }
-            if (res == CURLE_WRITE_ERROR && pnode->endidx != pnode->szdown)
-            {
-                printf("\ndownload error: start = %I64d, end = %I64d\n", pnode->startidx, pnode->endidx);
-                pnode->error = true;
-                printf("\ndownload error: failed writing received data to disk\n");
-                break;
-            }
-            if (true)  // CURLE_PARTIAL_FILE, CURLE_OPERATION_TIMEDOUT
+            else // CURLE_PARTIAL_FILE, CURLE_OPERATION_TIMEDOUT
             {
                 pnode->error = true;
                 printf("\ndownload error: code[%d], retry...\n", res);
@@ -698,8 +687,7 @@ get_file_lenth(const char *url, int64_t *file_len)
         euapi_curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 120L);
         euapi_curl_easy_setopt(handle, CURLOPT_TIMEOUT, 180L);
         // curl_set_cookies(handle);
-        euapi_curl_easy_setopt(handle, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
-        euapi_curl_easy_setopt(handle, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+        libcurl_set_ssl(handle);
         // 设置重定向的最大次数
         euapi_curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 3L);
         // 设置301、302跳转跟随location
@@ -1056,7 +1044,7 @@ init_download(const char *url, int64_t length)
             }
             else
             {
-                m_node[i].endidx = m_node[i].startidx + gap;
+                m_node[i].endidx = m_node[i].startidx + gap - 1;
             }
             m_node[i].szdown = m_node[i].startidx;
             m_node[i].fp = fp;
@@ -1545,6 +1533,9 @@ wmain(int argc, wchar_t **argv)
     {
         return -1;
     }
+#ifdef LOG_DEBUG
+    init_logs();
+#endif
     if (argn < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
         printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.4.0\n",

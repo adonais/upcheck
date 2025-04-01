@@ -27,6 +27,44 @@ ptr_curl_easy_init euapi_curl_easy_init = NULL;
 ptr_curl_global_cleanup euapi_curl_global_cleanup = NULL;
 ptr_curl_easy_cleanup euapi_curl_easy_cleanup = NULL;
 
+#ifdef LOG_DEBUG
+static char logfile_buf[MAX_PATH];
+
+void __cdecl 
+logmsg(const char * format, ...)
+{
+    va_list args;
+    char    buffer[MAX_MESSAGE];
+    va_start (args, format);
+    if (strlen(logfile_buf) > 0)
+    {
+        FILE *pFile = NULL;
+        int  len = wvnsprintfA(buffer,MAX_MESSAGE,format, args);
+        if ( len > 0 && len < MAX_MESSAGE )
+        {
+            buffer[len] = '\0';
+            if ( (pFile = fopen(logfile_buf,"a+")) != NULL )
+            {
+                fwrite(buffer,strlen(buffer),1,pFile);
+                fclose(pFile);
+            }
+        }
+    }
+    va_end(args);
+    return;
+}
+
+void WINAPI 
+init_logs(void)
+{
+    if ( *logfile_buf == '\0' && GetEnvironmentVariableA("APPDATA",logfile_buf,MAX_PATH) > 0 )
+    {
+        strncat(logfile_buf,"\\",MAX_PATH);
+        strncat(logfile_buf,"upcheck.log",MAX_PATH);
+    }
+}
+#endif
+
 void
 wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
 {
@@ -666,6 +704,22 @@ libcurl_set_proxy(CURL *curl)
                 euapi_curl_easy_setopt(curl, CURLOPT_PROXYUSERPWD, file_info.ini_usewd);
             }
         }
+    }
+}
+
+void
+libcurl_set_ssl(CURL *curl)
+{
+    if (get_os_version() > 603)
+    {
+        euapi_curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, EUAPI_CERT | CURLSSLOPT_NO_REVOKE);
+        euapi_curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+    }
+    else
+    {   // 不受支持的操作系统证书可能过期
+        euapi_curl_easy_setopt(curl, CURLOPT_SSLVERSION, 0);
+        euapi_curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+        euapi_curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
     }
 }
 
