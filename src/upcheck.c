@@ -17,6 +17,24 @@
 
 #define DOWN_NUM 10
 
+enum
+{
+    UPCHECK_404_ERR = -11,
+    UPCHECK_EXTRACT_ERR = -10,
+    UPCHECK_MD5_ERR = -9,
+    UPCHECK_TASK_ERR = -8,
+    UPCHECK_LENTH_ERR = -7,
+    UPCHECK_RESOLVER_ERR = -6,
+    UPCHECK_INI_ERR = -5,
+    UPCKECK_DATA_ERR = -4,
+    UPCHECK_URL_ERR = -3,
+    UPCHECK_CURL_ERR = -2,
+    UPCKECK_API_ERR = -1,
+    UPCHECK_OK = 0,
+    UPCHECK_DONT_ERR = 1,
+    UPCHECK_READY_ERR = 2
+};
+
 typedef HRESULT (WINAPI *SHGetKnownFolderIDListPtr)(REFKNOWNFOLDERID rfid,
         DWORD            dwFlags,
         HANDLE           hToken,
@@ -450,6 +468,10 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     {
         printf("this server Accept-Ranges: bytes\n");
         file_info.thread_num = 0;
+    }
+    else if (strcasestr(hdr_str, "404"))
+    {
+        return 0;
     }
     if ((p = strcasestr(hdr_str, lctag)) != NULL && strcasestr(p, "dl.sourceforge.net") != NULL)
     {
@@ -899,7 +921,6 @@ md5_sum(const bool mdel)
     }
     else
     {
-        res = false;
         if (mdel)
         {
             DeleteFileW(file_info.names);
@@ -1338,25 +1359,22 @@ msg_tips(void)
 }
 
 static void
-logs_update(const bool res)
+logs_update(void)
 {
-    if (res)
+    char *str_time = NULL;
+    uint64_t diff = 3600 * 24;
+    uint64_t m_time1 = (uint64_t) time(NULL);
+    uint64_t m_time2 = ini_read_uint64("update", "last_check", file_info.ini, false);
+    if (m_time1 - m_time2 > diff)
     {
-        char *str_time = NULL;
-        uint64_t diff = 3600 * 24;
-        uint64_t m_time1 = (uint64_t) time(NULL);
-        uint64_t m_time2 = ini_read_uint64("update", "last_check", file_info.ini, false);
-        if (m_time1 - m_time2 > diff)
+        char s_time[FILE_LEN] = { 0 };
+        _ui64toa(m_time1, s_time, 10);
+        if (!ini_write_string("update", "last_check", s_time, file_info.ini))
         {
-            char s_time[FILE_LEN] = { 0 };
-            _ui64toa(m_time1, s_time, 10);
-            if (!ini_write_string("update", "last_check", s_time, file_info.ini))
-            {
-                printf("ini_write_string return false.\n");
-            }
+            printf("ini_write_string return false.\n");
         }
-        ini_write_string("update", "be_ready", "1", file_info.ini);
     }
+    ini_write_string("update", "be_ready", "1", file_info.ini);
 }
 
 static void
@@ -1515,7 +1533,6 @@ wmain(int argc, wchar_t **argv)
 {
     int argn = 0;
     int ret = 0;
-    bool result = false;
     wchar_t **wargv = NULL;
     HANDLE mapped = NULL;
     const HMODULE hlib = GetModuleHandleW(L"kernel32.dll");
@@ -1531,7 +1548,7 @@ wmain(int argc, wchar_t **argv)
     }
     if (!(wargv = CommandLineToArgvW(GetCommandLine(), &argn)))
     {
-        return -1;
+        return UPCKECK_API_ERR;
     }
 #ifdef LOG_DEBUG
     init_logs();
@@ -1540,7 +1557,8 @@ wmain(int argc, wchar_t **argv)
     {
         printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.4.0\n",
                "upcheck.exe");
-        argn = 0;
+        LocalFree(wargv);
+        return UPCHECK_OK;
     }
     if (argn) // 初始化全局参数
     {
@@ -1548,20 +1566,21 @@ wmain(int argc, wchar_t **argv)
         if (!init_command_data(argn ,wargv))
         {
             printf("init_command_data failed\n");
-            argn = -1;
+            LocalFree(wargv);
+            return UPCKECK_DATA_ERR;
         }
     }
-    if (argn <= 0)
-    {
+    if (wargv)
+    {   // 不需要wargv变量了
         LocalFree(wargv);
-        return argn;
+        wargv = NULL;
     }
     if (file_info.use_thunder)
     {
         char  *command = NULL;
         if (!ini_path_init())
         {
-            return false;
+            return UPCHECK_INI_ERR;
         }
         if (ini_read_string("player", "command", &command, file_info.ini, true))
         {   // 优先调用命令行参数
@@ -1600,13 +1619,13 @@ wmain(int argc, wchar_t **argv)
             printf("dl_command: %s\n", dl);
             if(exec_ppv(dl, NULL, 0))
             {
-                return 0;
+                return UPCHECK_OK;
             }
         }
         *file_info.ini = '\0';
         if (thunder_lookup()) // 调用迅雷下载
         {
-            return 0;
+            return UPCHECK_OK;
         }
     }
     do
@@ -1621,7 +1640,7 @@ wmain(int argc, wchar_t **argv)
         {
             *file_info.ini = '\0';
             *file_info.process = L'\0';
-            ret = -1;
+            ret = UPCHECK_CURL_ERR;
             printf("Can not load curl.dll\n");
             break;
         }
@@ -1639,76 +1658,77 @@ wmain(int argc, wchar_t **argv)
             else if (ret > 0)
             {
                 printf("init_resolver return 1.\n");
+                ret = UPCHECK_DONT_ERR;
                 break;
             }
             else
             {
                 printf("init_resolver return -1.\n");
                 *file_info.ini = '\0';
+                ret = UPCHECK_RESOLVER_ERR;
                 break;
             }
         }
         if (strlen(file_info.url) < 2) // 没有下载任务
         {
             printf("not url\n");
-            ret = -1;
+            ret = UPCHECK_URL_ERR;
             break;
         }
         if (!downloaded_lookup(&mapped))
         {
             *file_info.ini = '\0';
             *file_info.process = L'\0';
-            ret = -2;
+            ret = UPCHECK_READY_ERR;
             printf("Is it already being downloaded?\n");
             break;
         }
-        if (!get_file_lenth(file_info.url, &length) && file_info.thread_num > 1) // 获取远程文件大小
+        if (!get_file_lenth(file_info.url, &length)) // 获取远程文件大小
         {
             printf("get_file_lenth return false\n");
             *file_info.ini = '\0';
-            ret = -1;
+            ret = UPCHECK_LENTH_ERR;  //or UPCHECK_404_ERR
             break;
         }
-        else
+        if (length == 0 && file_info.thread_num >= 1)
         {
-            printf("get_file_lenth ok, length = %I64d\n", length);
+            file_info.thread_num = 0;
         }
-        if ((result = curl_task(length)) == false) // 开始下载任务
+        if (!curl_task(length)) // 开始下载任务
         {
-            ret = -1;
+            ret = UPCHECK_TASK_ERR;
             break;
         }
-        if (strlen(file_info.md5) > 1) // 核对文件md5值
+        if (strlen(file_info.md5) > 1 && !md5_sum(true)) // 核对文件md5值
         {
-            result = md5_sum(true);
+            ret = UPCHECK_MD5_ERR;
+            break;
         }
-        if (result && file_info.extract) // 解压缩升级包
+        if (file_info.extract && extract7z(file_info.names, file_info.unzip_dir)) // 解压缩升级包
         {
-            if (extract7z(file_info.names, file_info.unzip_dir))
-            {
-                ret = -1;
-                result = false;
-                break;
-            }
+            ret = UPCHECK_EXTRACT_ERR;
+            break;
         }
-        if (result && strlen(file_info.ini) > 1) // 弹出消息提示
+        if (strlen(file_info.ini) > 1) // 弹出消息提示
         {
             msg_tips();
         }
-        ret = 0;
+        ret = UPCHECK_OK;
     } while (0);
     libcurl_destory();
     if (file_info.cookie_handle > 0)
     {
         CloseHandle(file_info.cookie_handle);
     }
+#ifndef EUAPI_LINK
     if (!file_info.up && strlen(file_info.ini) > 1)
     {
-        logs_update(result);
+        logs_update();
     }
+#endif
     if (mapped)
     {
-        if (ret == -2)
+        if (ret == UPCHECK_READY_ERR)
         {
             share_close(mapped);
         }
