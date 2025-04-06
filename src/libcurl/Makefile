@@ -132,7 +132,7 @@ OBJS = \
     $(OBJD)\libcurl\krb5.obj                    \
     $(OBJD)\libcurl\memdebug.obj                \
     $(OBJD)\libcurl\http_chunks.obj             \
-    $(OBJD)\libcurl\strtok.obj                  \
+    $(OBJD)\libcurl\cshutdn.obj                 \
     $(OBJD)\libcurl\connect.obj                 \
     $(OBJD)\libcurl\llist.obj                   \
     $(OBJD)\libcurl\hash.obj                    \
@@ -144,7 +144,10 @@ OBJS = \
     $(OBJD)\libcurl\md5.obj                     \
     $(OBJD)\libcurl\http_negotiate.obj          \
     $(OBJD)\libcurl\inet_pton.obj               \
-    $(OBJD)\libcurl\strtoofft.obj               \
+    $(OBJD)\libcurl\cw-pause.obj                \
+    $(OBJD)\libcurl\hash_offt.obj               \
+    $(OBJD)\libcurl\multi_ev.obj                \
+    $(OBJD)\libcurl\strequal.obj                \
     $(OBJD)\libcurl\strerror.obj                \
     $(OBJD)\libcurl\amigaos.obj                 \
     $(OBJD)\libcurl\hostasyn.obj                \
