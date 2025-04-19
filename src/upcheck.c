@@ -1359,22 +1359,28 @@ msg_tips(void)
 }
 
 static void
-logs_update(void)
+logs_update(const int ret)
 {
-    char *str_time = NULL;
-    uint64_t diff = 3600 * 24;
-    uint64_t m_time1 = (uint64_t) time(NULL);
-    uint64_t m_time2 = ini_read_uint64("update", "last_check", file_info.ini, false);
-    if (m_time1 - m_time2 > diff)
+    if (ret == UPCHECK_DONT_ERR || ret == UPCHECK_OK)
     {
-        char s_time[FILE_LEN] = { 0 };
-        _ui64toa(m_time1, s_time, 10);
-        if (!ini_write_string("update", "last_check", s_time, file_info.ini))
+        char *str_time = NULL;
+        uint64_t diff = 3600 * 24;
+        uint64_t m_time1 = (uint64_t) time(NULL);
+        uint64_t m_time2 = ini_read_uint64("update", "last_check", file_info.ini, false);
+        if (m_time1 - m_time2 > diff)
         {
-            printf("ini_write_string return false.\n");
+            char s_time[FILE_LEN] = { 0 };
+            _ui64toa(m_time1, s_time, 10);
+            if (!ini_write_string("update", "last_check", s_time, file_info.ini))
+            {
+                printf("ini_write_string return false.\n");
+            }
+        }
+        if (ret == UPCHECK_OK)
+        {
+            ini_write_string("update", "be_ready", "1", file_info.ini);
         }
     }
-    ini_write_string("update", "be_ready", "1", file_info.ini);
 }
 
 static void
@@ -1723,7 +1729,7 @@ wmain(int argc, wchar_t **argv)
 #ifndef EUAPI_LINK
     if (!file_info.up && strlen(file_info.ini) > 1)
     {
-        logs_update();
+        logs_update(ret);
     }
 #endif
     if (mapped)

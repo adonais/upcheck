@@ -28,6 +28,8 @@ LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.li
 
 !if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
+!ELSEIF "$(LOG_DEBUG)"=="1"
+CFLAGS = $(CFLAGS) -DLOG_DEBUG
 !ELSE
 CFLAGS = $(CFLAGS) $(RELEASE)
 !ENDIF
