@@ -48,11 +48,13 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
         euapi_curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, userdata);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
-        euapi_curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "aria2/1.36.0");
         euapi_curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
         libcurl_set_ssl(curl_handle);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 60L);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 90L);
+    #if APP_DEBUG
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
+    #endif
         // 设置代理
         libcurl_set_proxy(curl_handle);
         res = euapi_curl_easy_perform(curl_handle);
@@ -381,6 +383,7 @@ init_resolver(void)
         {
             res = ini_query_ice(&xbuf);
         }
+        printf("init_resolver, res = [%d]\n", res);
     }
     ini_safe_free(url);
     return res;
