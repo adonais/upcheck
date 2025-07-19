@@ -97,8 +97,6 @@ RT_ERROR_CHECKING = -RTCsu
 OBJS = \
     $(OBJD)\libcurl\macos.obj                   \
     $(OBJD)\libcurl\file.obj                    \
-    $(OBJD)\libcurl\timeval.obj                 \
-    $(OBJD)\libcurl\base64.obj                  \
     $(OBJD)\libcurl\bufq.obj                    \
     $(OBJD)\libcurl\cf-h1-proxy.obj             \
     $(OBJD)\libcurl\cf-h2-proxy.obj             \
@@ -143,18 +141,13 @@ OBJS = \
     $(OBJD)\libcurl\md4.obj                     \
     $(OBJD)\libcurl\md5.obj                     \
     $(OBJD)\libcurl\http_negotiate.obj          \
-    $(OBJD)\libcurl\inet_pton.obj               \
     $(OBJD)\libcurl\cw-pause.obj                \
-    $(OBJD)\libcurl\hash_offt.obj               \
     $(OBJD)\libcurl\multi_ev.obj                \
     $(OBJD)\libcurl\strequal.obj                \
     $(OBJD)\libcurl\strerror.obj                \
     $(OBJD)\libcurl\amigaos.obj                 \
-    $(OBJD)\libcurl\hostasyn.obj                \
     $(OBJD)\libcurl\hostip4.obj                 \
     $(OBJD)\libcurl\hostip6.obj                 \
-    $(OBJD)\libcurl\hostsyn.obj                 \
-    $(OBJD)\libcurl\inet_ntop.obj               \
     $(OBJD)\libcurl\parsedate.obj               \
     $(OBJD)\libcurl\select.obj                  \
     $(OBJD)\libcurl\tftp.obj                    \
@@ -168,7 +161,6 @@ OBJS = \
     $(OBJD)\libcurl\socks_sspi.obj              \
     $(OBJD)\libcurl\curl_sspi.obj               \
     $(OBJD)\libcurl\slist.obj                   \
-    $(OBJD)\libcurl\nonblock.obj                \
     $(OBJD)\libcurl\curl_memrchr.obj            \
     $(OBJD)\libcurl\imap.obj                    \
     $(OBJD)\libcurl\pop3.obj                    \
@@ -176,7 +168,6 @@ OBJS = \
     $(OBJD)\libcurl\pingpong.obj                \
     $(OBJD)\libcurl\rtsp.obj                    \
     $(OBJD)\libcurl\curl_threads.obj            \
-    $(OBJD)\libcurl\warnless.obj                \
     $(OBJD)\libcurl\hmac.obj                    \
     $(OBJD)\libcurl\curl_rtmp.obj               \
     $(OBJD)\libcurl\openldap.obj                \
@@ -188,23 +179,25 @@ OBJS = \
     $(OBJD)\libcurl\http_proxy.obj              \
     $(OBJD)\libcurl\mqtt.obj                    \
     $(OBJD)\libcurl\asyn-ares.obj               \
-    $(OBJD)\libcurl\asyn-thread.obj             \
+    $(OBJD)\libcurl\asyn-base.obj               \
+    $(OBJD)\libcurl\asyn-thrdd.obj              \
     $(OBJD)\libcurl\curl_gssapi.obj             \
     $(OBJD)\libcurl\http_ntlm.obj               \
     $(OBJD)\libcurl\curl_sha512_256.obj         \
     $(OBJD)\libcurl\curl_ntlm_core.obj          \
     $(OBJD)\libcurl\curl_sasl.obj               \
     $(OBJD)\libcurl\rand.obj                    \
-    $(OBJD)\libcurl\curl_multibyte.obj          \
+    $(OBJD)\libcurl\fake_addrinfo.obj           \
     $(OBJD)\libcurl\headers.obj                 \
     $(OBJD)\libcurl\fopen.obj                   \
     $(OBJD)\libcurl\easyoptions.obj             \
     $(OBJD)\libcurl\easygetopt.obj              \
-    $(OBJD)\libcurl\dynbuf.obj                  \
     $(OBJD)\libcurl\conncache.obj               \
     $(OBJD)\libcurl\curl_trc.obj                \
-    $(OBJD)\libcurl\timediff.obj                \
-    $(OBJD)\libcurl\version_win32.obj           \
+    $(OBJD)\libcurl\uint-bset.obj               \
+    $(OBJD)\libcurl\uint-hash.obj               \
+    $(OBJD)\libcurl\uint-spbset.obj             \
+    $(OBJD)\libcurl\uint-table.obj              \
     $(OBJD)\libcurl\ws.obj                      \
     $(OBJD)\libcurl\dynhds.obj                  \
     $(OBJD)\libcurl\http1.obj                   \
@@ -221,7 +214,6 @@ OBJS = \
     $(OBJD)\libcurl\cfilters.obj                \
     $(OBJD)\libcurl\cf-socket.obj               \
     $(OBJD)\libcurl\httpsrr.obj                 \
-    $(OBJD)\libcurl\strparse.obj                \
     $(OBJD)\libcurl\curl_range.obj              \
     $(OBJD)\libcurl\psl.obj                     \
     $(OBJD)\libcurl\doh.obj                     \
@@ -230,6 +222,19 @@ OBJS = \
     $(OBJD)\libcurl\altsvc.obj                  \
     $(OBJD)\libcurl\cw-out.obj                  \
     $(OBJD)\libcurl\request.obj                 \
+    $(OBJD)\libcurl\curlx\base64.obj            \
+    $(OBJD)\libcurl\curlx\dynbuf.obj            \
+    $(OBJD)\libcurl\curlx\inet_pton.obj         \
+    $(OBJD)\libcurl\curlx\multibyte.obj         \
+    $(OBJD)\libcurl\curlx\nonblock.obj          \
+    $(OBJD)\libcurl\curlx\strparse.obj          \
+    $(OBJD)\libcurl\curlx\timediff.obj          \
+    $(OBJD)\libcurl\curlx\timeval.obj           \
+    $(OBJD)\libcurl\curlx\version_win32.obj     \
+    $(OBJD)\libcurl\curlx\warnless.obj          \
+    $(OBJD)\libcurl\curlx\winapi.obj            \
+    $(OBJD)\libcurl\curlx\inet_ntop.obj         \
+    $(OBJD)\libcurl\curlx\wait.obj              \
     $(OBJD)\libcurl\vauth\vauth.obj             \
     $(OBJD)\libcurl\vauth\cleartext.obj         \
     $(OBJD)\libcurl\vauth\cram.obj              \
@@ -253,7 +258,6 @@ OBJS = \
     $(OBJD)\libcurl\vssh\libssh.obj             \
     $(OBJD)\libcurl\vssh\libssh2.obj            \
     $(OBJD)\libcurl\vssh\wolfssh.obj            \
-    $(OBJD)\libcurl\vtls\bearssl.obj            \
     $(OBJD)\libcurl\vtls\gtls.obj               \
     $(OBJD)\libcurl\vtls\hostcheck.obj          \
     $(OBJD)\libcurl\vtls\keylog.obj             \
@@ -263,7 +267,6 @@ OBJS = \
     $(OBJD)\libcurl\vtls\rustls.obj             \
     $(OBJD)\libcurl\vtls\schannel.obj           \
     $(OBJD)\libcurl\vtls\schannel_verify.obj    \
-    $(OBJD)\libcurl\vtls\sectransp.obj          \
     $(OBJD)\libcurl\vtls\vtls.obj               \
     $(OBJD)\libcurl\vtls\vtls_scache.obj        \
     $(OBJD)\libcurl\vtls\vtls_spack.obj         \
@@ -283,7 +286,10 @@ OBJS = \
 
 {$(SRCDIR)}.c{$(OBJD)\libcurl}.obj:
     $(CC) $(CFLAGS) -Fo$@ -c $<
-    
+
+{$(SRCDIR)\curlx}.c{$(OBJD)\libcurl\curlx}.obj:
+    $(CC) $(CFLAGS) -Fo$@ -c $<
+
 {$(SRCDIR)\vauth}.c{$(OBJD)\libcurl\vauth}.obj:
     $(CC) $(CFLAGS) -Fo$@ -c $<
     	
@@ -306,6 +312,7 @@ all: dirs $(STATICLIB)      \
 dirs:
     @if not exist "$(BIND)" mkdir "$(BIND)" && echo.   Created $(BIND)
     @if not exist "$(OBJD)\libcurl" mkdir "$(OBJD)\libcurl" && echo.   Created $(OBJD)\libcurl
+    @if not exist "$(OBJD)\libcurl\curlx" mkdir "$(OBJD)\libcurl\curlx" && echo.   Created $(OBJD)\libcurl\curlx
     @if not exist "$(OBJD)\libcurl\vauth" mkdir "$(OBJD)\libcurl\vauth" && echo.   Created $(OBJD)\libcurl\vauth
     @if not exist "$(OBJD)\libcurl\vquic" mkdir "$(OBJD)\libcurl\vquic" && echo.   Created $(OBJD)\libcurl\vquic
     @if not exist "$(OBJD)\libcurl\vssh" mkdir "$(OBJD)\libcurl\vssh" && echo.   Created $(OBJD)\libcurl\vssh
@@ -324,6 +331,7 @@ clean:
 	-del /q $(BIND)\*.pdb 2>nul
 	-del /q $(BIND)\*.idb 2>nul
 	-del /q $(OBJD)\libcurl\*.obj 2>nul
+	-del /q $(OBJD)\libcurl\curlx\*.obj 2>nul
 	-del /q $(OBJD)\libcurl\vauth\*.obj 2>nul
 	-del /q $(OBJD)\libcurl\vquic\*.obj 2>nul
 	-del /q $(OBJD)\libcurl\vssh\*.obj 2>nul

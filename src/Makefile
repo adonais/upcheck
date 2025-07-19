@@ -24,7 +24,7 @@ CFLAGS  = $(CFLAGS) -DCURL_STATICLIB
 LDFLAGS = -NODEFAULTLIB:MSVCRT $(LDFLAGS)
 !ENDIF
 
-LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib
+LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib secur32.lib
 
 !if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
