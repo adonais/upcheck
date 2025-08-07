@@ -6,7 +6,6 @@
 #include <unistd.h>
 #endif
 #include <wchar.h>
-#include <stdint.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -1029,7 +1028,7 @@ ini_foreach_entry(node **pphead, const char *sec, char (*lpdata)[LEN_STRINGS], i
         for (node *cur = pos; cur && i < line;)
         {
             cur = cur->next;
-            if (*cur->content == '[')
+            if (!cur || *cur->content == '[')
             {
                 break;
             }
@@ -1777,7 +1776,7 @@ ini_foreach_string(const char *sec,
                    char (*lpdata)[LEN_STRINGS],
                    const int line,
                    const char *path,
-                    const bool isfile)
+                   const bool isfile)
 {
     bool res = false;
     ini_cache plist = iniparser_create_cache(path, false, isfile);
