@@ -5,33 +5,13 @@
 #include <time.h>
 #include <errno.h>
 #include <io.h>
-#include "shlwapi.h"
-#include "spinlock.h"
-#include "zlib.h"
+#include <shlwapi.h>
 #include "unzip.h"
 
 #undef NOUNCRYPT
 
 #define CASESENSITIVITY (0)
 #define WRITEBUFFERSIZE (8192)
-#define MAXFILENAME (256)
-#define USEWIN32IOAPI
-#define FOPEN_FUNC(filename, mode) fopen(filename, mode)
-#define FTELLO_FUNC(stream) _ftelli64(stream)
-#define FSEEKO_FUNC(stream, offset, origin) _fseeki64(stream, offset, origin)
-
-#ifndef INVALID_SET_FILE_POINTER
-#define INVALID_SET_FILE_POINTER ((DWORD)-1)
-#endif
-
-#if defined(_WIN32) && (!(defined(_CRT_SECURE_NO_WARNINGS)))
-        #define _CRT_SECURE_NO_WARNINGS
-#endif
-
-/* compile with -Dlocal if your debugger can't find static symbols */
-#ifndef local
-#  define local static
-#endif
 
 #ifndef CASESENSITIVITYDEFAULT_NO
 #  if !defined(unix) && !defined(CASESENSITIVITYDEFAULT_YES)
@@ -39,29 +19,13 @@
 #  endif
 #endif
 
-#ifndef UNZ_BUFSIZE
-#define UNZ_BUFSIZE (16384)
-#endif
 
-#ifndef UNZ_MAXFILENAMEINZIP
-#define UNZ_MAXFILENAMEINZIP (256)
-#endif
-
-#ifndef ALLOC
-# define ALLOC(size) (malloc(size))
-#endif
 #ifndef TRYFREE
 # define TRYFREE(p) {if (p) free(p);}
 #endif
 
 #define SIZECENTRALDIRITEM (0x2e)
 #define SIZEZIPLOCALHEADER (0x1e)
-
-typedef struct
-{
-    HANDLE hf;
-    int error;
-} WIN32FILE_IOWIN;
 
 /* unz_file_info_interntal contain internal info about a file in zipfile*/
 typedef struct unz_file_info64_internal_s
@@ -129,583 +93,67 @@ typedef struct
 } unz64_s;
 
 #ifndef NOUNCRYPT
-#include "unzip_crypt.h"
+#include "cryptzip.h"
 #endif
 
-/* ioapi.c */
+static uint8_t gz_buffer[WRITEBUFFERSIZE] = {0};
 
-voidpf call_zopen64 (const zlib_filefunc64_32_def* pfilefunc,const void*filename,int mode)
+static void
+wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
 {
-    if (pfilefunc->zfile_func64.zopen64_file != NULL)
-        return (*(pfilefunc->zfile_func64.zopen64_file)) (pfilefunc->zfile_func64.opaque,filename,mode);
-    else
+    LPWSTR   lp = NULL;
+    intptr_t pos;
+    do
     {
-        return (*(pfilefunc->zopen32_file))(pfilefunc->zfile_func64.opaque,(const char*)filename,mode);
-    }
-}
-
-long call_zseek64 (const zlib_filefunc64_32_def* pfilefunc,voidpf filestream, ZPOS64_T offset, int origin)
-{
-    if (pfilefunc->zfile_func64.zseek64_file != NULL)
-        return (*(pfilefunc->zfile_func64.zseek64_file)) (pfilefunc->zfile_func64.opaque,filestream,offset,origin);
-    else
-    {
-        uLong offsetTruncated = (uLong)offset;
-        if (offsetTruncated != offset)
-            return -1;
-        else
-            return (*(pfilefunc->zseek32_file))(pfilefunc->zfile_func64.opaque,filestream,offsetTruncated,origin);
-    }
-}
-
-ZPOS64_T call_ztell64 (const zlib_filefunc64_32_def* pfilefunc,voidpf filestream)
-{
-    if (pfilefunc->zfile_func64.zseek64_file != NULL)
-        return (*(pfilefunc->zfile_func64.ztell64_file)) (pfilefunc->zfile_func64.opaque,filestream);
-    else
-    {
-        uLong tell_uLong = (*(pfilefunc->ztell32_file))(pfilefunc->zfile_func64.opaque,filestream);
-        if ((tell_uLong) == MAXU32)
-            return (ZPOS64_T)-1;
-        else
-            return tell_uLong;
-    }
-}
-
-void fill_zlib_filefunc64_32_def_from_filefunc32(zlib_filefunc64_32_def* p_filefunc64_32,const zlib_filefunc_def* p_filefunc32)
-{
-    p_filefunc64_32->zfile_func64.zopen64_file = NULL;
-    p_filefunc64_32->zopen32_file = p_filefunc32->zopen_file;
-    p_filefunc64_32->zfile_func64.zerror_file = p_filefunc32->zerror_file;
-    p_filefunc64_32->zfile_func64.zread_file = p_filefunc32->zread_file;
-    p_filefunc64_32->zfile_func64.zwrite_file = p_filefunc32->zwrite_file;
-    p_filefunc64_32->zfile_func64.ztell64_file = NULL;
-    p_filefunc64_32->zfile_func64.zseek64_file = NULL;
-    p_filefunc64_32->zfile_func64.zclose_file = p_filefunc32->zclose_file;
-    p_filefunc64_32->zfile_func64.zerror_file = p_filefunc32->zerror_file;
-    p_filefunc64_32->zfile_func64.opaque = p_filefunc32->opaque;
-    p_filefunc64_32->zseek32_file = p_filefunc32->zseek_file;
-    p_filefunc64_32->ztell32_file = p_filefunc32->ztell_file;
-}
-
-
-
-static voidpf  ZCALLBACK fopen_file_func OF((voidpf opaque, const char* filename, int mode));
-static uLong   ZCALLBACK fread_file_func OF((voidpf opaque, voidpf stream, void* buf, uLong size));
-static uLong   ZCALLBACK fwrite_file_func OF((voidpf opaque, voidpf stream, const void* buf,uLong size));
-static ZPOS64_T ZCALLBACK ftell64_file_func OF((voidpf opaque, voidpf stream));
-static long    ZCALLBACK fseek64_file_func OF((voidpf opaque, voidpf stream, ZPOS64_T offset, int origin));
-static int     ZCALLBACK fclose_file_func OF((voidpf opaque, voidpf stream));
-static int     ZCALLBACK ferror_file_func OF((voidpf opaque, voidpf stream));
-
-static voidpf ZCALLBACK fopen_file_func (voidpf opaque, const char* filename, int mode)
-{
-    FILE* file = NULL;
-    const char* mode_fopen = NULL;
-    if ((mode & ZLIB_FILEFUNC_MODE_READWRITEFILTER)==ZLIB_FILEFUNC_MODE_READ)
-        mode_fopen = "rb";
-    else
-    if (mode & ZLIB_FILEFUNC_MODE_EXISTING)
-        mode_fopen = "r+b";
-    else
-    if (mode & ZLIB_FILEFUNC_MODE_CREATE)
-        mode_fopen = "wb";
-
-    if ((filename!=NULL) && (mode_fopen != NULL))
-        file = fopen(filename, mode_fopen);
-    return file;
-}
-
-static voidpf ZCALLBACK fopen64_file_func (voidpf opaque, const void* filename, int mode)
-{
-    FILE* file = NULL;
-    const char* mode_fopen = NULL;
-    if ((mode & ZLIB_FILEFUNC_MODE_READWRITEFILTER)==ZLIB_FILEFUNC_MODE_READ)
-        mode_fopen = "rb";
-    else
-    if (mode & ZLIB_FILEFUNC_MODE_EXISTING)
-        mode_fopen = "r+b";
-    else
-    if (mode & ZLIB_FILEFUNC_MODE_CREATE)
-        mode_fopen = "wb";
-
-    if ((filename!=NULL) && (mode_fopen != NULL))
-        file = FOPEN_FUNC((const char*)filename, mode_fopen);
-    return file;
-}
-
-
-static uLong ZCALLBACK fread_file_func (voidpf opaque, voidpf stream, void* buf, uLong size)
-{
-    uLong ret;
-    ret = (uLong)fread(buf, 1, (size_t)size, (FILE *)stream);
-    return ret;
-}
-
-static uLong ZCALLBACK fwrite_file_func (voidpf opaque, voidpf stream, const void* buf, uLong size)
-{
-    uLong ret;
-    ret = (uLong)fwrite(buf, 1, (size_t)size, (FILE *)stream);
-    return ret;
-}
-
-static long ZCALLBACK ftell_file_func (voidpf opaque, voidpf stream)
-{
-    long ret;
-    ret = ftell((FILE *)stream);
-    return ret;
-}
-
-
-static ZPOS64_T ZCALLBACK ftell64_file_func (voidpf opaque, voidpf stream)
-{
-    ZPOS64_T ret;
-    ret = FTELLO_FUNC((FILE *)stream);
-    return ret;
-}
-
-static long ZCALLBACK fseek_file_func (voidpf  opaque, voidpf stream, uLong offset, int origin)
-{
-    int fseek_origin=0;
-    long ret;
-    switch (origin)
-    {
-    case ZLIB_FILEFUNC_SEEK_CUR :
-        fseek_origin = SEEK_CUR;
-        break;
-    case ZLIB_FILEFUNC_SEEK_END :
-        fseek_origin = SEEK_END;
-        break;
-    case ZLIB_FILEFUNC_SEEK_SET :
-        fseek_origin = SEEK_SET;
-        break;
-    default: return -1;
-    }
-    ret = 0;
-    if (fseek((FILE *)stream, offset, fseek_origin) != 0)
-        ret = -1;
-    return ret;
-}
-
-static long ZCALLBACK fseek64_file_func (voidpf  opaque, voidpf stream, ZPOS64_T offset, int origin)
-{
-    int fseek_origin=0;
-    long ret;
-    switch (origin)
-    {
-    case ZLIB_FILEFUNC_SEEK_CUR :
-        fseek_origin = SEEK_CUR;
-        break;
-    case ZLIB_FILEFUNC_SEEK_END :
-        fseek_origin = SEEK_END;
-        break;
-    case ZLIB_FILEFUNC_SEEK_SET :
-        fseek_origin = SEEK_SET;
-        break;
-    default: return -1;
-    }
-    ret = 0;
-
-    if(FSEEKO_FUNC((FILE *)stream, offset, fseek_origin) != 0)
-                        ret = -1;
-
-    return ret;
-}
-
-
-static int ZCALLBACK fclose_file_func (voidpf opaque, voidpf stream)
-{
-    int ret;
-    ret = fclose((FILE *)stream);
-    return ret;
-}
-
-static int ZCALLBACK ferror_file_func (voidpf opaque, voidpf stream)
-{
-    int ret;
-    ret = ferror((FILE *)stream);
-    return ret;
-}
-
-void fill_fopen_filefunc (zlib_filefunc_def* pzlib_filefunc_def)
-{
-    pzlib_filefunc_def->zopen_file = fopen_file_func;
-    pzlib_filefunc_def->zread_file = fread_file_func;
-    pzlib_filefunc_def->zwrite_file = fwrite_file_func;
-    pzlib_filefunc_def->ztell_file = ftell_file_func;
-    pzlib_filefunc_def->zseek_file = fseek_file_func;
-    pzlib_filefunc_def->zclose_file = fclose_file_func;
-    pzlib_filefunc_def->zerror_file = ferror_file_func;
-    pzlib_filefunc_def->opaque = NULL;
-}
-
-void fill_fopen64_filefunc (zlib_filefunc64_def*  pzlib_filefunc_def)
-{
-    pzlib_filefunc_def->zopen64_file = fopen64_file_func;
-    pzlib_filefunc_def->zread_file = fread_file_func;
-    pzlib_filefunc_def->zwrite_file = fwrite_file_func;
-    pzlib_filefunc_def->ztell64_file = ftell64_file_func;
-    pzlib_filefunc_def->zseek64_file = fseek64_file_func;
-    pzlib_filefunc_def->zclose_file = fclose_file_func;
-    pzlib_filefunc_def->zerror_file = ferror_file_func;
-    pzlib_filefunc_def->opaque = NULL;
-}
-
-/* ioapi.c end */
-
-/* iowi32.c */
-static void win32_translate_open_mode(int mode,
-                                      DWORD* lpdwDesiredAccess,
-                                      DWORD* lpdwCreationDisposition,
-                                      DWORD* lpdwShareMode,
-                                      DWORD* lpdwFlagsAndAttributes)
-{
-    *lpdwDesiredAccess = *lpdwShareMode = *lpdwFlagsAndAttributes = *lpdwCreationDisposition = 0;
-
-    if ((mode & ZLIB_FILEFUNC_MODE_READWRITEFILTER)==ZLIB_FILEFUNC_MODE_READ)
-    {
-        *lpdwDesiredAccess = GENERIC_READ;
-        *lpdwCreationDisposition = OPEN_EXISTING;
-        *lpdwShareMode = FILE_SHARE_READ;
-    }
-    else if (mode & ZLIB_FILEFUNC_MODE_EXISTING)
-    {
-        *lpdwDesiredAccess = GENERIC_WRITE | GENERIC_READ;
-        *lpdwCreationDisposition = OPEN_EXISTING;
-    }
-    else if (mode & ZLIB_FILEFUNC_MODE_CREATE)
-    {
-        *lpdwDesiredAccess = GENERIC_WRITE | GENERIC_READ;
-        *lpdwCreationDisposition = CREATE_ALWAYS;
-    }
-}
-
-static voidpf win32_build_iowin(HANDLE hFile)
-{
-    voidpf ret=NULL;
-
-    if ((hFile != NULL) && (hFile != INVALID_HANDLE_VALUE))
-    {
-        WIN32FILE_IOWIN w32fiow;
-        w32fiow.hf = hFile;
-        w32fiow.error = 0;
-        ret = malloc(sizeof(WIN32FILE_IOWIN));
-
-        if (ret==NULL)
-            CloseHandle(hFile);
-        else
-            *((WIN32FILE_IOWIN*)ret) = w32fiow;
-    }
-    return ret;
-}
-
-voidpf ZCALLBACK win32_open64_file_func (voidpf opaque,const void* filename,int mode)
-{
-    const char* mode_fopen = NULL;
-    DWORD dwDesiredAccess,dwCreationDisposition,dwShareMode,dwFlagsAndAttributes ;
-    HANDLE hFile = NULL;
-
-    win32_translate_open_mode(mode,&dwDesiredAccess,&dwCreationDisposition,&dwShareMode,&dwFlagsAndAttributes);
-
-    if ((filename!=NULL) && (dwDesiredAccess != 0))
-    {
-        WCHAR filenameW[FILENAME_MAX + 0x200 + 1];
-        MultiByteToWideChar(CP_UTF8,0,(const char*)filename,-1,filenameW,FILENAME_MAX + 0x200);
-        hFile = CreateFileW(filenameW, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
-    }
-
-    return win32_build_iowin(hFile);
-}
-
-
-voidpf ZCALLBACK win32_open64_file_funcA (voidpf opaque,const void* filename,int mode)
-{
-    const char* mode_fopen = NULL;
-    DWORD dwDesiredAccess,dwCreationDisposition,dwShareMode,dwFlagsAndAttributes ;
-    HANDLE hFile = NULL;
-
-    win32_translate_open_mode(mode,&dwDesiredAccess,&dwCreationDisposition,&dwShareMode,&dwFlagsAndAttributes);
-
-    if ((filename!=NULL) && (dwDesiredAccess != 0))
-        hFile = CreateFileA((LPCSTR)filename, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
-    return win32_build_iowin(hFile);
-}
-
-
-voidpf ZCALLBACK win32_open_file_func (voidpf opaque,const char* filename,int mode)
-{
-    const char* mode_fopen = NULL;
-    DWORD dwDesiredAccess,dwCreationDisposition,dwShareMode,dwFlagsAndAttributes ;
-    HANDLE hFile = NULL;
-
-    win32_translate_open_mode(mode,&dwDesiredAccess,&dwCreationDisposition,&dwShareMode,&dwFlagsAndAttributes);
-
-    if ((filename!=NULL) && (dwDesiredAccess != 0))
-    {
-        WCHAR filenameW[FILENAME_MAX + 0x200 + 1];
-        MultiByteToWideChar(CP_UTF8,0,(const char*)filename,-1,filenameW,FILENAME_MAX + 0x200);
-        hFile = CreateFileW(filenameW, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
-    }
-
-    return win32_build_iowin(hFile);
-}
-
-
-uLong ZCALLBACK win32_read_file_func (voidpf opaque, voidpf stream, void* buf,uLong size)
-{
-    uLong ret=0;
-    HANDLE hFile = NULL;
-    if (stream!=NULL)
-        hFile = ((WIN32FILE_IOWIN*)stream) -> hf;
-
-    if (hFile != NULL)
-    {
-        if (!ReadFile(hFile, buf, size, &ret, NULL))
+        lp =  wcschr(path, L'/');
+        if (lp)
         {
-            DWORD dwErr = GetLastError();
-            if (dwErr == ERROR_HANDLE_EOF)
-                dwErr = 0;
-            ((WIN32FILE_IOWIN*)stream) -> error=(int)dwErr;
+            pos = lp-path;
+            path[pos] = L'\\';
         }
-    }
-
-    return ret;
+    } while (lp != NULL);
+    return;
 }
 
-
-uLong ZCALLBACK win32_write_file_func (voidpf opaque,voidpf stream,const void* buf,uLong size)
+static bool
+create_dir(LPCWSTR dir)
 {
-    uLong ret=0;
-    HANDLE hFile = NULL;
-    if (stream!=NULL)
-        hFile = ((WIN32FILE_IOWIN*)stream) -> hf;
-
-    if (hFile != NULL)
+    LPWSTR p = NULL;
+    WCHAR  tmp_name[MAX_PATH] = {0};
+    wcsncpy(tmp_name, dir, MAX_PATH - 1);
+    p = wcschr(tmp_name, L'\\');
+    for (; p != NULL; *p = L'\\', p = wcschr(p + 1, L'\\'))
     {
-        if (!WriteFile(hFile, buf, size, &ret, NULL))
+        *p = L'\0';
+        if (check_exist_dir(tmp_name))
         {
-            DWORD dwErr = GetLastError();
-            if (dwErr == ERROR_HANDLE_EOF)
-                dwErr = 0;
-            ((WIN32FILE_IOWIN*)stream) -> error=(int)dwErr;
+            continue;
         }
+        CreateDirectoryW(tmp_name, NULL);
     }
-
-    return ret;
+    return (CreateDirectoryW(tmp_name, NULL)||GetLastError() == ERROR_ALREADY_EXISTS);
 }
 
-static BOOL MySetFilePointerEx(HANDLE hFile, LARGE_INTEGER pos, LARGE_INTEGER *newPos,  DWORD dwMoveMethod)
+static bool
+create_file_dir(LPCWSTR path)
 {
-#ifdef IOWIN32_USING_WINRT_API
-    return SetFilePointerEx(hFile, pos, newPos, dwMoveMethod);
-#else
-    LONG lHigh = pos.HighPart;
-    DWORD dwNewPos = SetFilePointer(hFile, pos.LowPart, &lHigh, dwMoveMethod);
-    BOOL fOk = TRUE;
-    if (dwNewPos == 0xFFFFFFFF)
-        if (GetLastError() != NO_ERROR)
-            fOk = FALSE;
-    if ((newPos != NULL) && (fOk))
+    LPWSTR p = NULL;
+    WCHAR  tmp_name[MAX_PATH] = {0};
+    wcsncpy(tmp_name, path, MAX_PATH - 1);
+    wchr_replace(tmp_name);
+    if ((p = wcsrchr(tmp_name, L'\\')) != NULL)
     {
-        newPos->LowPart = dwNewPos;
-        newPos->HighPart = lHigh;
+        *p = L'\0';
     }
-    return fOk;
-#endif
+    return create_dir(tmp_name);
 }
 
-long ZCALLBACK win32_tell_file_func (voidpf opaque,voidpf stream)
-{
-    long ret=-1;
-    HANDLE hFile = NULL;
-    if (stream!=NULL)
-        hFile = ((WIN32FILE_IOWIN*)stream) -> hf;
-    if (hFile != NULL)
-    {
-        LARGE_INTEGER pos;
-        pos.QuadPart = 0;
-
-        if (!MySetFilePointerEx(hFile, pos, &pos, FILE_CURRENT))
-        {
-            DWORD dwErr = GetLastError();
-            ((WIN32FILE_IOWIN*)stream) -> error=(int)dwErr;
-            ret = -1;
-        }
-        else
-            ret=(long)pos.LowPart;
-    }
-    return ret;
-}
-
-ZPOS64_T ZCALLBACK win32_tell64_file_func (voidpf opaque, voidpf stream)
-{
-    ZPOS64_T ret= (ZPOS64_T)-1;
-    HANDLE hFile = NULL;
-    if (stream!=NULL)
-        hFile = ((WIN32FILE_IOWIN*)stream)->hf;
-
-    if (hFile)
-    {
-        LARGE_INTEGER pos;
-        pos.QuadPart = 0;
-
-        if (!MySetFilePointerEx(hFile, pos, &pos, FILE_CURRENT))
-        {
-            DWORD dwErr = GetLastError();
-            ((WIN32FILE_IOWIN*)stream) -> error=(int)dwErr;
-            ret = (ZPOS64_T)-1;
-        }
-        else
-            ret=pos.QuadPart;
-    }
-    return ret;
-}
-
-
-long ZCALLBACK win32_seek_file_func (voidpf opaque,voidpf stream,uLong offset,int origin)
-{
-    DWORD dwMoveMethod=0xFFFFFFFF;
-    HANDLE hFile = NULL;
-
-    long ret=-1;
-    if (stream!=NULL)
-        hFile = ((WIN32FILE_IOWIN*)stream) -> hf;
-    switch (origin)
-    {
-    case ZLIB_FILEFUNC_SEEK_CUR :
-        dwMoveMethod = FILE_CURRENT;
-        break;
-    case ZLIB_FILEFUNC_SEEK_END :
-        dwMoveMethod = FILE_END;
-        break;
-    case ZLIB_FILEFUNC_SEEK_SET :
-        dwMoveMethod = FILE_BEGIN;
-        break;
-    default: return -1;
-    }
-
-    if (hFile != NULL)
-    {
-        LARGE_INTEGER pos;
-        pos.QuadPart = offset;
-        if (!MySetFilePointerEx(hFile, pos, NULL, dwMoveMethod))
-        {
-            DWORD dwErr = GetLastError();
-            ((WIN32FILE_IOWIN*)stream) -> error=(int)dwErr;
-            ret = -1;
-        }
-        else
-            ret=0;
-    }
-    return ret;
-}
-
-long ZCALLBACK win32_seek64_file_func (voidpf opaque, voidpf stream,ZPOS64_T offset,int origin)
-{
-    DWORD dwMoveMethod=0xFFFFFFFF;
-    HANDLE hFile = NULL;
-    long ret=-1;
-
-    if (stream!=NULL)
-        hFile = ((WIN32FILE_IOWIN*)stream)->hf;
-
-    switch (origin)
-    {
-        case ZLIB_FILEFUNC_SEEK_CUR :
-            dwMoveMethod = FILE_CURRENT;
-            break;
-        case ZLIB_FILEFUNC_SEEK_END :
-            dwMoveMethod = FILE_END;
-            break;
-        case ZLIB_FILEFUNC_SEEK_SET :
-            dwMoveMethod = FILE_BEGIN;
-            break;
-        default: return -1;
-    }
-
-    if (hFile)
-    {
-        LARGE_INTEGER pos;
-        pos.QuadPart = offset;
-        if (!MySetFilePointerEx(hFile, pos, NULL, dwMoveMethod))
-        {
-            DWORD dwErr = GetLastError();
-            ((WIN32FILE_IOWIN*)stream) -> error=(int)dwErr;
-            ret = -1;
-        }
-        else
-            ret=0;
-    }
-    return ret;
-}
-
-int ZCALLBACK win32_close_file_func (voidpf opaque, voidpf stream)
-{
-    int ret=-1;
-
-    if (stream!=NULL)
-    {
-        HANDLE hFile;
-        hFile = ((WIN32FILE_IOWIN*)stream) -> hf;
-        if (hFile != NULL)
-        {
-            CloseHandle(hFile);
-            ret=0;
-        }
-        free(stream);
-    }
-    return ret;
-}
-
-int ZCALLBACK win32_error_file_func (voidpf opaque,voidpf stream)
-{
-    int ret=-1;
-    if (stream!=NULL)
-    {
-        ret = ((WIN32FILE_IOWIN*)stream) -> error;
-    }
-    return ret;
-}
-
-void fill_win32_filefunc (zlib_filefunc_def* pzlib_filefunc_def)
-{
-    pzlib_filefunc_def->zopen_file = win32_open_file_func;
-    pzlib_filefunc_def->zread_file = win32_read_file_func;
-    pzlib_filefunc_def->zwrite_file = win32_write_file_func;
-    pzlib_filefunc_def->ztell_file = win32_tell_file_func;
-    pzlib_filefunc_def->zseek_file = win32_seek_file_func;
-    pzlib_filefunc_def->zclose_file = win32_close_file_func;
-    pzlib_filefunc_def->zerror_file = win32_error_file_func;
-    pzlib_filefunc_def->opaque = NULL;
-}
-
-void fill_win32_filefunc64(zlib_filefunc64_def* pzlib_filefunc_def)
-{
-    pzlib_filefunc_def->zopen64_file = win32_open64_file_func;
-    pzlib_filefunc_def->zread_file = win32_read_file_func;
-    pzlib_filefunc_def->zwrite_file = win32_write_file_func;
-    pzlib_filefunc_def->ztell64_file = win32_tell64_file_func;
-    pzlib_filefunc_def->zseek64_file = win32_seek64_file_func;
-    pzlib_filefunc_def->zclose_file = win32_close_file_func;
-    pzlib_filefunc_def->zerror_file = win32_error_file_func;
-    pzlib_filefunc_def->opaque = NULL;
-}
-
-/* iowin32.c end */
-
-/* ===========================================================================
-     Read a byte from a gz_stream; update next_in and avail_in. Return EOF
-   for end of file.
-   IN assertion: the stream s has been successfully opened for reading.
-*/
-
-
-local int unz64local_getByte OF((
+static int unz64local_getByte OF((
     const zlib_filefunc64_32_def* pzlib_filefunc_def,
     voidpf filestream,
     int *pi));
 
-local int unz64local_getByte(const zlib_filefunc64_32_def* pzlib_filefunc_def, voidpf filestream, int *pi)
+static int unz64local_getByte(const zlib_filefunc64_32_def* pzlib_filefunc_def, voidpf filestream, int *pi)
 {
     unsigned char c;
     int err = (int)ZREAD64(*pzlib_filefunc_def,filestream,&c,1);
@@ -727,12 +175,12 @@ local int unz64local_getByte(const zlib_filefunc64_32_def* pzlib_filefunc_def, v
 /* ===========================================================================
    Reads a long in LSB order from the given gz_stream. Sets
 */
-local int unz64local_getShort OF((
+static int unz64local_getShort OF((
     const zlib_filefunc64_32_def* pzlib_filefunc_def,
     voidpf filestream,
     uLong *pX));
 
-local int unz64local_getShort (const zlib_filefunc64_32_def* pzlib_filefunc_def,
+static int unz64local_getShort (const zlib_filefunc64_32_def* pzlib_filefunc_def,
                              voidpf filestream,
                              uLong *pX)
 {
@@ -754,12 +202,12 @@ local int unz64local_getShort (const zlib_filefunc64_32_def* pzlib_filefunc_def,
     return err;
 }
 
-local int unz64local_getLong OF((
+static int unz64local_getLong OF((
     const zlib_filefunc64_32_def* pzlib_filefunc_def,
     voidpf filestream,
     uLong *pX));
 
-local int unz64local_getLong (const zlib_filefunc64_32_def* pzlib_filefunc_def,
+static int unz64local_getLong (const zlib_filefunc64_32_def* pzlib_filefunc_def,
                             voidpf filestream,
                             uLong *pX)
 {
@@ -789,13 +237,13 @@ local int unz64local_getLong (const zlib_filefunc64_32_def* pzlib_filefunc_def,
     return err;
 }
 
-local int unz64local_getLong64 OF((
+static int unz64local_getLong64 OF((
     const zlib_filefunc64_32_def* pzlib_filefunc_def,
     voidpf filestream,
     ZPOS64_T *pX));
 
 
-local int unz64local_getLong64 (const zlib_filefunc64_32_def* pzlib_filefunc_def,
+static int unz64local_getLong64 (const zlib_filefunc64_32_def* pzlib_filefunc_def,
                             voidpf filestream,
                             ZPOS64_T *pX)
 {
@@ -842,7 +290,7 @@ local int unz64local_getLong64 (const zlib_filefunc64_32_def* pzlib_filefunc_def
 }
 
 /* My own strcmpi / strcasecmp */
-local int strcmpcasenosensitive_internal (const char* fileName1, const char* fileName2)
+static int strcmpcasenosensitive_internal (const char* fileName1, const char* fileName2)
 {
     for (;;)
     {
@@ -905,8 +353,8 @@ int ZEXPORT unzStringFileNameCompare (const char*  fileName1,
   Locate the Central directory of a zipfile (at the end, just before
     the global comment)
 */
-local ZPOS64_T unz64local_SearchCentralDir OF((const zlib_filefunc64_32_def* pzlib_filefunc_def, voidpf filestream));
-local ZPOS64_T unz64local_SearchCentralDir(const zlib_filefunc64_32_def* pzlib_filefunc_def, voidpf filestream)
+static ZPOS64_T unz64local_SearchCentralDir OF((const zlib_filefunc64_32_def* pzlib_filefunc_def, voidpf filestream));
+static ZPOS64_T unz64local_SearchCentralDir(const zlib_filefunc64_32_def* pzlib_filefunc_def, voidpf filestream)
 {
     unsigned char* buf;
     ZPOS64_T uSizeFile;
@@ -967,11 +415,11 @@ local ZPOS64_T unz64local_SearchCentralDir(const zlib_filefunc64_32_def* pzlib_f
   Locate the Central directory 64 of a zipfile (at the end, just before
     the global comment)
 */
-local ZPOS64_T unz64local_SearchCentralDir64 OF((
+static ZPOS64_T unz64local_SearchCentralDir64 OF((
     const zlib_filefunc64_32_def* pzlib_filefunc_def,
     voidpf filestream));
 
-local ZPOS64_T unz64local_SearchCentralDir64(const zlib_filefunc64_32_def* pzlib_filefunc_def,
+static ZPOS64_T unz64local_SearchCentralDir64(const zlib_filefunc64_32_def* pzlib_filefunc_def,
                                       voidpf filestream)
 {
     unsigned char* buf;
@@ -1077,7 +525,7 @@ local ZPOS64_T unz64local_SearchCentralDir64(const zlib_filefunc64_32_def* pzlib
      Else, the return value is a unzFile Handle, usable with other function
        of this unzip package.
 */
-local unzFile unzOpenInternal (const void *path,
+static unzFile unzOpenInternal (const void *path,
                                zlib_filefunc64_32_def* pzlib_filefunc64_32_def,
                                int is64bitOpenFunction)
 {
@@ -1110,10 +558,12 @@ local unzFile unzOpenInternal (const void *path,
                                                  path,
                                                  ZLIB_FILEFUNC_MODE_READ |
                                                  ZLIB_FILEFUNC_MODE_EXISTING);
+    printf("path = %ls, us.filestream = %p\n", (const WCHAR *)path, us.filestream);
     if (us.filestream==NULL)
         return NULL;
 
     central_pos = unz64local_SearchCentralDir64(&us.z_filefunc,us.filestream);
+    printf("central_pos = %zu\n", central_pos);
     if (central_pos)
     {
         uLong uS;
@@ -1269,22 +719,16 @@ unzFile ZEXPORT unzOpen2 (const char *path, zlib_filefunc_def* pzlib_filefunc32_
 
 unzFile ZEXPORT unzOpen2_64W (const WCHAR *wstr, zlib_filefunc64_def* pzlib_filefunc_def)
 {
-    char path[MAX_PATH+1] = {0};
-    if (!WideCharToMultiByte(CP_UTF8, 0, wstr, -1, path, sizeof(path), NULL, NULL))
-    {
-        printf("WideCharToMultiByte utf-8 false\n");
-        return NULL;
-    }
     if (pzlib_filefunc_def != NULL)
     {
         zlib_filefunc64_32_def zlib_filefunc64_32_def_fill;
         zlib_filefunc64_32_def_fill.zfile_func64 = *pzlib_filefunc_def;
         zlib_filefunc64_32_def_fill.ztell32_file = NULL;
         zlib_filefunc64_32_def_fill.zseek32_file = NULL;
-        return unzOpenInternal(path, &zlib_filefunc64_32_def_fill, 1);
+        return unzOpenInternal(wstr, &zlib_filefunc64_32_def_fill, 1);
     }
     else
-        return unzOpenInternal(path, NULL, 1);
+        return unzOpenInternal(wstr, NULL, 1);
 }
 
 unzFile ZEXPORT unzOpen (const char *path)
@@ -1344,9 +788,9 @@ int ZEXPORT unzGetGlobalInfo (unzFile file, unz_global_info* pglobal_info32)
     return UNZ_OK;
 }
 /*
-   Translate date/time from Dos format to tm_unz (readable more easilty)
+   Translate date/time from Dos format to tm_zip (readable more easilty)
 */
-local void unz64local_DosDateToTmuDate (ZPOS64_T ulDosDate, tm_unz* ptm)
+static void unz64local_DosDateToTmuDate (ZPOS64_T ulDosDate, tm_zip* ptm)
 {
     ZPOS64_T uDate;
     uDate = (ZPOS64_T)(ulDosDate>>16);
@@ -1362,7 +806,7 @@ local void unz64local_DosDateToTmuDate (ZPOS64_T ulDosDate, tm_unz* ptm)
 /*
   Get Info about the current file in the zipfile, with internal only info
 */
-local int unz64local_GetCurrentFileInfoInternal OF((unzFile file,
+static int unz64local_GetCurrentFileInfoInternal OF((unzFile file,
                                                   unz_file_info64 *pfile_info,
                                                   unz_file_info64_internal
                                                   *pfile_info_internal,
@@ -1373,7 +817,7 @@ local int unz64local_GetCurrentFileInfoInternal OF((unzFile file,
                                                   char *szComment,
                                                   uLong commentBufferSize));
 
-local int unz64local_GetCurrentFileInfoInternal (unzFile file,
+static int unz64local_GetCurrentFileInfoInternal (unzFile file,
                                                  unz_file_info64 *pfile_info,
                                                  unz_file_info64_internal
                                                  *pfile_info_internal,
@@ -1743,7 +1187,7 @@ int ZEXPORT unzLocateFile (unzFile file, const char *szFileName, int iCaseSensit
     if (file==NULL)
         return UNZ_PARAMERROR;
 
-    if (strlen(szFileName)>=UNZ_MAXFILENAMEINZIP)
+    if (strlen(szFileName)>=Z_MAXFILENAMEINZIP)
         return UNZ_PARAMERROR;
 
     s=(unz64_s*)file;
@@ -1760,7 +1204,7 @@ int ZEXPORT unzLocateFile (unzFile file, const char *szFileName, int iCaseSensit
 
     while (err == UNZ_OK)
     {
-        char szCurrentFileName[UNZ_MAXFILENAMEINZIP+1];
+        char szCurrentFileName[Z_MAXFILENAMEINZIP+1];
         err = unzGetCurrentFileInfo64(file,NULL,
                                     szCurrentFileName,sizeof(szCurrentFileName)-1,
                                     NULL,0,NULL,0);
@@ -1861,7 +1305,7 @@ int ZEXPORT unzGoToFilePos(
   store in *piSizeVar the size of extra info in local header
         (filename and size of extra field data)
 */
-local int unz64local_CheckCurrentFileCoherencyHeader (unz64_s* s, uInt* piSizeVar,
+static int unz64local_CheckCurrentFileCoherencyHeader (unz64_s* s, uInt* piSizeVar,
                                                     ZPOS64_T * poffset_local_extrafield,
                                                     uInt  * psize_local_extrafield)
 {
@@ -1973,7 +1417,7 @@ int ZEXPORT unzOpenCurrentFile3 (unzFile file, int* method,int* level, int raw, 
     if (pfile_in_zip_read_info==NULL)
         return UNZ_INTERNALERROR;
 
-    pfile_in_zip_read_info->read_buffer=(char*)ALLOC(UNZ_BUFSIZE);
+    pfile_in_zip_read_info->read_buffer=(char*)ALLOC(Z_BUFSIZE);
     pfile_in_zip_read_info->offset_local_extrafield = offset_local_extrafield;
     pfile_in_zip_read_info->size_local_extrafield = size_local_extrafield;
     pfile_in_zip_read_info->pos_local_extrafield=0;
@@ -2168,7 +1612,7 @@ int ZEXPORT unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
         if ((pfile_in_zip_read_info->stream.avail_in==0) &&
             (pfile_in_zip_read_info->rest_read_compressed>0))
         {
-            uInt uReadThis = UNZ_BUFSIZE;
+            uInt uReadThis = Z_BUFSIZE;
             if (pfile_in_zip_read_info->rest_read_compressed<uReadThis)
                 uReadThis = (uInt)pfile_in_zip_read_info->rest_read_compressed;
             if (uReadThis == 0)
@@ -2257,7 +1701,9 @@ int ZEXPORT unzReadCurrentFile  (unzFile file, voidp buf, unsigned len)
             err=inflate(&pfile_in_zip_read_info->stream,flush);
 
             if ((err>=0) && (pfile_in_zip_read_info->stream.msg!=NULL))
+            {
               err = Z_DATA_ERROR;
+            }
 
             uTotalOutAfter = pfile_in_zip_read_info->stream.total_out;
             uOutThis = uTotalOutAfter-uTotalOutBefore;
@@ -2523,13 +1969,12 @@ int ZEXPORT unzSetOffset (unzFile file, uLong pos)
     return unzSetOffset64(file,pos);
 }
 
-void change_file_date(const char *filename,uLong dosdate,tm_unz tmu_date)
+void change_file_date(const WCHAR *filename, uLong dosdate, tm_zip tmu_date)
 {
   HANDLE hFile;
   FILETIME ftm,ftLocal,ftCreate,ftLastAcc,ftLastWrite;
 
-  hFile = CreateFileA(filename,GENERIC_READ | GENERIC_WRITE,
-                      0,NULL,OPEN_EXISTING,0,NULL);
+  hFile = CreateFileW(filename,GENERIC_READ | GENERIC_WRITE, 0,NULL,OPEN_EXISTING,0,NULL);
   GetFileTime(hFile,&ftCreate,&ftLastAcc,&ftLastWrite);
   DosDateTimeToFileTime((WORD)(dosdate>>16),(WORD)dosdate,&ftLocal);
   LocalFileTimeToFileTime(&ftLocal,&ftm);
@@ -2541,7 +1986,7 @@ void change_file_date(const char *filename,uLong dosdate,tm_unz tmu_date)
 /* mymkdir and change_file_date are not 100 % portable
    As I don't know well Unix, I wait feedback for the unix portion */
 
-local void write_log(FILE* pf, const char* names)
+static void write_log(FILE* pf, const char* names)
 {
     WCHAR temp[MAX_PATH] = {0};
     if (!MultiByteToWideChar(CP_ACP, 0, names, -1, temp, MAX_PATH))
@@ -2557,143 +2002,94 @@ local void write_log(FILE* pf, const char* names)
     fwrite(L"\r\n", sizeof(WCHAR), 2, pf);
 }
 
-local bool
-path_combine_cur(LPWSTR lpfile, int len)
+int do_extract_currentfile(unzFile uf, const char* password, FILE* pf, const WCHAR *pout)
 {
-#define SIZE 128
-    int n = 1;
-    if (NULL == lpfile || *lpfile == L' ')
-    {
-        return false;
-    }
-    if (lpfile[1] != L':')
-    {
-        WCHAR name[SIZE + 1] = { 0 };
-        if (GetCurrentDirectoryW(SIZE, name) > 0)
-        {
-            WCHAR tmp_path[MAX_PATH] = { 0 };
-            if (PathCombineW(tmp_path, name, lpfile))
-            {
-                wchr_replace(tmp_path);
-                n = _snwprintf(lpfile, len, L"%s", tmp_path);
-            }
-        }
-    }
-    return (n > 0 && n < len);
-#undef SIZE
-}
-
-int do_extract_currentfile(unzFile uf, const char* password, FILE* pf)
-{
-    char filename_inzip[MAX_PATH+1];
+    WCHAR path[MAX_PATH+1] = {0};
+    WCHAR write_filename[MAX_PATH+1] = {0};
+    char filename_inzip[MAX_PATH+1] = {0};
     char* filename_withoutpath;
     char* p;
-    int err=UNZ_OK;
-    FILE *fout=NULL;
-    void* buf;
-    uInt size_buf;
-
+    FILE *fout = NULL;
     unz_file_info64 file_info;
-    uLong ratio=0;
-    err = unzGetCurrentFileInfo64(uf,&file_info,filename_inzip,sizeof(filename_inzip),NULL,0,NULL,0);
-
-    if (err!=UNZ_OK)
+    uLong ratio = 0;
+    int err = unzGetCurrentFileInfo64(uf, &file_info, filename_inzip, MAX_PATH,NULL, 0, NULL, 0);
+    if (err != UNZ_OK)
     {
         printf("error %d with zipfile in unzGetCurrentFileInfo\n",err);
         return err;
     }
-
-    size_buf = WRITEBUFFERSIZE;
-    buf = (void*)malloc(size_buf);
-    if (buf==NULL)
+    // 文件名称是本地编码而不是utf-8
+    if (!MultiByteToWideChar(CP_ACP, 0, filename_inzip, -1, write_filename, MAX_PATH))
     {
-        printf("Error allocating memory\n");
-        return UNZ_INTERNALERROR;
+        return 1;
     }
-
     p = filename_withoutpath = filename_inzip;
     while ((*p) != '\0')
     {
-        if (((*p)=='/') || ((*p)=='\\'))
+        if (((*p) == '/') || ((*p) == '\\'))
             filename_withoutpath = p+1;
-        p++;
+        ++p;
     }
-
-    if ((*filename_withoutpath)=='\0')
+    _snwprintf(path, MAX_PATH, L"%s\\%s", pout, write_filename);
+    if ((*filename_withoutpath) == '\0')
     {
-        WCHAR path[MAX_PATH+1] = {0};
-        if (!MultiByteToWideChar(CP_ACP, 0, filename_inzip, -1, path, MAX_PATH))
-        {
-            return 1;
-        }
         write_log(pf, filename_inzip);
-        printf("creating directory: %s\n",filename_inzip);
-        path_combine_cur(path, MAX_PATH);
         create_dir(path);
+        // printf("creating directory: %s\n", filename_inzip);
     }
     else
     {
-        const char* write_filename;
-        int skip=0;
-        write_filename = filename_inzip;
-        if (strstr(write_filename, "pwd.txt"))
+        if ((err = unzOpenCurrentFilePassword(uf, password)) != UNZ_OK)
         {
-        	err = unzOpenCurrentFilePassword(uf,NULL);
+        	return 1;
         }
-        else
+        if (err == UNZ_OK)
         {
-        	err = unzOpenCurrentFilePassword(uf,password);
-        }
-        if (err!=UNZ_OK)
-        {
-            printf("error %d with zipfile in unzOpenCurrentFilePassword\n",err);
-        }
-
-        if ((skip==0) && (err==UNZ_OK))
-        {
-            fout=FOPEN_FUNC(write_filename,"wb");
-            if (fout==NULL)
+            fout = FOPEN_FUNC(path, L"wb");
+            if (!fout)
             {
-                printf("error opening %s\n",write_filename);
+                if (create_file_dir(path) && (fout = FOPEN_FUNC(path, L"wb")) == NULL)
+                {
+                    printf("error opening %s\n", filename_inzip);
+                }
             }
         }
 
-        if (fout!=NULL)
+        if (fout != NULL)
         {
-            if (pf != NULL && write_filename != NULL)
+            if (pf != NULL)
             {
-                write_log(pf, write_filename);
+                write_log(pf, filename_inzip);
             }
-            printf(" extracting: %s\n",write_filename);
+            // printf(" extracting: %s\n", filename_inzip);
             do
             {
-                err = unzReadCurrentFile(uf,buf,size_buf);
-                if (err<0)
+                err = unzReadCurrentFile(uf, gz_buffer, WRITEBUFFERSIZE);
+                if (err < 0)
                 {
                     printf("error %d with zipfile in unzReadCurrentFile\n",err);
                     break;
                 }
-                if (err>0)
-                    if (fwrite(buf,err,1,fout)!=1)
+                if (err > 0)
+                {
+                    if (fwrite(gz_buffer, err, 1, fout) != 1)
                     {
                         printf("error in writing extracted file\n");
-                        err=UNZ_ERRNO;
+                        err = UNZ_ERRNO;
                         break;
                     }
-            }
-            while (err>0);
-            if (fout)
-                    fclose(fout);
+                }
+            } while (err > 0);
+            fclose(fout);
 
-            if (err==0)
-                change_file_date(write_filename,file_info.dosDate,
-                                 file_info.tmu_date);
+            if (err == 0)
+                change_file_date(path, file_info.dosDate, file_info.tmu_date);
         }
 
-        if (err==UNZ_OK)
+        if (err == UNZ_OK)
         {
             err = unzCloseCurrentFile (uf);
-            if (err!=UNZ_OK)
+            if (err != UNZ_OK)
             {
                 printf("error %d with zipfile in unzCloseCurrentFile\n",err);
             }
@@ -2701,26 +2097,22 @@ int do_extract_currentfile(unzFile uf, const char* password, FILE* pf)
         else
             unzCloseCurrentFile(uf); /* don't lose the error */
     }
-
-    free(buf);
     return err;
 }
 
 
-int do_extract(unzFile uf, const char* password, LPWSTR log)
+int do_extract(unzFile uf, const char* password, LPCWSTR log, const WCHAR *pout)
 {
     uLong i;
     unz_global_info64 gi;
-    int err = UNZ_OK;
-    FILE* flog=NULL;
-
-    err = unzGetGlobalInfo64(uf,&gi);
-    if (err!=UNZ_OK)
+    FILE* flog = NULL;
+    int err = unzGetGlobalInfo64(uf,&gi);
+    if (err != UNZ_OK)
     {
-        printf("error %d with zipfile in unzGetGlobalInfo \n",err);
+        printf("error %d with zipfile in unzGetGlobalInfo\n", err);
         return 1;
     }
-    if (true)
+    if (log)
     {
         const char *bom = "\xFF\xFE";
         flog = _wfopen(log, L"wb");
@@ -2730,54 +2122,72 @@ int do_extract(unzFile uf, const char* password, LPWSTR log)
         }
         fwrite(bom, 1, strlen(bom), flog);
     }
-    for (i=0;i<gi.number_entry;i++)
+    for (i = 0; i < gi.number_entry; i++)
     {
-        if ((err = do_extract_currentfile(uf, password, flog)) != UNZ_OK)
+        if ((err = do_extract_currentfile(uf, password, flog, pout)) != UNZ_OK)
             break;
-
+        
         if ((i+1)<gi.number_entry)
         {
             err = unzGoToNextFile(uf);
-            if (err!=UNZ_OK)
+            if (err != UNZ_OK)
             {
                 printf("error %d with zipfile in unzGoToNextFile\n",err);
                 break;
             }
         }
     }
-    fclose(flog);
+    if (flog)
+        fclose(flog);
     return err;
 }
 
-int unzip_file(LPCWSTR zipfilename, LPCWSTR dirname, LPWSTR log)
+int unzip_file(LPCWSTR zipfilename, LPCWSTR dirname, const char* password, const int flog)
 {
     int res = -1;
-    unzFile uf=NULL;
+    size_t sp = 0;
+    unzFile uf = NULL;
+    WCHAR *pout = NULL;
+    WCHAR log[MAX_PATH] = {0};
     if (!create_dir(dirname))
     {
         return res;
     }
-    if (!SetCurrentDirectoryW(dirname))
-    {
-        printf("Error changing into the path, aborting\n");
-        return res;
-    }
-    if (zipfilename!=NULL)
+    if (zipfilename != NULL)
     {
         zlib_filefunc64_def ffunc;
         fill_win32_filefunc64(&ffunc);
         uf = unzOpen2_64W(zipfilename,&ffunc);
     }
-
-    if (uf==NULL)
+    if (uf == NULL)
     {
         printf("Cannot open filename_try\n");
         return res;
     }
-    if (true)
+    if ((wcslen(dirname) > 0 && dirname[1] != ':') && (pout = (WCHAR *)calloc(1, (MAX_PATH + 1) * sizeof(WCHAR))) != NULL)
     {
-        _snwprintf(log, MAX_PATH, L"%s\\%s", dirname, L"update.log");
-        res = do_extract(uf, "123", log);
+        LPWSTR psz = NULL;
+        GetFullPathNameW(dirname, MAX_PATH, pout, &psz);
+    }
+    else
+    {
+        pout = (WCHAR *)dirname;
+    }
+    if ((sp = wcslen(pout) - 1) > 0)
+    {
+        if (pout[sp] == L'\\' || pout[sp] == L'/')
+        {
+            pout[sp] = 0;
+        }
+    }
+    if (flog)
+    {
+        _snwprintf(log, MAX_PATH, L"%s\\%s", pout, L"update.log");
+    }
+    res = do_extract(uf, password, *log ? log : NULL, pout);
+    if (!pout && pout != dirname)
+    {
+        free(pout);
     }
     unzClose(uf);
     return res;

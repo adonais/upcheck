@@ -245,7 +245,7 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
     WCHAR *dot = wcsrchr(srcFile, L'.');
     if (dot && !wcsicmp(dot, L".zip"))
     {
-    	return unzip_file(srcFile, dstPath, file_list_log);
+    	return unzip_file(srcFile, dstPath, NULL, 1);
     }
     Print("\n7z Decoder " MY_VERSION_CPU " : " MY_COPYRIGHT_DATE "\n\n");
 

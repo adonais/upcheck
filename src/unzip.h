@@ -1,116 +1,12 @@
 #ifndef _unz64_H
 #define _unz64_H
 
-#include <zlib.h>
-#include <stdint.h>
-#include <windows.h>
+#include "iozip.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ioapi.h */
-/* Maximum unsigned 32-bit value used as placeholder for zip64 */
-#define MAXU32 0xffffffff
-typedef uint64_t ZPOS64_T;
-
-#define ZLIB_FILEFUNC_SEEK_CUR (1)
-#define ZLIB_FILEFUNC_SEEK_END (2)
-#define ZLIB_FILEFUNC_SEEK_SET (0)
-
-#define ZLIB_FILEFUNC_MODE_READ      (1)
-#define ZLIB_FILEFUNC_MODE_WRITE     (2)
-#define ZLIB_FILEFUNC_MODE_READWRITEFILTER (3)
-
-#define ZLIB_FILEFUNC_MODE_EXISTING (4)
-#define ZLIB_FILEFUNC_MODE_CREATE   (8)
-
-
-#ifndef ZCALLBACK
- #if (defined(WIN32) || defined(_WIN32) || defined (WINDOWS) || defined (_WINDOWS)) && defined(CALLBACK) && defined (USEWINDOWS_CALLBACK)
-   #define ZCALLBACK CALLBACK
- #else
-   #define ZCALLBACK
- #endif
-#endif
-
-typedef voidpf   (ZCALLBACK *open_file_func)      OF((voidpf opaque, const char* filename, int mode));
-typedef uLong    (ZCALLBACK *read_file_func)      OF((voidpf opaque, voidpf stream, void* buf, uLong size));
-typedef uLong    (ZCALLBACK *write_file_func)     OF((voidpf opaque, voidpf stream, const void* buf, uLong size));
-typedef int      (ZCALLBACK *close_file_func)     OF((voidpf opaque, voidpf stream));
-typedef int      (ZCALLBACK *testerror_file_func) OF((voidpf opaque, voidpf stream));
-
-typedef long     (ZCALLBACK *tell_file_func)      OF((voidpf opaque, voidpf stream));
-typedef long     (ZCALLBACK *seek_file_func)      OF((voidpf opaque, voidpf stream, uLong offset, int origin));
-
-
-/* here is the "old" 32 bits structure structure */
-typedef struct zlib_filefunc_def_s
-{
-    open_file_func      zopen_file;
-    read_file_func      zread_file;
-    write_file_func     zwrite_file;
-    tell_file_func      ztell_file;
-    seek_file_func      zseek_file;
-    close_file_func     zclose_file;
-    testerror_file_func zerror_file;
-    voidpf              opaque;
-} zlib_filefunc_def;
-
-typedef ZPOS64_T (ZCALLBACK *tell64_file_func)    OF((voidpf opaque, voidpf stream));
-typedef long     (ZCALLBACK *seek64_file_func)    OF((voidpf opaque, voidpf stream, ZPOS64_T offset, int origin));
-typedef voidpf   (ZCALLBACK *open64_file_func)    OF((voidpf opaque, const void* filename, int mode));
-
-typedef struct zlib_filefunc64_def_s
-{
-    open64_file_func    zopen64_file;
-    read_file_func      zread_file;
-    write_file_func     zwrite_file;
-    tell64_file_func    ztell64_file;
-    seek64_file_func    zseek64_file;
-    close_file_func     zclose_file;
-    testerror_file_func zerror_file;
-    voidpf              opaque;
-} zlib_filefunc64_def;
-
-void fill_fopen64_filefunc OF((zlib_filefunc64_def* pzlib_filefunc_def));
-void fill_fopen_filefunc OF((zlib_filefunc_def* pzlib_filefunc_def));
-
-/* now internal definition, only for zip.c and unzip.h */
-typedef struct zlib_filefunc64_32_def_s
-{
-    zlib_filefunc64_def zfile_func64;
-    open_file_func      zopen32_file;
-    tell_file_func      ztell32_file;
-    seek_file_func      zseek32_file;
-} zlib_filefunc64_32_def;
-
-
-#define ZREAD64(filefunc,filestream,buf,size)     ((*((filefunc).zfile_func64.zread_file))   ((filefunc).zfile_func64.opaque,filestream,buf,size))
-#define ZWRITE64(filefunc,filestream,buf,size)    ((*((filefunc).zfile_func64.zwrite_file))  ((filefunc).zfile_func64.opaque,filestream,buf,size))
-//#define ZTELL64(filefunc,filestream)            ((*((filefunc).ztell64_file)) ((filefunc).opaque,filestream))
-//#define ZSEEK64(filefunc,filestream,pos,mode)   ((*((filefunc).zseek64_file)) ((filefunc).opaque,filestream,pos,mode))
-#define ZCLOSE64(filefunc,filestream)             ((*((filefunc).zfile_func64.zclose_file))  ((filefunc).zfile_func64.opaque,filestream))
-#define ZERROR64(filefunc,filestream)             ((*((filefunc).zfile_func64.zerror_file))  ((filefunc).zfile_func64.opaque,filestream))
-
-voidpf call_zopen64 OF((const zlib_filefunc64_32_def* pfilefunc,const void*filename,int mode));
-long    call_zseek64 OF((const zlib_filefunc64_32_def* pfilefunc,voidpf filestream, ZPOS64_T offset, int origin));
-ZPOS64_T call_ztell64 OF((const zlib_filefunc64_32_def* pfilefunc,voidpf filestream));
-
-void    fill_zlib_filefunc64_32_def_from_filefunc32(zlib_filefunc64_32_def* p_filefunc64_32,const zlib_filefunc_def* p_filefunc32);
-
-#define ZOPEN64(filefunc,filename,mode)         (call_zopen64((&(filefunc)),(filename),(mode)))
-#define ZTELL64(filefunc,filestream)            (call_ztell64((&(filefunc)),(filestream)))
-#define ZSEEK64(filefunc,filestream,pos,mode)   (call_zseek64((&(filefunc)),(filestream),(pos),(mode)))
-
-/* ioapi.h end */
-
-/* iowin32.h */
-void fill_win32_filefunc OF((zlib_filefunc_def* pzlib_filefunc_def));
-void fill_win32_filefunc64 OF((zlib_filefunc64_def* pzlib_filefunc_def));
-void fill_win32_filefunc64A OF((zlib_filefunc64_def* pzlib_filefunc_def));
-void fill_win32_filefunc64W OF((zlib_filefunc64_def* pzlib_filefunc_def));
-/* iowin32.h end */
 
 #if defined(STRICTUNZIP) || defined(STRICTZIPUNZIP)
 /* like the STRICT of WIN32, we define a pointer that cannot be converted
@@ -130,17 +26,6 @@ typedef voidp unzFile;
 #define UNZ_BADZIPFILE                  (-103)
 #define UNZ_INTERNALERROR               (-104)
 #define UNZ_CRCERROR                    (-105)
-
-/* tm_unz contain date/time info */
-typedef struct tm_unz_s
-{
-    uInt tm_sec;            /* seconds after the minute - [0,59] */
-    uInt tm_min;            /* minutes after the hour - [0,59] */
-    uInt tm_hour;           /* hours since midnight - [0,23] */
-    uInt tm_mday;           /* day of the month - [1,31] */
-    uInt tm_mon;            /* months since January - [0,11] */
-    uInt tm_year;           /* years - [1980..2044] */
-} tm_unz;
 
 /* unz_global_info structure contain global data about the ZIPfile
    These data comes from the end of central dir */
@@ -177,7 +62,7 @@ typedef struct unz_file_info64_s
     uLong internal_fa;          /* internal file attributes        2 bytes */
     uLong external_fa;          /* external file attributes        4 bytes */
 
-    tm_unz tmu_date;
+    tm_zip tmu_date;
 } unz_file_info64;
 
 typedef struct unz_file_info_s
@@ -198,12 +83,12 @@ typedef struct unz_file_info_s
     uLong internal_fa;          /* internal file attributes        2 bytes */
     uLong external_fa;          /* external file attributes        4 bytes */
 
-    tm_unz tmu_date;
+    tm_zip tmu_date;
 } unz_file_info;
 
-extern int ZEXPORT unzStringFileNameCompare OF ((const char* fileName1,
-                                                 const char* fileName2,
-                                                 int iCaseSensitivity));
+extern int ZEXPORT unzStringFileNameCompare (const char* fileName1,
+                                             const char* fileName2,
+                                             int iCaseSensitivity);
 /*
    Compare two filename (fileName1,fileName2).
    If iCaseSenisivity = 1, comparision is case sensitivity (like strcmp)
@@ -214,8 +99,8 @@ extern int ZEXPORT unzStringFileNameCompare OF ((const char* fileName1,
 */
 
 
-extern unzFile ZEXPORT unzOpen OF((const char *path));
-extern unzFile ZEXPORT unzOpen64 OF((const void *path));
+extern unzFile ZEXPORT unzOpen (const char *path);
+extern unzFile ZEXPORT unzOpen64 (const void *path);
 /*
   Open a Zip file. path contain the full pathname (by example,
      on a Windows XP computer "c:\\zlib\\zlib113.zip" or on an Unix computer
@@ -232,41 +117,35 @@ extern unzFile ZEXPORT unzOpen64 OF((const void *path));
 */
 
 
-extern unzFile ZEXPORT unzOpen2 OF((const char *path,
-                                    zlib_filefunc_def* pzlib_filefunc_def));
+extern unzFile ZEXPORT unzOpen2 (const char *path, zlib_filefunc_def* pzlib_filefunc_def);
 /*
    Open a Zip file, like unzOpen, but provide a set of file low level API
       for read/write the zip file (see ioapi.h)
 */
 
-extern unzFile ZEXPORT unzOpen2_64W OF((const wchar_t *path,
-                                        zlib_filefunc64_def* pzlib_filefunc_def));
+extern unzFile ZEXPORT unzOpen2_64W (const wchar_t *path, zlib_filefunc64_def* pzlib_filefunc_def);
 /*
    Open a Zip file, like unz64Open, but provide a set of file low level API
       for read/write the zip file (see ioapi.h)
 */
 
-extern int ZEXPORT unzClose OF((unzFile file));
+extern int ZEXPORT unzClose (unzFile file);
 /*
   Close a ZipFile opened with unzOpen.
   If there is files inside the .Zip opened with unzOpenCurrentFile (see later),
     these files MUST be closed with unzCloseCurrentFile before call unzClose.
   return UNZ_OK if there is no problem. */
 
-extern int ZEXPORT unzGetGlobalInfo OF((unzFile file,
-                                        unz_global_info *pglobal_info));
+extern int ZEXPORT unzGetGlobalInfo (unzFile file, unz_global_info *pglobal_info);
 
-extern int ZEXPORT unzGetGlobalInfo64 OF((unzFile file,
-                                        unz_global_info64 *pglobal_info));
+extern int ZEXPORT unzGetGlobalInfo64 (unzFile file, unz_global_info64 *pglobal_info);
 /*
   Write info about the ZipFile in the *pglobal_info structure.
   No preparation of the structure is needed
   return UNZ_OK if there is no problem. */
 
 
-extern int ZEXPORT unzGetGlobalComment OF((unzFile file,
-                                           char *szComment,
-                                           uLong uSizeBuf));
+extern int ZEXPORT unzGetGlobalComment (unzFile file, char *szComment, uLong uSizeBuf);
 /*
   Get the global comment string of the ZipFile, in the szComment buffer.
   uSizeBuf is the size of the szComment buffer.
@@ -277,22 +156,20 @@ extern int ZEXPORT unzGetGlobalComment OF((unzFile file,
 /***************************************************************************/
 /* Unzip package allow you browse the directory of the zipfile */
 
-extern int ZEXPORT unzGoToFirstFile OF((unzFile file));
+extern int ZEXPORT unzGoToFirstFile (unzFile file);
 /*
   Set the current file of the zipfile to the first file.
   return UNZ_OK if there is no problem
 */
 
-extern int ZEXPORT unzGoToNextFile OF((unzFile file));
+extern int ZEXPORT unzGoToNextFile (unzFile file);
 /*
   Set the current file of the zipfile to the next file.
   return UNZ_OK if there is no problem
   return UNZ_END_OF_LIST_OF_FILE if the actual file was the latest.
 */
 
-extern int ZEXPORT unzLocateFile OF((unzFile file,
-                     const char *szFileName,
-                     int iCaseSensitivity));
+extern int ZEXPORT unzLocateFile (unzFile file, const char *szFileName, int iCaseSensitivity);
 /*
   Try locate the file szFileName in the zipfile.
   For the iCaseSensitivity signification, see unzStringFileNameCompare
@@ -336,23 +213,23 @@ extern int ZEXPORT unzGoToFilePos64(
 
 /* ****************************************** */
 
-extern int ZEXPORT unzGetCurrentFileInfo64 OF((unzFile file,
+extern int ZEXPORT unzGetCurrentFileInfo64 (unzFile file,
                          unz_file_info64 *pfile_info,
                          char *szFileName,
                          uLong fileNameBufferSize,
                          void *extraField,
                          uLong extraFieldBufferSize,
                          char *szComment,
-                         uLong commentBufferSize));
+                         uLong commentBufferSize);
 
-extern int ZEXPORT unzGetCurrentFileInfo OF((unzFile file,
+extern int ZEXPORT unzGetCurrentFileInfo (unzFile file,
                          unz_file_info *pfile_info,
                          char *szFileName,
                          uLong fileNameBufferSize,
                          void *extraField,
                          uLong extraFieldBufferSize,
                          char *szComment,
-                         uLong commentBufferSize));
+                         uLong commentBufferSize);
 /*
   Get Info about the current file
   if pfile_info!=NULL, the *pfile_info structure will contain somes info about
@@ -369,7 +246,7 @@ extern int ZEXPORT unzGetCurrentFileInfo OF((unzFile file,
 
 /** Addition for GDAL : START */
 
-extern ZPOS64_T ZEXPORT unzGetCurrentFileZStreamPos64 OF((unzFile file));
+extern ZPOS64_T ZEXPORT unzGetCurrentFileZStreamPos64 (unzFile file);
 
 /** Addition for GDAL : END */
 
@@ -379,7 +256,7 @@ extern ZPOS64_T ZEXPORT unzGetCurrentFileZStreamPos64 OF((unzFile file));
    from it, and close it (you can close it before reading all the file)
    */
 
-extern int ZEXPORT unzOpenCurrentFile OF((unzFile file));
+extern int ZEXPORT unzOpenCurrentFile (unzFile file);
 
 /*
   Open for reading data the current file in the zipfile.
@@ -387,10 +264,7 @@ extern int ZEXPORT unzOpenCurrentFile OF((unzFile file));
   If there is no error, the return value is UNZ_OK.
 */
 
-extern int ZEXPORT unzOpenCurrentFile2 OF((unzFile file,
-                                           int* method,
-                                           int* level,
-                                           int raw));
+extern int ZEXPORT unzOpenCurrentFile2 (unzFile file, int* method, int* level, int raw);
 /*
   Same than unzOpenCurrentFile, but open for read raw the file (not uncompress)
     if raw==1
@@ -400,11 +274,7 @@ extern int ZEXPORT unzOpenCurrentFile2 OF((unzFile file,
          but you CANNOT set method parameter as NULL
 */
 
-extern int ZEXPORT unzOpenCurrentFile3 OF((unzFile file,
-                                           int* method,
-                                           int* level,
-                                           int raw,
-                                           const char* password));
+extern int ZEXPORT unzOpenCurrentFile3 (unzFile file, int* method, int* level, int raw, const char* password);
 /*
   Same than unzOpenCurrentFile, but open for read raw the file (not uncompress)
     if raw==1
@@ -415,15 +285,13 @@ extern int ZEXPORT unzOpenCurrentFile3 OF((unzFile file,
 */
 
 
-extern int ZEXPORT unzCloseCurrentFile OF((unzFile file));
+extern int ZEXPORT unzCloseCurrentFile (unzFile file);
 /*
   Close the file in zip opened with unzOpenCurrentFile
   Return UNZ_CRCERROR if all the file was read but the CRC is not good
 */
 
-extern int ZEXPORT unzReadCurrentFile OF((unzFile file,
-                      voidp buf,
-                      unsigned len));
+extern int ZEXPORT unzReadCurrentFile (unzFile file, voidp buf, unsigned len);
 /*
   Read bytes from the current file (opened by unzOpenCurrentFile)
   buf contain buffer where data must be copied
@@ -435,21 +303,19 @@ extern int ZEXPORT unzReadCurrentFile OF((unzFile file,
     (UNZ_ERRNO for IO error, or zLib error for uncompress error)
 */
 
-extern z_off_t ZEXPORT unztell OF((unzFile file));
+extern z_off_t ZEXPORT unztell (unzFile file);
 
-extern ZPOS64_T ZEXPORT unztell64 OF((unzFile file));
+extern ZPOS64_T ZEXPORT unztell64 (unzFile file);
 /*
   Give the current position in uncompressed data
 */
 
-extern int ZEXPORT unzeof OF((unzFile file));
+extern int ZEXPORT unzeof (unzFile file);
 /*
   return 1 if the end of file was reached, 0 elsewhere
 */
 
-extern int ZEXPORT unzGetLocalExtrafield OF((unzFile file,
-                                             voidp buf,
-                                             unsigned len));
+extern int ZEXPORT unzGetLocalExtrafield (unzFile file, voidp buf, unsigned len);
 /*
   Read extra field from the current file (opened by unzOpenCurrentFile)
   This is the local-header version of the extra field (sometimes, there is
@@ -472,7 +338,7 @@ extern uLong ZEXPORT unzGetOffset (unzFile file);
 /* Set the current file offset */
 extern int ZEXPORT unzSetOffset64 (unzFile file, ZPOS64_T pos);
 extern int ZEXPORT unzSetOffset (unzFile file, uLong pos);
-extern int ZEXPORT unzip_file(LPCWSTR zipfilename, LPCWSTR dirname, LPWSTR log);
+extern int ZEXPORT unzip_file(LPCWSTR zipfilename, LPCWSTR dirname, const char* password, const int log);
 
 
 #ifdef __cplusplus

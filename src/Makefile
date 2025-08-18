@@ -42,6 +42,8 @@ OBJS = \
     $(OBJD)\7zc.obj            \
     $(OBJD)\progressui.obj     \
     $(OBJD)\updates.obj        \
+    $(OBJD)\iozip.obj          \
+    $(OBJD)\zip.obj            \
     $(OBJD)\unzip.obj          \
     $(OBJD)\thunderagent.obj   \
     $(OBJD)\xml.obj            \
@@ -86,7 +88,9 @@ $(OBJD)\spinlock.obj    : spinlock.c spinlock.h
 $(OBJD)\7zc.obj         : 7zc.c 7zc.h
 $(OBJD)\progressui.obj  : progressui.c progressui.h
 $(OBJD)\updates.obj     : updates.c updates.h
-$(OBJD)\unzip.obj       : unzip.c unzip.h
+$(OBJD)\iozip.obj       : iozip.c iozip.h
+$(OBJD)\zip.obj         : zip.c zip.h iozip.h
+$(OBJD)\unzip.obj       : unzip.c unzip.h iozip.h
 $(OBJD)\thunderagent.obj: thunderagent.c thunderagent.h
 $(OBJD)\xml.obj         : xml.c xml.h
 $(OBJD)\sqlite3.obj     : sqlite3.c sqlite3.h
