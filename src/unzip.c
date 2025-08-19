@@ -10,6 +10,10 @@
 
 #undef NOUNCRYPT
 
+#if defined(LOG_DEBUG)
+#define printf logmsg
+#endif
+
 #define CASESENSITIVITY (0)
 #define WRITEBUFFERSIZE (8192)
 
@@ -555,15 +559,13 @@ static unzFile unzOpenInternal (const void *path,
 
 
     us.filestream = ZOPEN64(us.z_filefunc,
-                                                 path,
-                                                 ZLIB_FILEFUNC_MODE_READ |
-                                                 ZLIB_FILEFUNC_MODE_EXISTING);
-    printf("path = %ls, us.filestream = %p\n", (const WCHAR *)path, us.filestream);
+                            path,
+                            ZLIB_FILEFUNC_MODE_READ |
+                            ZLIB_FILEFUNC_MODE_EXISTING);
     if (us.filestream==NULL)
         return NULL;
 
     central_pos = unz64local_SearchCentralDir64(&us.z_filefunc,us.filestream);
-    printf("central_pos = %zu\n", central_pos);
     if (central_pos)
     {
         uLong uS;
@@ -1988,18 +1990,21 @@ void change_file_date(const WCHAR *filename, uLong dosdate, tm_zip tmu_date)
 
 static void write_log(FILE* pf, const char* names)
 {
-    WCHAR temp[MAX_PATH] = {0};
-    if (!MultiByteToWideChar(CP_ACP, 0, names, -1, temp, MAX_PATH))
+    if (pf && names)
     {
-        printf("MultiByteToWideChar CP_ACP to unicode error\n");
-        return;
+        WCHAR temp[MAX_PATH] = {0};
+        if (!MultiByteToWideChar(CP_ACP, 0, names, -1, temp, MAX_PATH))
+        {
+            printf("MultiByteToWideChar CP_ACP to unicode error\n");
+            return;
+        }
+        if (temp[wcslen(temp)-1] == L'/' || temp[wcslen(temp)-1] == L'\\')
+        {
+            temp[wcslen(temp)-1] = L'\0';
+        }
+        fwrite(temp, 2, wcslen(temp), pf);
+        fwrite(L"\r\n", sizeof(WCHAR), 2, pf);
     }
-    if (temp[wcslen(temp)-1] == L'/' || temp[wcslen(temp)-1] == L'\\')
-    {
-        temp[wcslen(temp)-1] = L'\0';
-    }
-    fwrite(temp, 2, wcslen(temp), pf);
-    fwrite(L"\r\n", sizeof(WCHAR), 2, pf);
 }
 
 int do_extract_currentfile(unzFile uf, const char* password, FILE* pf, const WCHAR *pout)
@@ -2033,7 +2038,10 @@ int do_extract_currentfile(unzFile uf, const char* password, FILE* pf, const WCH
     _snwprintf(path, MAX_PATH, L"%s\\%s", pout, write_filename);
     if ((*filename_withoutpath) == '\0')
     {
-        write_log(pf, filename_inzip);
+        if (pf != NULL)
+        {
+            write_log(pf, filename_inzip);
+        }
         create_dir(path);
         // printf("creating directory: %s\n", filename_inzip);
     }
@@ -2127,7 +2135,7 @@ int do_extract(unzFile uf, const char* password, LPCWSTR log, const WCHAR *pout)
         if ((err = do_extract_currentfile(uf, password, flog, pout)) != UNZ_OK)
             break;
         
-        if ((i+1)<gi.number_entry)
+        if ((i + 1) < gi.number_entry)
         {
             err = unzGoToNextFile(uf);
             if (err != UNZ_OK)

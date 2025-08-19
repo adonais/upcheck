@@ -54,7 +54,7 @@ logmsg(const char * format, ...)
     return;
 }
 
-void WINAPI 
+void
 init_logs(void)
 {
     if ( *logfile_buf == '\0' && GetEnvironmentVariableA("APPDATA",logfile_buf,MAX_PATH) > 0 )
@@ -173,8 +173,8 @@ leave_spinlock(void)
     InterlockedExchange(&g_locked, 0);
 }
 
-static char *
-memstr(char *full_data, int full_data_len, const char *substr)
+char *
+check_memstr(char *full_data, int full_data_len, const char *substr)
 {
     if (full_data == NULL || full_data_len <= 0 || substr == NULL || *substr == '\0')
     {
@@ -281,7 +281,7 @@ find_local_str(char *result, const int len)
     }
     if ((buf_len = fread(buff, 1, buf_len, fp)) > 0)
     {
-        if ((u = memstr(buff, (int)buf_len, ctags)) != NULL)
+        if ((u = check_memstr(buff, (int)buf_len, ctags)) != NULL)
         {
             u += strlen("chrome/");
             found = true;

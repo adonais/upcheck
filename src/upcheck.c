@@ -14,11 +14,15 @@
 #include "xml.h"
 #include "cookies.h"
 #include "thunderagent.h"
+#if DLL_INJECT
+#include "setdll.h"
+#endif
 
 #define DOWN_NUM 10
 
 enum
 {
+    UPCHECK_INJECT_ERR = -12,
     UPCHECK_404_ERR = -11,
     UPCHECK_EXTRACT_ERR = -10,
     UPCHECK_MD5_ERR = -9,
@@ -1128,63 +1132,35 @@ init_download(const char *url, int64_t length)
     return (!m_error);
 }
 
-static void
-remove_files(LPCWSTR dir)
-{
-#define EXE_NUM 16
-    int num;
-    WCHAR *moz_processes[] = { L"breakpadinjector.dll",
-                               L"crashreporter.exe",
-                               L"crashreporter.ini",
-                               L"firefox.exe.sig",
-                               L"firefox.exe",
-                               L"firefox.VisualElementsManifest.xml",
-                               L"pingsender.exe",
-                               L"plugin-container.exe.sig",
-                               L"maintenanceservice.exe",
-                               L"maintenanceservice_installer.exe",
-                               L"minidump-analyzer.exe",
-                               L"nmhproxy.exe",
-                               L"notificationserver.dll",
-                               L"updater.exe",
-                               L"updater.ini",
-                               L"update-settings.ini",
-                               L"xul.dll.sig" };
-    WCHAR list[EXE_NUM][VALUE_LEN + 1];
-    int i = sizeof(moz_processes) / sizeof(moz_processes[0]);
-    for (num = 0; num < i; num++)
-    {
-        _snwprintf(list[num], VALUE_LEN, L"%s\\%s", dir, moz_processes[num]);
-        DeleteFileW(list[num]);
-    }
-#undef EXE_NUM
-}
-
 static HANDLE
 create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opid)
 {
     PROCESS_INFORMATION pi;
-    STARTUPINFOW si;
-    DWORD dwCreat = 0;
     WCHAR my_cmd[URL_LEN + 1] = { 0 };
-    wcsncpy(my_cmd, wcmd, URL_LEN);
+#ifndef EUAPI_LINK
+    if (!(wcmd || param))
+    {
+        GetModuleFileNameW(NULL, my_cmd, URL_LEN);
+        PathRemoveFileSpecW(my_cmd);
+        PathAppendW(my_cmd, L"tobedeleted");
+        erase_dir(my_cmd);
+        PathRemoveFileSpecW(my_cmd);
+        PathAppendW(my_cmd, L"firefox.exe");
+    }
+#endif
+    if (wcmd)
+    {
+        wcsncpy(my_cmd, wcmd, URL_LEN);
+    }
     if (param && *param)
     {
         wcsncat(my_cmd, L" ", URL_LEN);
         wcsncat(my_cmd, param, URL_LEN);
     }
-#ifndef EUAPI_LINK
-    if (unknown_builds())
-    {
-        PathRemoveFileSpecW(my_cmd);
-        remove_files(my_cmd);
-        PathAppendW(my_cmd, L"Iceweasel.exe");
-    }
-#endif
     if (true)
     {
-        memset(&si, 0, sizeof(si));
-        si.cb = sizeof(si);
+        DWORD dwCreat = 0;
+        STARTUPINFOW si = {si.cb = sizeof(si)};
         si.dwFlags = STARTF_USESHOWWINDOW;
         if (flags > 1)
         {
@@ -1566,6 +1542,33 @@ wmain(int argc, wchar_t **argv)
         LocalFree(wargv);
         return UPCHECK_OK;
     }
+#if DLL_INJECT
+    if (argn == 2 && _wcsicmp(wargv[1], L"-file") == 0)
+    {
+        LocalFree(wargv);
+        return file_mozdll();
+    }
+    if (argn == 2 && _wcsnicmp(wargv[1], L"-dll", 4) == 0)
+    {
+        if (_wcsicmp(wargv[1], L"-dll") == 0)
+        {
+            ret = inject_mozdll();
+        }
+        else if (_wcsicmp(wargv[1], L"-dll2") == 0)
+        {
+            Sleep(2000);
+            ret = inject_mozdll();
+            printf("dll2_ret = %d\n", ret);
+            CloseHandle(create_new(NULL, NULL, NULL, 2, NULL));
+        }
+        LocalFree(wargv);
+        if (!ret)
+        {
+            return UPCHECK_OK;
+        }
+        return UPCHECK_INJECT_ERR;
+    }
+#endif
     if (argn) // 初始化全局参数
     {
         memset(&file_info, 0, sizeof(file_info));

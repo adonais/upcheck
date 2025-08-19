@@ -148,6 +148,7 @@ extern WCHAR* init_file_strings(LPCWSTR names, size_t *psize);
 extern WCHAR* get_process_path(WCHAR *path, const int len);
 extern const uint32_t get_os_version(void);
 extern char* str_replace(char *in, const size_t in_size, const char *pattern, const char *by);
+extern char *check_memstr(char *full_data, int full_data_len, const char *substr);
 
 extern HANDLE share_create(HANDLE handle, uint32_t dw_protect, size_t size, LPCTSTR name);
 extern HANDLE share_open(uint32_t dw_access, LPCTSTR name);

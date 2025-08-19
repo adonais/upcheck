@@ -7,11 +7,16 @@
 #include <time.h>
 #include <errno.h>
 #include "zip.h"
+#include "spinlock.h"
 
 #ifndef local
 #  define local static
 #endif
 /* compile with -Dlocal if your debugger can't find static symbols */
+
+#if defined(LOG_DEBUG)
+#define printf logmsg
+#endif
 
 #ifndef VERSIONMADEBY
 # define VERSIONMADEBY   (0x0) /* platform dependent */

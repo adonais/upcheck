@@ -9,7 +9,7 @@ CXXFLAGS = $(CFLAGS) /TP
 
 RFLAGS  = -nologo -D "_UNICODE" -D "UNICODE"
 
-LDFLAGS = -NOLOGO -DEBUG -opt:ref -opt:icf -MACHINE:$(PLATFORM) -ENTRY:wmainCRTStartup
+LDFLAGS = -DEBUG -opt:ref -opt:icf -MACHINE:$(PLATFORM) -ENTRY:wmainCRTStartup
 
 !IF "$(BITS)" == "32"
 LDFLAGS = -LARGEADDRESSAWARE $(LDFLAGS)
@@ -22,6 +22,11 @@ DEP     = $(BIND)\zlib.lib  $(BIND)\lib7z.lib
 DEP     = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib  $(BIND)\lib7z.lib
 CFLAGS  = $(CFLAGS) -DCURL_STATICLIB
 LDFLAGS = -NODEFAULTLIB:MSVCRT $(LDFLAGS)
+!ENDIF
+
+!IF "$(DLL_INJECT)" == "1"
+DEP     = $(DEP) $(BIND)\detours.lib
+CFLAGS  = $(CFLAGS) -DDLL_INJECT=1
 !ENDIF
 
 LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib secur32.lib
@@ -42,9 +47,12 @@ OBJS = \
     $(OBJD)\7zc.obj            \
     $(OBJD)\progressui.obj     \
     $(OBJD)\updates.obj        \
+!IF "$(DLL_INJECT)" == "1"
     $(OBJD)\iozip.obj          \
     $(OBJD)\zip.obj            \
     $(OBJD)\unzip.obj          \
+    $(OBJD)\setdll.obj         \
+!ENDIF
     $(OBJD)\thunderagent.obj   \
     $(OBJD)\xml.obj            \
     $(OBJD)\sqlite3.obj        \
@@ -88,9 +96,12 @@ $(OBJD)\spinlock.obj    : spinlock.c spinlock.h
 $(OBJD)\7zc.obj         : 7zc.c 7zc.h
 $(OBJD)\progressui.obj  : progressui.c progressui.h
 $(OBJD)\updates.obj     : updates.c updates.h
+!IF "$(DLL_INJECT)" == "1"
 $(OBJD)\iozip.obj       : iozip.c iozip.h
 $(OBJD)\zip.obj         : zip.c zip.h iozip.h
 $(OBJD)\unzip.obj       : unzip.c unzip.h iozip.h
+$(OBJD)\setdll.obj      : setdll.c setdll.h
+!ENDIF
 $(OBJD)\thunderagent.obj: thunderagent.c thunderagent.h
 $(OBJD)\xml.obj         : xml.c xml.h
 $(OBJD)\sqlite3.obj     : sqlite3.c sqlite3.h

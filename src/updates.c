@@ -74,7 +74,7 @@ remove_null_dir(LPCWSTR parent)
     h_file = NULL;
 }
 
-static void
+void
 erase_dir(LPCWSTR parent)
 {
     HANDLE h_file = NULL;

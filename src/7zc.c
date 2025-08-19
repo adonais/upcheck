@@ -10,7 +10,6 @@
 #include "7zVersion.h"
 #include "Compiler.h"
 #include "CpuArch.h"
-#include "unzip.h"
 #include "spinlock.h"
 #include <shlwapi.h>
 
@@ -242,11 +241,6 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
     WCHAR file_list_log[MAX_PATH + 1] = {
         L'\0',
     };
-    WCHAR *dot = wcsrchr(srcFile, L'.');
-    if (dot && !wcsicmp(dot, L".zip"))
-    {
-    	return unzip_file(srcFile, dstPath, NULL, 1);
-    }
     Print("\n7z Decoder " MY_VERSION_CPU " : " MY_COPYRIGHT_DATE "\n\n");
 
     allocImp = g_Alloc;

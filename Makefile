@@ -10,6 +10,9 @@ all:
 	@if exist "$(MAKEDIR)\src\libcurl\Makefile" cd "$(MAKEDIR)\src\libcurl" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
 !ENDIF
 	@if exist "$(MAKEDIR)\src\liblzma\Makefile" cd "$(MAKEDIR)\src\liblzma" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
+!IF "$(DLL_INJECT)" == "1"
+	@if exist "$(MAKEDIR)\src\detours\Makefile" cd "$(MAKEDIR)\src\detours" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
+!ENDIF
     cd "$(MAKEDIR)\src"
     @$(MAKE) /NOLOGO /$(MAKEFLAGS)
     cd "$(MAKEDIR)"
@@ -21,6 +24,7 @@ clean:
 	@if exist "$(MAKEDIR)\src\libngttp2\Makefile" cd "$(MAKEDIR)\src\libngttp2" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\libcurl\Makefile" cd "$(MAKEDIR)\src\libcurl" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\liblzma\Makefile" cd "$(MAKEDIR)\src\liblzma" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
+	@if exist "$(MAKEDIR)\src\detours\Makefile" cd "$(MAKEDIR)\src\detours" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
     cd "$(MAKEDIR)\src"
     @$(MAKE) /NOLOGO /$(MAKEFLAGS) clean
     cd "$(MAKEDIR)"
