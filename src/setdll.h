@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+int  exec_7z(int argn, WCHAR **parg);
 int  file_mozdll(void);
 BOOL inject_mozdll(void);
 

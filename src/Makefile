@@ -17,19 +17,24 @@ LDFLAGS = -LARGEADDRESSAWARE $(LDFLAGS)
 
 !IF "$(EUAPI_LINK)" == "1"
 RFLAGS  = $(RFLAGS) -D "EUAPI_LINK"
-DEP     = $(BIND)\zlib.lib  $(BIND)\lib7z.lib
+DEP     = $(BIND)\zlib.lib $(BIND)\7z.lib
 !ELSE
-DEP     = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib  $(BIND)\lib7z.lib
+DEP     = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib $(BIND)\7z.lib
 CFLAGS  = $(CFLAGS) -DCURL_STATICLIB
 LDFLAGS = -NODEFAULTLIB:MSVCRT $(LDFLAGS)
 !ENDIF
 
+LIBS    = $(DEP)
+
 !IF "$(DLL_INJECT)" == "1"
 DEP     = $(DEP) $(BIND)\detours.lib
 CFLAGS  = $(CFLAGS) -DDLL_INJECT=1
+LIBS = $(DEP) -WHOLEARCHIVE:$(BIND)\7z.lib
+!ELSE
+LIBS = $(DEP) $(BIND)\7z.lib
 !ENDIF
 
-LIBS = $(DEP) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib secur32.lib
+LIBS = $(LIBS) ws2_32.lib gdi32.lib crypt32.lib wldap32.lib shlwapi.lib user32.lib advapi32.lib normaliz.lib ole32.lib secur32.lib
 
 !if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
@@ -44,13 +49,10 @@ OBJS = \
     $(OBJD)\upcheck.obj        \
     $(OBJD)\urlcode.obj        \
     $(OBJD)\spinlock.obj       \
-    $(OBJD)\7zc.obj            \
+    $(OBJD)\extract7z.obj      \
     $(OBJD)\progressui.obj     \
     $(OBJD)\updates.obj        \
 !IF "$(DLL_INJECT)" == "1"
-    $(OBJD)\iozip.obj          \
-    $(OBJD)\zip.obj            \
-    $(OBJD)\unzip.obj          \
     $(OBJD)\setdll.obj         \
 !ENDIF
     $(OBJD)\thunderagent.obj   \
@@ -85,7 +87,7 @@ dirs:
     @if not exist "$(BIND)" mkdir "$(BIND)" && echo.   Created $(BIND)
     @if not exist "$(OBJD)" mkdir "$(OBJD)" && echo.   Created $(OBJD)
 
-$(BIND)\upcheck$(BITS).exe : $(OBJS) $(DEP)
+$(BIND)\upcheck$(BITS).exe : $(OBJS) $(DEP) $(BIND)\7z.lib
     $(LD) /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
     -copy /y $@ $(BIND)\upcheck.exe
 
@@ -93,13 +95,10 @@ $(OBJD)\ini_parser.obj  : ini_parser.c *.h
 $(OBJD)\upcheck.obj     : upcheck.c *.h
 $(OBJD)\urlcode.obj     : urlcode.c urlcode.h
 $(OBJD)\spinlock.obj    : spinlock.c spinlock.h
-$(OBJD)\7zc.obj         : 7zc.c 7zc.h
+$(OBJD)\extract7z.obj   : extract7z.c extract7z.h
 $(OBJD)\progressui.obj  : progressui.c progressui.h
 $(OBJD)\updates.obj     : updates.c updates.h
 !IF "$(DLL_INJECT)" == "1"
-$(OBJD)\iozip.obj       : iozip.c iozip.h
-$(OBJD)\zip.obj         : zip.c zip.h iozip.h
-$(OBJD)\unzip.obj       : unzip.c unzip.h iozip.h
 $(OBJD)\setdll.obj      : setdll.c setdll.h
 !ENDIF
 $(OBJD)\thunderagent.obj: thunderagent.c thunderagent.h

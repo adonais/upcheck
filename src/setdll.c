@@ -6,9 +6,8 @@
 #include <shlwapi.h>
 #include <shellapi.h>
 #include <detours.h>
+#include "7zc.h"
 #include "spinlock.h"
-#include "unzip.h"
-#include "zip.h"
 
 #pragma warning(push)
 #if _MSC_VER > 1400
@@ -387,7 +386,7 @@ end_err:
     return bGood;
 }
 
-static BOOL
+static int
 edit_files(LPCWSTR path)
 {
     BOOL cn = FALSE;
@@ -459,7 +458,7 @@ main-context-menu-download-link = \n\
     if (STR_IS_NUL(path))
     {
         printf("lpath is null\n");
-        return FALSE;
+        return -1;
     }
     _snwprintf(f_dtd, MAX_PATH, L"%s\\%s", path, file3);
     _snwprintf(f_context, MAX_PATH, L"%s\\%s", path, file6);
@@ -470,43 +469,42 @@ main-context-menu-download-link = \n\
         _snwprintf(f_dtd, MAX_PATH, L"%s\\%s", path, file4);
         if (!lookup_file_exist(f_dtd))
         {
-            return FALSE;
+            return -1;
         }
     }
     if (exist_key_desc(f_dtd, "main-context-menu-download-link"))
     {
-        printf("omni do not fix\n");
-        return FALSE;
+        printf("Omni does not need to be fixed\n");
+        return 1;
     }
-    printf("we ready to fix omni.ja\n");
     _snwprintf(f_xul, MAX_PATH, L"%s\\%s", path, file1);
     _snwprintf(f_js, MAX_PATH, L"%s\\%s", path, late128 ? file5 : file2);
     if (!(lookup_file_exist(f_xul) && lookup_file_exist(f_js)))
     {
         printf("file not exist\n");
-        return FALSE;
+        return -1;
     }
     if (!fixed_file(f_js, js_desc1, js_inst1, FALSE))
     {
         printf("fixed_file js_desc1 return false\n");
-        return FALSE;
+        return -1;
     }
     if (!fixed_file(f_js, js_desc2, js_inst2, TRUE))
     {
         printf("fixed_file js_desc2 return false\n");
-        return FALSE;
+        return -1;
     }
     if (!fixed_file(f_xul, late128 ? xul_desc1 : xul_desc, late128 ? xul_inst1 : xul_inst, FALSE))
     {
         printf("fixed_file f_xul return false\n");
-        return FALSE;
+        return -1;
     }
     if (late128)
     {
         if (!(fixed_file(f_context, context_desc1, context_inst1, TRUE) || fixed_file(f_context, context_desc2, context_inst1, TRUE)))
         {
             printf("fixed_file context_desc return false\n");
-            return FALSE;
+            return -1;
         }
     }
     if (cn)
@@ -514,7 +512,7 @@ main-context-menu-download-link = \n\
         if (!fixed_file(f_dtd, dtd_desc, dtd_inst1, TRUE))
         {
             printf("fixed_file ftl_inst1 return false\n");
-            return FALSE;
+            return -1;
         }
     }
     else
@@ -522,10 +520,10 @@ main-context-menu-download-link = \n\
         if (!fixed_file(f_dtd, dtd_desc, dtd_inst2, TRUE))
         {
             printf("fixed_file ftl_inst1 return false\n");
-            return FALSE;
+            return -1;
         }
     }
-    return TRUE;
+    return 0;
 }
 
 static BOOL
@@ -597,6 +595,7 @@ Patched_File(LPCWSTR pfile)
     WCHAR aPath[MAX_PATH + 1] = { 0 };
     WCHAR temp[LEN_NAME + 1];
     WCHAR omni[MAX_PATH + 1] = { 0 };
+    WCHAR aCmd[URL_LEN + 1] = { 0 };
     if (pfile == NULL || pfile[1] != ':')
     {
         return FALSE;
@@ -621,33 +620,37 @@ Patched_File(LPCWSTR pfile)
     }
     do
     {
-        if (unzip_file(pfile, aPath, NULL, 0) != 0)
+        _snwprintf(aCmd, URL_LEN, L"x -aoa -o\"%s\" \"%s\"", aPath, pfile);
+        if (exec_zmain1(aCmd) == -1)
         {
-            printf("unzip omni.ja failed\n");
+            printf("exec_zmain1 failed\n");
             err = 1;
             break;
-        }
+        }  
         _snwprintf(omni, MAX_PATH, L"%s", pfile);
         if (!(PathRemoveFileSpecW(omni) && PathAppendW(omni, L"omni.zip")))
         {
-            printf("SetCurrentDirectory failed\n");
+            printf("PathAppend failed\n");
             err = 1;
             break;
         }
-        if (!edit_files(aPath))
+        if ((err = edit_files(aPath)) != 0)
         {
-            printf("edit_files failed\n");
+            if (err < 0)
+            {
+                printf("edit_files failed\n");
+            }
+            break;
+        }
+        if (FAILED(StringCchCatW(aPath, MAX_PATH, L"\\*")))
+        {
             err = 1;
             break;
         }
-        if (FAILED(StringCchCatW(aPath, MAX_PATH, L"*")))
+        _snwprintf(aCmd, URL_LEN, L"a -tzip -mx=0 -mmt=4 \"%s\" \"%s\"", omni, aPath);
+        if ((err = exec_zmain1(aCmd)) != 0)
         {
-            err = 1;
-            break;
-        }
-        if ((err = zip_file(pfile, aPath, NULL)) != 0)
-        {
-            printf("zip file failed\n");
+            printf("compress file failed\n");
         }
         PathRemoveFileSpecW(aPath);
     } while(0);
@@ -711,6 +714,12 @@ get_file_bits(const wchar_t* path)
     } while (0);
     CloseHandle(hFile);
     return ret;
+}
+
+int
+exec_7z(int argn, WCHAR **parg)
+{
+    return exec_zmain2(argn, parg);
 }
 
 int
@@ -791,7 +800,7 @@ inject_mozdll(void)
     }
     else
     {
-        printf("Import table does not need to befixed\n");
+        printf("Import table does not need to be fixed\n");
     }
     if (ret)
     {

@@ -8,7 +8,7 @@
 #include "upcheck.h"
 #include "ini_parser.h"
 #include "urlcode.h"
-#include "7zc.h"
+#include "extract7z.h"
 #include "progressui.h"
 #include "updates.h"
 #include "xml.h"
@@ -1509,6 +1509,7 @@ curl_task(int64_t length)
     DESTROY_LOCK(&g_mutex);
     return res;
 }
+#include "7zc.h"
 
 int
 wmain(int argc, wchar_t **argv)
@@ -1537,7 +1538,7 @@ wmain(int argc, wchar_t **argv)
 #endif
     if (argn < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
-        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.4.0\n",
+        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.5.0\n",
                "upcheck.exe");
         LocalFree(wargv);
         return UPCHECK_OK;
@@ -1562,11 +1563,16 @@ wmain(int argc, wchar_t **argv)
             CloseHandle(create_new(NULL, NULL, NULL, 2, NULL));
         }
         LocalFree(wargv);
-        if (!ret)
+        if (ret)
         {
             return UPCHECK_OK;
         }
         return UPCHECK_INJECT_ERR;
+    }
+    if (argn >= 2 &&  _wcsicmp(wargv[1], L"-7") == 0)
+    {
+        LocalFree(wargv);
+        return exec_7z(argc, argv);
     }
 #endif
     if (argn) // 初始化全局参数
