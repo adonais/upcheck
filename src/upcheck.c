@@ -5,6 +5,7 @@
 #include <process.h>
 #include <shlwapi.h>
 #include <shlobj.h>
+#include <tlhelp32.h>
 #include "upcheck.h"
 #include "ini_parser.h"
 #include "urlcode.h"
@@ -1359,10 +1360,59 @@ logs_update(const int ret)
     }
 }
 
+static
+exist_process(LPCWSTR path)
+{
+    bool more;
+    bool result = false;
+    PROCESSENTRY32W pe32 = {sizeof(pe32)};
+    WCHAR fullpath[MAX_PATH] = {0};
+    HANDLE handle  = NULL;
+    HANDLE hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if(hsnap == INVALID_HANDLE_VALUE)
+    {
+        return result;
+    }
+    more = Process32FirstW(hsnap, &pe32);
+    while (more)
+    {
+        DWORD length = MAX_PATH;
+        if (pe32.th32ProcessID > 0x4 && 
+           (handle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID)) != NULL &&
+           (QueryFullProcessImageName(handle, 0, fullpath, &length)) &&
+           (length > 0 && length < MAX_PATH) &&
+           (_wcsicmp(fullpath, path) == 0))
+        {
+            result = true;
+            break;
+        }
+        more = Process32NextW(hsnap, &pe32);
+    }
+    CloseHandle(hsnap);
+    return result;
+}
+
+static void
+update_self(LPCWSTR self, LPCWSTR sz_clone)
+{
+    HANDLE hself = NULL;
+    if (PathFileExistsW(self) && (hself = OpenProcess(SYNCHRONIZE, TRUE, GetCurrentProcessId())) != NULL)
+    {
+        // 准备更新自身
+        PROCESS_INFORMATION pi;
+        STARTUPINFOW si = {sizeof(si)};
+        WCHAR sz_cmdLine[URL_LEN] = {0};
+        _snwprintf(sz_cmdLine, URL_LEN - 1, L"\"%s\" -h %zu -d \"%s\"", self, (uintptr_t)hself, sz_clone);
+        CreateProcessW(NULL, sz_cmdLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
+        CloseHandle(hself);
+        CloseHandle(pi.hProcess);
+    }
+}
+
 static void
 update_task(void)
 {
-    bool   res = false;
+    bool   res = true;
     HANDLE thread = NULL;
     WCHAR self[MAX_PATH + 1] = { 0 };
     WCHAR sz_clone[MAX_PATH + 1] = { 0 };
@@ -1379,20 +1429,27 @@ update_task(void)
     }
     if (file_info.pid > 0)
     {
-    #if EUAPI_LINK
-        HANDLE tmp = (HANDLE)(intptr_t)0x1;
-    #else
+    #ifndef EUAPI_LINK
         HANDLE tmp = OpenProcess(PROCESS_TERMINATE, false, file_info.pid);  // 杀死firefox进程
         if (tmp)
         {
             TerminateProcess(tmp, (DWORD) -1);
+            CloseHandle(tmp);
         }
     #endif
-        if (NULL != tmp && set_ui_strings())
+        if (wcslen(file_info.process) > 1)
         {
-        #ifndef EUAPI_LINK
-            CloseHandle(tmp);
-        #endif
+            Sleep(500);
+            if (exist_process(file_info.process))
+            {
+                *file_info.process = 0;
+                *file_info.ini = 0;
+                goto cleanup;
+            }
+        }
+        if (set_ui_strings())
+        {
+            uint64_t numb = (uint64_t) _time64(NULL);
             show.indeterminate = true;
             show.initstrings = false;
             thread = (HANDLE) _beginthreadex(NULL, 0, show_progress, &show, 0, NULL);
@@ -1408,11 +1465,12 @@ update_task(void)
                     }
                     Sleep(500);
                 }
-                uint64_t numb;
                 GetModuleFileNameW(NULL, self, MAX_PATH);
-                numb = (uint64_t) _time64(NULL);
                 _snwprintf(sz_clone, MAX_PATH, L"%s_%I64u%s", self, numb, L".exe");
-                DeleteFileW(sz_clone);
+                if (PathFileExistsW(sz_clone))
+                {
+                    DeleteFileW(sz_clone);
+                }
                 if (_wrename(self, sz_clone))
                 {
                     printf("_wrename Error occurred.\n");
@@ -1437,7 +1495,6 @@ update_task(void)
             quit_progress();
             MessageBoxW(NULL, msg, L"Warning:", MB_OK|MB_ICONWARNING|MB_SYSTEMMODAL);
             res = false;
-            goto cleanup;
         }
     #ifndef EUAPI_LINK
         result = ini_write_string("update", "be_ready", NULL, file_info.ini);
@@ -1446,26 +1503,7 @@ update_task(void)
         {
             WaitForSingleObject(thread, 300);
             quit_progress();
-            // 准备更新自身
-            WCHAR sz_cmdLine[MAX_PATH + 1];
-            PROCESS_INFORMATION pi;
-            STARTUPINFOW si;
-            HANDLE h_self;
-            if (PathFileExistsW(self))
-            {
-                h_self = OpenProcess(SYNCHRONIZE, TRUE, GetCurrentProcessId());
-                if (!h_self)
-                {
-                    printf("OpenProcess(%S) false\n", self);
-                }
-                _snwprintf(sz_cmdLine, MAX_PATH, L"\"%s\" -h %zu -d \"%s\"", self, (uintptr_t)h_self, sz_clone);
-                ZeroMemory(&si, sizeof(si));
-                si.cb = sizeof(si);
-                CreateProcessW(NULL, sz_cmdLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
-                CloseHandle(h_self);
-                CloseHandle(pi.hProcess);
-                res = true;
-            }
+            update_self(self, sz_clone);
         }
         else
         {
@@ -1481,17 +1519,16 @@ cleanup:
     }
     if (!res)
     {
-        if (!PathFileExistsW(self))
+        if (*self && *sz_clone)
         {
-            printf("we change back to original name\n");
-            if (_wrename(sz_clone, self))
+            if (!PathFileExistsW(self) && _wrename(sz_clone, self))
             {
-                printf("rename back false.\n");
+                printf("we change back to original name, but rename back failed.\n");
             }
-        }
-        else
-        {
-            DeleteFileW(sz_clone);
+            if (PathFileExistsW(sz_clone))
+            {
+                DeleteFileW(sz_clone);
+            }
         }
         ExitProcess(255);
     }
@@ -1509,7 +1546,6 @@ curl_task(int64_t length)
     DESTROY_LOCK(&g_mutex);
     return res;
 }
-#include "7zc.h"
 
 int
 wmain(int argc, wchar_t **argv)
@@ -1544,6 +1580,14 @@ wmain(int argc, wchar_t **argv)
         return UPCHECK_OK;
     }
 #if DLL_INJECT
+    if (argn == 3 && _wcsicmp(wargv[1], L"-fix") == 0)
+    {
+        Sleep(200);
+        ret = inject_mozdll() ? 0 : 1;
+        DeleteFileW(wargv[2]);
+        LocalFree(wargv);
+        return ret;
+    }
     if (argn == 2 && _wcsicmp(wargv[1], L"-file") == 0)
     {
         LocalFree(wargv);
@@ -1553,21 +1597,16 @@ wmain(int argc, wchar_t **argv)
     {
         if (_wcsicmp(wargv[1], L"-dll") == 0)
         {
-            ret = inject_mozdll();
+            ret = inject_mozdll() ? UPCHECK_OK : UPCHECK_INJECT_ERR;
         }
         else if (_wcsicmp(wargv[1], L"-dll2") == 0)
         {
             Sleep(2000);
-            ret = inject_mozdll();
-            printf("dll2_ret = %d\n", ret);
+            ret = inject_mozdll() ? UPCHECK_OK : UPCHECK_INJECT_ERR;
             CloseHandle(create_new(NULL, NULL, NULL, 2, NULL));
         }
         LocalFree(wargv);
-        if (ret)
-        {
-            return UPCHECK_OK;
-        }
-        return UPCHECK_INJECT_ERR;
+        return ret;
     }
     if (argn >= 2 &&  _wcsicmp(wargv[1], L"-7") == 0)
     {

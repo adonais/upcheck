@@ -115,7 +115,6 @@ create_dir(LPCWSTR dir)
 bool
 path_combine(LPWSTR lpfile, int len)
 {
-#define SIZE 128
     int n = 1;
     if (NULL == lpfile || *lpfile == L' ')
     {
@@ -123,10 +122,10 @@ path_combine(LPWSTR lpfile, int len)
     }
     if (lpfile[1] != L':')
     {
-        WCHAR modname[SIZE + 1] = { 0 };
-        if (GetModuleFileNameW(NULL, modname, SIZE) > 0)
+        WCHAR modname[MAX_PATH+1] = {0};
+        if (GetModuleFileNameW(NULL, modname, MAX_PATH) > 0)
         {
-            WCHAR tmp_path[MAX_PATH] = { 0 };
+            WCHAR tmp_path[MAX_PATH] = {0};
             if (PathRemoveFileSpecW(modname) && PathCombineW(tmp_path, modname, lpfile))
             {
                 n = _snwprintf(lpfile, len, L"%s", tmp_path);
@@ -134,7 +133,6 @@ path_combine(LPWSTR lpfile, int len)
         }
     }
     return (n > 0 && n < len);
-#undef SIZE
 }
 
 int

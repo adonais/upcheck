@@ -461,7 +461,7 @@ update_thread(void *p)
             PathRemoveFileSpecW(r_list);
             wcsncpy(dst, r_list, MAX_PATH);
         }
-        if (PathAppendW(r_list,L"erased_lists.bat") && PathFileExistsW(r_list) && SetCurrentDirectoryW(dst))
+        if (PathAppendW(r_list, L"erased_lists.bat") && PathFileExistsW(r_list) && SetCurrentDirectoryW(dst))
         {
             exec_ppv("cmd.exe /c erased_lists.bat", NULL, 0);
             Sleep(1000);
