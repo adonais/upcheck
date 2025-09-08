@@ -1134,9 +1134,9 @@ init_download(const char *url, int64_t length)
 }
 
 static HANDLE
-create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opid)
+create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opid, const int attached)
 {
-    PROCESS_INFORMATION pi;
+    PROCESS_INFORMATION pi = {0};
     WCHAR my_cmd[URL_LEN + 1] = { 0 };
 #ifndef EUAPI_LINK
     if (!(wcmd || param))
@@ -1146,7 +1146,18 @@ create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opi
         PathAppendW(my_cmd, L"tobedeleted");
         erase_dir(my_cmd);
         PathRemoveFileSpecW(my_cmd);
-        PathAppendW(my_cmd, L"firefox.exe");
+        if (attached < 2)
+        {
+            *my_cmd = 0;
+        }
+        else if (attached == 2)
+        {
+            PathAppendW(my_cmd, L"zen.exe");
+        }
+        else
+        {
+            PathAppendW(my_cmd, L"firefox.exe");
+        }
     }
 #endif
     if (wcmd)
@@ -1158,7 +1169,7 @@ create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opi
         wcsncat(my_cmd, L" ", URL_LEN);
         wcsncat(my_cmd, param, URL_LEN);
     }
-    if (true)
+    if (*my_cmd)
     {
         DWORD dwCreat = 0;
         STARTUPINFOW si = {si.cb = sizeof(si)};
@@ -1588,23 +1599,22 @@ wmain(int argc, wchar_t **argv)
         LocalFree(wargv);
         return ret;
     }
+    if (argn == 3 && _wcsicmp(wargv[1], L"-dll2") == 0)
+    {
+        Sleep(2000);
+        ret = inject_mozdll() ? UPCHECK_OK : UPCHECK_INJECT_ERR;
+        CloseHandle(create_new(NULL, NULL, NULL, 2, NULL, _wtoi(wargv[2])));
+        LocalFree(wargv);
+        return ret;
+    }
     if (argn == 2 && _wcsicmp(wargv[1], L"-file") == 0)
     {
         LocalFree(wargv);
         return file_mozdll();
     }
-    if (argn == 2 && _wcsnicmp(wargv[1], L"-dll", 4) == 0)
+    if (argn == 2 && _wcsicmp(wargv[1], L"-dll") == 0)
     {
-        if (_wcsicmp(wargv[1], L"-dll") == 0)
-        {
-            ret = inject_mozdll() ? UPCHECK_OK : UPCHECK_INJECT_ERR;
-        }
-        else if (_wcsicmp(wargv[1], L"-dll2") == 0)
-        {
-            Sleep(2000);
-            ret = inject_mozdll() ? UPCHECK_OK : UPCHECK_INJECT_ERR;
-            CloseHandle(create_new(NULL, NULL, NULL, 2, NULL));
-        }
+        ret = inject_mozdll() ? UPCHECK_OK : UPCHECK_INJECT_ERR;
         LocalFree(wargv);
         return ret;
     }
@@ -1796,7 +1806,7 @@ wmain(int argc, wchar_t **argv)
     #ifndef EUAPI_LINK
         SetEnvironmentVariableW(L"LIBPORTABLE_UPCHECK_LAUNCHER_PROCESS", L"1");
     #endif
-        CloseHandle(create_new(file_info.process, file_info.param, NULL, 2, NULL));
+        CloseHandle(create_new(file_info.process, file_info.param, NULL, 2, NULL, 0));
     }
     return ret;
 }
