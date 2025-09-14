@@ -101,6 +101,7 @@ OBJS = \
     $(OBJD)\libcurl\cf-h1-proxy.obj             \
     $(OBJD)\libcurl\cf-h2-proxy.obj             \
     $(OBJD)\libcurl\cf-haproxy.obj              \
+    $(OBJD)\libcurl\cf-ip-happy.obj             \
     $(OBJD)\libcurl\hostip.obj                  \
     $(OBJD)\libcurl\progress.obj                \
     $(OBJD)\libcurl\formdata.obj                \
@@ -248,7 +249,6 @@ OBJS = \
     $(OBJD)\libcurl\vauth\oauth2.obj            \
     $(OBJD)\libcurl\vauth\spnego_gssapi.obj     \
     $(OBJD)\libcurl\vauth\spnego_sspi.obj       \
-    $(OBJD)\libcurl\vquic\curl_msh3.obj         \
     $(OBJD)\libcurl\vquic\curl_ngtcp2.obj       \
     $(OBJD)\libcurl\vquic\curl_osslq.obj        \
     $(OBJD)\libcurl\vquic\curl_quiche.obj       \
