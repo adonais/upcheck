@@ -204,7 +204,7 @@ move_file(LPCWSTR src_path, LPCWSTR dst_path)
     }
     if (!MoveFileExW(src_path, dst_path, MOVEFILE_COPY_ALLOWED|MOVEFILE_REPLACE_EXISTING))
     {
-        printf("move %ls to %ls failed, error[%lu]\n", src_path, dst_path, GetLastError());
+        printf("mv [%ls] to [%ls] failed, error[%lu]\n", src_path, dst_path, GetLastError());
         return false;
     }
     return true;
@@ -398,19 +398,18 @@ do_update(LPCWSTR src0, LPCWSTR dst0)
         PathStripPathW(strip);
         if (is_ice())
         {
-            if (ice_build && (_wcsicmp(strip, L"App") == 0))
+            if (ice_build)
             {
-                // iceweasel official package
                 PathRemoveFileSpecW(dst);
-                if (move_form_src(wlog, dst, root, NULL))
+                if (_wcsicmp(strip, L"App") == 0)
                 {
-                    return 0;
+                    // iceweasel official package
+                    if (move_form_src(wlog, dst, root, NULL))
+                    {
+                        return 0;
+                    }
                 }
-            }
-            else if (ice_build && (_wcsicmp(strip, L"App") != 0))
-            {
-                PathRemoveFileSpecW(dst);
-                if (move_form_src(wlog, dst, root, strip))
+                else if (move_form_src(wlog, dst, root, strip))
                 {
                     return 0;
                 }

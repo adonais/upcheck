@@ -1371,8 +1371,8 @@ logs_update(const int ret)
     }
 }
 
-static
-exist_process(LPCWSTR path)
+static bool
+exist_process(LPCWSTR path, const DWORD pid)
 {
     bool more;
     bool result = false;
@@ -1394,8 +1394,11 @@ exist_process(LPCWSTR path)
            (length > 0 && length < MAX_PATH) &&
            (_wcsicmp(fullpath, path) == 0))
         {
-            result = true;
-            break;
+            if (!(pid > 0 && pe32.th32ProcessID == pid))
+            {
+                result = true;
+                break;
+            }
         }
         more = Process32NextW(hsnap, &pe32);
     }
@@ -1438,12 +1441,16 @@ update_task(void)
         }
         ExitProcess(0);
     }
+    if (GetModuleFileNameW(NULL, self, MAX_PATH) > 0 && exist_process(self, GetCurrentProcessId()))
+    {   // 可能同时启动了多个更新进程
+        ExitProcess(0);
+    }
     if (file_info.pid > 0)
     {
     #ifndef EUAPI_LINK
-        HANDLE tmp = OpenProcess(PROCESS_TERMINATE, false, file_info.pid);  // 杀死firefox进程
+        HANDLE tmp = OpenProcess(PROCESS_TERMINATE, false, file_info.pid);
         if (tmp)
-        {
+        {   // 结束firefox进程
             TerminateProcess(tmp, (DWORD) -1);
             CloseHandle(tmp);
         }
@@ -1451,7 +1458,7 @@ update_task(void)
         if (wcslen(file_info.process) > 1)
         {
             Sleep(500);
-            if (exist_process(file_info.process))
+            if (exist_process(file_info.process, 0))
             {
                 *file_info.process = 0;
                 *file_info.ini = 0;
@@ -1476,13 +1483,12 @@ update_task(void)
                     }
                     Sleep(500);
                 }
-                GetModuleFileNameW(NULL, self, MAX_PATH);
                 _snwprintf(sz_clone, MAX_PATH, L"%s_%I64u%s", self, numb, L".exe");
                 if (PathFileExistsW(sz_clone))
                 {
                     DeleteFileW(sz_clone);
                 }
-                if (_wrename(self, sz_clone))
+                if (*self && _wrename(self, sz_clone))
                 {
                     printf("_wrename Error occurred.\n");
                     res = false;
