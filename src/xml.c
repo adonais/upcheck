@@ -6,41 +6,28 @@
 #include <curl/curl.h>
 #include "ini_parser.h"
 #include "spinlock.h"
+#include "xml.h"
 
 #define INFO_LEN 32
 
-typedef struct _xml_buffer
-{
-    int size;
-    int cur;
-    char str[MAX_BUFFER_SIZE];
-}xml_buffer;
-
-typedef size_t (*fn_write_data)(void *contents, size_t size, size_t nmemb, void *userp);
-
-static size_t
+size_t
 write_data_callback(void *ptr, size_t size, size_t nmemb, void *stream)
 {
     xml_buffer *pbuf = (xml_buffer *)stream;
-    int written = (int)(size * nmemb);
-    if (written < pbuf->size)
-    {
-        memcpy(&pbuf->str[pbuf->cur], ptr, written);
-        pbuf->cur += written;
-        pbuf->size -= written;
-    }
-    else
-    {
-        written = 0;
-    }
+    size_t written = size * nmemb;
+    pbuf->str = realloc(pbuf->str, (size_t)pbuf->cur + written);
+    memcpy(pbuf->str + pbuf->cur, ptr, written);
+    pbuf->cur += (int)written;
     return (size_t)written;
 }
 
 int
-init_process(const char *url, fn_write_data write_data, void *userdata)
+init_process(const char *url, curl_write_callback write_data, void *userdata)
 {
     CURLcode res = 1;
-    CURL *curl_handle = euapi_curl_easy_init();
+    CURL *curl_handle = euapi_curl_easy_init ?
+                        euapi_curl_easy_init() :
+                        (libcurl_init(CURL_GLOBAL_DEFAULT) == 0 ? euapi_curl_easy_init() : NULL);
     if (curl_handle)
     {
         euapi_curl_easy_setopt(curl_handle, CURLOPT_URL, url);
@@ -64,7 +51,7 @@ init_process(const char *url, fn_write_data write_data, void *userdata)
         }
         euapi_curl_easy_cleanup(curl_handle);
     }
-    return (int) res;
+    return res;
 }
 
 static bool
@@ -254,8 +241,8 @@ ini_query_edit(xml_buffer *pbuf)
     return res;
 }
 
-static int
-ini_query_ice(xml_buffer *pbuf)
+int
+ini_query_ice(xml_buffer *pbuf, const bool upgrade)
 {
 
     int res = -1;
@@ -268,7 +255,7 @@ ini_query_ice(xml_buffer *pbuf)
     char *app_ini = NULL;
     WCHAR *pini = NULL;
     ini_cache ini_handler = NULL;
-    int   bits = get_file_bits();
+    int bits = get_file_bits();
     if (bits == 64)
     {
         printf("is_64bits\n");
@@ -324,21 +311,24 @@ ini_query_ice(xml_buffer *pbuf)
             res = 1;
             break;
         }
-        if (!inicache_read_string(info, "url", &url, &ini_handler))
+        if (upgrade)
         {
-            printf("inicache_read_string url return false\n");
-            res = strstr(info, ".esr") ? 1 :-1;
-            break;
+            if (!inicache_read_string(info, "url", &url, &ini_handler))
+            {
+                printf("inicache_read_string url return false\n");
+                res = strstr(info, ".esr") ? 1 :-1;
+                break;
+            }
+            if (!inicache_read_string(info, "md5", &c_md5, &ini_handler))
+            {
+                printf("inicache_read_string md5 return false\n");
+                res = -1;
+                break;
+            }
+            strncpy(file_info.md5, c_md5, MD5_LEN);
+            strncpy(file_info.url, url, URL_LEN);
+            printf("dt_locale = %I64u, dt_remote = %I64u, c_md5 = %s, app_url = %s\n", dt_locale, dt_remote, c_md5, url);
         }
-        if (!inicache_read_string(info, "md5", &c_md5, &ini_handler))
-        {
-            printf("inicache_read_string md5 return false\n");
-            res = -1;
-            break;
-        }
-        strncpy(file_info.md5, c_md5, MD5_LEN);
-        strncpy(file_info.url, url, URL_LEN);
-        printf("dt_locale = %I64u, dt_remote = %I64u, c_md5 = %s, app_url = %s\n", dt_locale, dt_remote, c_md5, url);
         res = 0;
     }while(0);
     ini_safe_free(c_md5);
@@ -357,7 +347,7 @@ init_resolver(void)
 {
     char* url = NULL;
     int   res = -1;
-    xml_buffer xbuf = {MAX_BUFFER_SIZE};
+    xml_buffer xbuf = {0};
     if (*file_info.ini && !ini_read_string("update", "url", &url, file_info.ini, true))
     {
         printf("ini_read_string portable.ini update return false\n");
@@ -381,10 +371,11 @@ init_resolver(void)
         }
         else
         {
-            res = ini_query_ice(&xbuf);
+            res = ini_query_ice(&xbuf, true);
         }
         printf("init_resolver, res = [%d]\n", res);
     }
     ini_safe_free(url);
+    ini_safe_free(xbuf.str);
     return res;
 }

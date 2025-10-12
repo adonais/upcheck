@@ -118,6 +118,10 @@ list_find(node **pphead, const char *v)
 {
     size_t len = strlen(v);
     position p = (*pphead)->next;
+    if (len > LEN_CONTENT - 1)
+    {
+        return NULL;
+    }
     while (p != NULL)
     {
         if (strncmp(p->content, v, len) == 0 && (*(p->content+len) == '\r' ||
@@ -938,6 +942,10 @@ list_parser(node **pphead, const char *ps, const char *pk, char **value)
     for (it = *pphead; it; it = it->next)
     {
         char section[LEN_SECTION + 1] = { 0 };
+        if (it->content[0] == ';' || it->content[0] == '#')
+        {
+            continue;
+        }
         if (it->content[0] == '[' && strrchr(it->content, ']'))
         {
             if (s_find)
@@ -966,8 +974,8 @@ list_parser(node **pphead, const char *ps, const char *pk, char **value)
         }
         else if (s_find)
         {
-            char key[LEN_SECTION + 1] = { 0 };
-            if (sscanf(it->content, "%[^=$ ]", key) == 1 && strcmp(pk, key) == 0)
+            char key[MAX_COUNT] = { 0 };
+            if (MAX_COUNT > strlen(it->content) && sscanf(it->content, "%[^=$ ]", key) == 1 && strcmp(pk, key) == 0)
             {
                 if (!value)
                 {

@@ -8,7 +8,6 @@
 
 #define LEN_SECTION 64
 #define LEN_STRINGS 128
-#define MAX_BUFFER_SIZE (16 * 1024)
 #define ini_safe_free(p) ((p) ? ((free((void *)(p))), ((p) = NULL)) : (void *)(p))
 
 #ifdef __cplusplus

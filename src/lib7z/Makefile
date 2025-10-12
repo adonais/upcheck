@@ -26,6 +26,7 @@ OBJS = \
   $(OBJD)\lib7z\7zDec.obj      \
   $(OBJD)\lib7z\7zArcIn.obj    \
   $(OBJD)\lib7z\7zStream.obj   \
+  $(OBJD)\lib7z\7zMemIn.obj    \
   $(OBJD)\lib7z\Bcj2.obj       \
   $(OBJD)\lib7z\Bra.obj        \
   $(OBJD)\lib7z\Bra86.obj      \

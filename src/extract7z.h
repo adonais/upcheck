@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-extern int extract7z(LPCWSTR srcFile, LPCWSTR dstPath);
+extern int extract7z(LPCWSTR srcFile, LPCWSTR dstPath, char *buffer, size_t msize);
 
 #ifdef __cplusplus
 }

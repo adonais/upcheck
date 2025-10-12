@@ -669,10 +669,10 @@ get_file_bits(const wchar_t* path)
 {
     IMAGE_DOS_HEADER dos_header;
     IMAGE_NT_HEADERS pe_header;
-    int  	ret = 1;
-    HANDLE	hFile = CreateFileW(path,GENERIC_READ,
-                                FILE_SHARE_READ,NULL,OPEN_EXISTING,
-                                FILE_ATTRIBUTE_NORMAL,NULL);
+    int ret = 1;
+    HANDLE hFile = CreateFileW(path,GENERIC_READ,
+                               FILE_SHARE_READ,NULL,OPEN_EXISTING,
+                               FILE_ATTRIBUTE_NORMAL,NULL);
     if( !is_valid_handle(hFile) )
     {
         return ret;

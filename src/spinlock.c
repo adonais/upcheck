@@ -112,6 +112,40 @@ create_dir(LPCWSTR dir)
     return (CreateDirectoryW(tmp_name, NULL)||GetLastError() == ERROR_ALREADY_EXISTS);
 }
 
+WCHAR *
+path_utf16_clone(const wchar_t *path)
+{
+    wchar_t *res = NULL;
+    if (path && ((res = (wchar_t *)calloc(URL_LEN, sizeof(wchar_t)))))
+    {
+        _snwprintf(res, URL_LEN - 1, L"%s", path);
+    }
+    return res;
+}
+
+BOOL
+move_file_wrapper(const WCHAR *srcfile, const WCHAR *dst, uint32_t flags)
+{
+    BOOL ret = FALSE;
+    WCHAR *path = path_utf16_clone(dst);
+    if (path)
+    {
+        uint32_t attrs = GetFileAttributesW(path);
+        if ((attrs != INVALID_FILE_ATTRIBUTES) && (attrs & FILE_ATTRIBUTE_READONLY))
+        {   // 取消只读属性
+            attrs &= ~FILE_ATTRIBUTE_READONLY;
+            SetFileAttributesW(path, attrs);
+        }
+        PathRemoveFileSpecW(path);
+        if (create_dir(path))
+        {
+            ret = MoveFileExW(srcfile, dst, flags);
+        }
+        free(path);
+    }
+    return ret;
+}
+
 bool
 path_combine(LPWSTR lpfile, int len)
 {
@@ -340,7 +374,7 @@ get_file_md5(LPCWSTR path, char* md5_str)
             printf("CryptCreateHash error : %lu\n", GetLastError());
             break;
         }
-        if((rgbFile=(byte*)SYS_MALLOC(MD5_SIZE)) == NULL)
+        if((rgbFile=(byte*)calloc(MD5_SIZE, 1)) == NULL)
         {
             printf("allocation failed\n");
             break;
@@ -362,7 +396,7 @@ get_file_md5(LPCWSTR path, char* md5_str)
         {
             printf("CryptGetHashParam error : %lu\n", GetLastError());
         }
-        if((pbHash=(byte*)SYS_MALLOC(dwHashLen)) == NULL)
+        if((pbHash=(byte*)calloc(dwHashLen, 1)) == NULL)
         {
             printf("allocation failed\n");
             break;
@@ -389,62 +423,80 @@ get_file_md5(LPCWSTR path, char* md5_str)
     }
     if (rgbFile)
     {
-        SYS_FREE(rgbFile);
+        free(rgbFile);
     }
     if (pbHash)
     {
-        SYS_FREE(pbHash);
+        free(pbHash);
     }
     return res;
 }
 
-bool
-merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name)
+HANDLE
+create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opid, const int attached)
 {
-    size_t rc1,rc2;
-    FILE *fp1 = NULL, *fp2 = NULL, *fp3 = NULL;
-    bool res = false;
-    unsigned char buf[BUFSIZE];
-    do
+    PROCESS_INFORMATION pi = {0};
+    WCHAR my_cmd[URL_LEN + 1] = { 0 };
+#ifndef EUAPI_LINK
+    if (!(wcmd || param))
     {
-        fp1 = _wfopen(path1, L"rb");
-        if (fp1 == NULL)
+        GetModuleFileNameW(NULL, my_cmd, URL_LEN);
+        PathRemoveFileSpecW(my_cmd);
+        PathAppendW(my_cmd, L"tobedeleted");
+        erase_dir(my_cmd);
+        PathRemoveFileSpecW(my_cmd);
+        if (attached < 2)
         {
-            break;
+            *my_cmd = 0;
         }
-        fp2 = _wfopen(path2, L"rb");
-        if (fp2 == NULL)
+        else if (attached == 2)
         {
-            break;
+            PathAppendW(my_cmd, L"zen.exe");
         }
-        fp3 = _wfopen(name, L"wb");
-        if (fp3 == NULL)
+        else
         {
-            break;
+            PathAppendW(my_cmd, L"firefox.exe");
         }
-        while((rc1 = fread(buf, 1, BUFSIZE, fp1)) != 0)
-        {
-            fwrite(buf, 1, rc1, fp3);
-        }
-        while((rc2 = fread(buf, 1, BUFSIZE, fp2)) != 0)
-        {
-            fwrite(buf, 1, rc2, fp3);
-        }
-        res = true;
-    }while (0);
-    if (fp1)
-    {
-        fclose(fp1);
     }
-    if (fp2)
+#endif
+    if (wcmd)
     {
-        fclose(fp2);
+        wcsncpy(my_cmd, wcmd, URL_LEN);
     }
-    if (fp3)
+    if (param && *param)
     {
-        fclose(fp3);
+        wcsncat(my_cmd, L" ", URL_LEN);
+        wcsncat(my_cmd, param, URL_LEN);
     }
-    return res;
+    if (*my_cmd)
+    {
+        DWORD dwCreat = 0;
+        STARTUPINFOW si = {si.cb = sizeof(si)};
+        si.dwFlags = STARTF_USESHOWWINDOW;
+        if (flags > 1)
+        {
+            si.wShowWindow = SW_SHOWNOACTIVATE;
+        }
+        else if (flags == 1)
+        {
+            si.wShowWindow = SW_MINIMIZE;
+        }
+        else if (!flags)
+        {
+            si.wShowWindow = SW_HIDE;
+            dwCreat |= CREATE_NEW_PROCESS_GROUP;
+        }
+        if (!CreateProcessW(NULL, my_cmd, NULL, NULL, FALSE, dwCreat, NULL, pcd, &si, &pi))
+        {
+            printf("CreateProcessW error %lu\n", GetLastError());
+            return NULL;
+        }
+        if (NULL != opid)
+        {
+            *opid = pi.dwProcessId;
+        }
+    }
+    return pi.hProcess;
 }
 
 bool
@@ -464,8 +516,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
     {
         if (NULL != pcd)
         {
-            wdir = ini_utf8_utf16(pcd, NULL);
-            if (!wdir)
+            if (!(wdir = ini_utf8_utf16(pcd, NULL)))
             {
                 break;
             }
@@ -512,24 +563,15 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
     return res;
 }
 
-bool
-get_name_self(LPWSTR lpstrName, DWORD wlen)
+const WCHAR *
+get_file_name(LPCWSTR path)
 {
-    int   i = 0;
-    WCHAR lpFullPath[MAX_PATH+1]= {0};
-    if (GetModuleFileNameW(NULL,lpFullPath,MAX_PATH)>0)
+    const WCHAR *p = wcsrchr(path, L'\\');
+    if (p)
     {
-        for(i=(int)wcslen(lpFullPath); i>0; i--)
-        {
-            if (lpFullPath[i] == L'\\')
-                break;
-        }
-        if (i > 0)
-        {
-            i = _snwprintf(lpstrName,wlen,L"%s",lpFullPath+i+1);
-        }
+        return (p + 1);
     }
-    return (i>0 && i<(int)wlen);
+    return NULL;
 }
 
 bool
@@ -561,12 +603,12 @@ search_process(LPCWSTR names)
 }
 
 char*
-url_decode (const char *input)
+url_decode(const char *input)
 {
     int input_length = (int)strlen(input);
     size_t output_length = (input_length + 1);
     char *working, *output;
-    if ((working = output = SYS_MALLOC(output_length)) == NULL)
+    if ((working = output = calloc(output_length, 1)) == NULL)
     {
         return NULL;
     }
@@ -575,7 +617,8 @@ url_decode (const char *input)
         if(*input == '%')
         {
             char buffer[3] = { input[1], input[2], 0 };
-            *working++ = (char)strtol(buffer, NULL, 16);
+            *working = (char)strtol(buffer, NULL, 16);
+            working++;
             input += 3;
         }
         else
@@ -591,14 +634,13 @@ WCHAR *
 get_process_path(WCHAR *path, const int len)
 {
     WCHAR *p = NULL;
-    if (!GetModuleFileNameW(NULL , path , len - 1))
+    if (!GetModuleFileNameW(NULL , path, len - 1))
     {
         return NULL;
     }
-    p = wcsrchr(path , L'\\');
-    if( p )
+    if ((p = wcsrchr(path , L'\\')) != NULL)
     {
-        *p = 0 ;
+        *p = 0;
     }
     return path;
 }
@@ -775,12 +817,13 @@ enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag)
     DWORD dw_err;
     LPWSTR sz_val;
     DWORD dw_result;
-    DWORD new_valsize;
     /* 附加到指定环境变量末尾 */
     if (dw_flag == VARIABLES_APPEND)
     {
-        new_valsize = (DWORD)((wcslen(sz_newval) + 1) * 2);
-        sz_val = SYS_MALLOC(BUFSIZE);
+        if (!(sz_val = (LPWSTR)malloc((BUFSIZE + 1) *2)))
+        {
+            return false;
+        }
         /* 获取指定环境变量的值 */
         dw_result = GetEnvironmentVariableW(szname, sz_val, BUFSIZE);
         if (dw_result == 0) /* 出错处理 */
@@ -794,21 +837,21 @@ enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag)
             {
                 printf("error: %lu\n", dw_err);
             }
-            SYS_FREE(sz_val);
+            free(sz_val);
             return false;
         }
         if (BUFSIZE <= dw_result) /* 缓冲区太小 */
         {
-            sz_val = (LPWSTR) HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sz_val, dw_result + new_valsize);
+            DWORD new_valsize = (DWORD)wcslen(sz_newval) + dw_result;
+            sz_val = (LPWSTR) realloc(sz_val, (new_valsize + 1) * 2);
             if (NULL == sz_val)
             {
                 printf("Memory error\n");
                 return false;
             }
-            dw_result = GetEnvironmentVariableW(szname, sz_val, dw_result);
-            if (!dw_result)
+            if (!(dw_result = GetEnvironmentVariableW(szname, sz_val, new_valsize)))
             {
-                SYS_FREE(sz_val);
+                free(sz_val);
                 printf("GetEnvironmentVariable failed (%lu)\n", GetLastError());
                 return false;
             }
@@ -818,10 +861,10 @@ enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag)
         if (!SetEnvironmentVariableW(szname, sz_val))
         {
             printf("Set Value Error %lu", GetLastError());
-            SYS_FREE(sz_val);
+            free(sz_val);
             return false;
         }
-        SYS_FREE(sz_val);
+        free(sz_val);
     }
     /* 设置新的环境变量 */
     else if (dw_flag == VARIABLES_RESET)
@@ -868,6 +911,26 @@ get_os_version(void)
     return ver;
 }
 
+LPWSTR
+wstr_replace(LPWSTR in, size_t in_size, LPCWSTR pattern, LPCWSTR by)
+{
+    WCHAR *in_ptr = in;
+    WCHAR res[URL_LEN] = { 0 };
+    size_t offset = 0;
+    WCHAR *needle;
+    while ((needle = StrStrW(in, pattern)) && offset < in_size && offset < URL_LEN)
+    {
+        wcsncpy(res + offset, in, needle - in);
+        offset += needle - in;
+        in = needle + (int) wcslen(pattern);
+        wcsncpy(res + offset, by, URL_LEN - offset);
+        offset += (int) wcslen(by);
+    }
+    wcsncpy(res + offset, in, URL_LEN - offset);
+    _snwprintf(in_ptr, in_size, L"%s", res);
+    return in_ptr;
+}
+
 char*
 str_replace(char *in, const size_t in_size, const char *pattern, const char *by)
 {
@@ -887,4 +950,127 @@ str_replace(char *in, const size_t in_size, const char *pattern, const char *by)
     _snprintf(in_ptr, in_size, "%s", res);
     in = in_ptr;
     return in;
+}
+
+int
+do_file_copy(LPCWSTR parent, copy_file_ptr fnback, const bool recurs)
+{
+    int ret = 0;
+    HANDLE hfile = NULL;
+    WIN32_FIND_DATAW fd = {0};
+    WCHAR pathname[MAX_PATH] = {0};
+    WCHAR sub[MAX_PATH] = {0};
+    BOOL  finded = TRUE;
+    if(parent[wcslen(parent) -1] != '\\')
+    {
+        _snwprintf(pathname, MAX_PATH, L"%s\\*.*", parent);
+    }
+    else
+    {
+        _snwprintf(pathname, MAX_PATH, L"%s*.*", parent);
+    }
+    if ((hfile = FindFirstFileW(pathname, &fd)) != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if(wcscmp(fd.cFileName, L".") && wcscmp(fd.cFileName, L".."))
+            {
+                _snwprintf(sub, MAX_PATH, L"%s\\%s", parent, fd.cFileName);
+                if (recurs && (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+                {
+                    do_file_copy(sub, fnback, true);
+                }
+                else if (fnback(sub))
+                {
+                    ret = 1;
+                    break;
+                }
+            }
+        } while (FindNextFileW(hfile, &fd) != 0);
+        FindClose(hfile);
+    }
+    if (recurs)
+    {
+        RemoveDirectoryW(parent);
+    }
+    return ret;
+}
+
+void
+erase_dir(LPCWSTR parent)
+{
+    HANDLE hfile = NULL;
+    WIN32_FIND_DATAW fd = {0};
+    WCHAR path_name[MAX_PATH] = {0};
+    WCHAR sub[MAX_PATH] = {0};
+    if( parent[wcslen(parent) -1] != '\\' )
+    {
+        _snwprintf(path_name, MAX_PATH, L"%s\\*.*", parent);
+    }
+    else
+    {
+        _snwprintf(path_name, MAX_PATH, L"%s*.*", parent);
+    }
+    if ((hfile = FindFirstFileW(path_name, &fd)) != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if(wcscmp(fd.cFileName, L".") && wcscmp(fd.cFileName, L".."))
+            {
+                _snwprintf(sub, MAX_PATH, L"%s\\%s", parent, fd.cFileName);
+                if(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                {
+                    erase_dir(sub);
+                }
+                else
+                {
+                    DeleteFileW(sub);
+                }
+            }
+        } while (FindNextFileW(hfile, &fd) != 0);
+        FindClose(hfile);
+    }
+    RemoveDirectoryW(parent);
+}
+
+wchar_t *
+strpath_copy(wchar_t *s1, const wchar_t *s2)
+{
+    wchar_t *s = s1;
+    for (; *s2 != L'\0'; )
+    {
+        if (*s2 == L'\\')
+        {
+            *s = L'\0';
+            break;
+        }
+        else
+        {
+            (*s++ = *s2++);
+        }
+    }
+    return s1;
+}
+
+bool
+getw_cwd(LPWSTR lpstrName, DWORD wlen)
+{
+    int   i = 0;
+    WCHAR lpFullPath[MAX_PATH+1] = {0};
+    if (GetModuleFileNameW(NULL, lpFullPath, MAX_PATH) > 0)
+    {
+        for(i = (int)wcslen(lpFullPath); i>0; i--)
+        {
+            if (lpFullPath[i] == L'\\')
+            {
+                lpFullPath[i] = L'\0';
+                break;
+            }
+        }
+        if (i > 0)
+        {
+            i = _snwprintf(lpstrName, wlen, L"%s", lpFullPath);
+        }
+    }
+    return (i>0 && i<(int)wlen);
 }

@@ -24,7 +24,7 @@
 #endif
 
 #define MAX_MESSAGE 1024
-#define BUFSIZE     1024*16
+#define BUFSIZE     1024*8
 #define BUFF_MAX    0x2000000
 #define MD5_LEN     64
 #define NAMES_LEN   64
@@ -32,9 +32,6 @@
 #define COOKE_LEN   512
 #define URL_LEN     1024
 #define MD5_DIGEST_LENGTH 16
-
-#define SYS_MALLOC(x) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (x))
-#define SYS_FREE(x) (HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, (x)), (x = NULL))
 
 #if EUAPI_LINK
 #define EUAPI_CERT CURLSSLOPT_NATIVE_CA
@@ -49,6 +46,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef int (*copy_file_ptr)(LPCWSTR filepath);
+
 typedef struct _file_info_t
 {
     HANDLE   handle;
@@ -139,9 +139,7 @@ extern void init_logs(void);
 extern void enter_spinlock(void);
 extern void leave_spinlock(void);
 extern bool find_local_str(char *result, int len);
-extern bool merge_file(LPCWSTR path1,LPCWSTR path2,LPCWSTR name);
 extern bool  exec_ppv(LPCSTR wcmd, LPCSTR pcd, int flags);
-extern bool  get_name_self(LPWSTR lpstrName, DWORD wlen);
 extern bool  search_process(LPCWSTR names);
 extern char* url_decode(const char *input);
 extern WCHAR* init_file_strings(LPCWSTR names, size_t *psize);
@@ -156,6 +154,17 @@ extern LPVOID share_map(HANDLE hmap, size_t bytes, uint32_t dw_access);
 extern void share_unmap(LPVOID memory);
 extern void share_close(HANDLE handle);
 extern bool enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag);
+
+extern WCHAR *path_utf16_clone(const WCHAR *path);
+extern BOOL move_file_wrapper(const WCHAR *srcfile, const WCHAR *dst, uint32_t flags);
+
+extern HANDLE create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opid, const int attached);
+extern LPWSTR wstr_replace(LPWSTR, size_t, LPCWSTR, LPCWSTR);
+extern void erase_dir(LPCWSTR parent);
+extern int do_file_copy(LPCWSTR parent, copy_file_ptr fnback, const bool recurs);
+extern wchar_t *strpath_copy(wchar_t *s1, const wchar_t *s2);
+extern const WCHAR *get_file_name(LPCWSTR path);
+extern bool getw_cwd(LPWSTR lpstrName, DWORD wlen);
 
 #ifdef __cplusplus
 }

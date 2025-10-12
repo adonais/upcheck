@@ -19,9 +19,8 @@ LDFLAGS = -LARGEADDRESSAWARE $(LDFLAGS)
 RFLAGS  = $(RFLAGS) -D "EUAPI_LINK"
 DEP     = $(BIND)\zlib.lib $(BIND)\7z.lib
 !ELSE
-DEP     = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib $(BIND)\7z.lib
+DEP     = $(BIND)\libcurl.lib  $(BIND)\libcares.lib $(BIND)\nghttp2.lib $(BIND)\zlib.lib $(BIND)\7z.lib $(BIND)\luajit.lib
 CFLAGS  = $(CFLAGS) -DCURL_STATICLIB
-LDFLAGS = -NODEFAULTLIB:MSVCRT $(LDFLAGS)
 !ENDIF
 
 LIBS    = $(DEP)
@@ -59,6 +58,10 @@ OBJS = \
     $(OBJD)\xml.obj            \
     $(OBJD)\sqlite3.obj        \
     $(OBJD)\cookies.obj        \
+!IF "$(EUAPI_LINK)" != "1"
+    $(OBJD)\load_script.obj    \
+    $(OBJD)\load_chrome.obj    \
+!ENDIF
     $(OBJD)\resource.res       \
 
 ##############################################################################
@@ -105,4 +108,8 @@ $(OBJD)\thunderagent.obj: thunderagent.c thunderagent.h
 $(OBJD)\xml.obj         : xml.c xml.h
 $(OBJD)\sqlite3.obj     : sqlite3.c sqlite3.h
 $(OBJD)\cookies.obj     : cookies.c cookies.h
+!IF "$(EUAPI_LINK)" != "1"
+$(OBJD)\load_script.obj : load_script.c load_script.h
+$(OBJD)\load_script.obj : load_chrome.c load_chrome.h
+!ENDIF
 $(OBJD)\resource.res    : resource.rc resource.h upcheck.exe.manifest

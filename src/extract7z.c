@@ -6,6 +6,7 @@
 #include "7zBuf.h"
 #include "7zCrc.h"
 #include "7zFile.h"
+#include "7zMemIn.h"
 #include "7zTypes.h"
 #include "7zVersion.h"
 #include "Compiler.h"
@@ -212,18 +213,21 @@ GetAttribString(UInt32 wa, bool isDir, char *s)
 }
 
 int
-extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
+extract7z(LPCWSTR srcFile, LPCWSTR dstPath, char *buffer, size_t msize)
 {
     ISzAlloc allocImp;
     ISzAlloc allocTempImp;
 
-    CFileInStream archiveStream;
-    CLookToRead2 lookStream;
+
     CSzArEx db;
     SRes res = SZ_OK;
     UInt16 *temp = NULL;
     size_t tempSize = 0;
     FILE   *pf = NULL;
+    CFileInStream archiveStream;
+    CLookToRead2 lookStream;
+    CMemInStream inStream;
+    ILookInStreamPtr pvt = NULL;
     WCHAR destPath[MAX_PATH + 1] = {
         L'\0',
     };
@@ -234,22 +238,37 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
     allocImp = g_Alloc;
     allocTempImp = g_Alloc;
 
-    if (InFile_OpenW(&archiveStream.file, srcFile))
+    if (srcFile)
     {
-        printf("can not open input file\n");
-        return 1;
+        if (InFile_OpenW(&archiveStream.file, srcFile))
+        {
+            printf("Can not open input file\n");
+            return 1;
+        }
+        FileInStream_CreateVTable(&archiveStream);
+        LookToRead2_CreateVTable(&lookStream, False);
+        lookStream.buf = lookStream.buf = ISzAlloc_Alloc(&allocImp, kInputBufSize);
+        if (!lookStream.buf)
+        {
+            res = SZ_ERROR_MEM;
+        }
+        else
+        {
+            lookStream.bufSize = kInputBufSize;
+            lookStream.realStream = &archiveStream.vt;
+            LookToRead2_INIT(&lookStream);
+        }
+        pvt = &lookStream.vt;
     }
-
-    FileInStream_CreateVTable(&archiveStream);
-    LookToRead2_CreateVTable(&lookStream, False);
-    lookStream.buf = lookStream.buf = ISzAlloc_Alloc(&allocImp, kInputBufSize);
-    if (!lookStream.buf)
-        res = SZ_ERROR_MEM;
+    else if (buffer && msize > 0)
+    {
+        MemInStream_Init(&inStream, (const void *)buffer, msize);
+        pvt = &inStream.s;
+    }
     else
     {
-        lookStream.bufSize = kInputBufSize;
-        lookStream.realStream = &archiveStream.vt;
-        LookToRead2_INIT(&lookStream);
+        printf("Error, Won't Open Anything\n");
+        return 1;
     }
 
     CrcGenerateTable();
@@ -258,7 +277,7 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
 
     if (res == SZ_OK)
     {
-        res = SzArEx_Open(&db, &lookStream.vt, &allocImp, &allocTempImp);
+        res = SzArEx_Open(&db, pvt, &allocImp, &allocTempImp);
     }
 
     if (res == SZ_OK)
@@ -320,7 +339,7 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
                 Print("/");
             else
             {
-                res = SzArEx_Extract(&db, &lookStream.vt, i, &blockIndex, &outBuffer, &outBufferSize, &offset, &outSizeProcessed, &allocImp, &allocTempImp);
+                res = SzArEx_Extract(&db, pvt, i, &blockIndex, &outBuffer, &outBufferSize, &offset, &outSizeProcessed, &allocImp, &allocTempImp);
                 if (res != SZ_OK)
                     break;
             }
@@ -383,9 +402,11 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath)
     }
     SzFree(NULL, temp);
     SzArEx_Free(&db, &allocImp);
-    ISzAlloc_Free(&allocImp, lookStream.buf);
-
-    File_Close(&archiveStream.file);
+    if (srcFile)
+    {
+        ISzAlloc_Free(&allocImp, lookStream.buf);
+        File_Close(&archiveStream.file);
+    }
 
     if (res == SZ_OK)
     {

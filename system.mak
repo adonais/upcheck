@@ -54,9 +54,9 @@ CFLAGS   = --target=i686-pc-windows-msvc $(CFLAGS)
 !ENDIF
 
 !if "$(EUAPI_LINK)"=="1"
-CFLAGS = $(CFLAGS) -MT -DEUAPI_LINK=1 -Ilibcurl/include
+CFLAGS = $(CFLAGS) -MD -DEUAPI_LINK=1 -Ilibcurl/include
 !ELSE
-CFLAGS = $(CFLAGS) -MT
+CFLAGS = $(CFLAGS) -MD
 !ENDIF
 
 !IFNDEF MY_NO_UNICODE

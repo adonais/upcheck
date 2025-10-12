@@ -15,8 +15,19 @@
 #include "xml.h"
 #include "cookies.h"
 #include "thunderagent.h"
+
 #if DLL_INJECT
 #include "setdll.h"
+#endif
+#ifndef EUAPI_LINK
+#include "load_script.h"
+#include "load_chrome.h"
+#endif
+
+#if !defined(EUAPI_LINK)
+#if defined(_MSC_VER) && defined(_WIN64)
+#pragma comment(linker, "/include:luaL_openlibs")
+#endif
 #endif
 
 #define DOWN_NUM 10
@@ -74,26 +85,41 @@ ini_path_init(void)
 }
 
 static HWND
-get_moz_hwnd(void)
+get_moz_hwnd(int pid)
 {
     HWND hwnd = NULL;
-    int i = 10;
-    while (!hwnd && i--)
+    bool found = false;
+    DWORD process_id = 0;
+    int i = 40;
+    if (!pid)
     {
-        bool m_loop = false;
-        DWORD dwProcessId = 0;
-        hwnd = FindWindowExW(NULL, hwnd, L"MozillaWindowClass", NULL);
-        GetWindowThreadProcessId(hwnd, &dwProcessId);
-        m_loop = (dwProcessId > 0 && dwProcessId == file_info.pid);
-        if (!m_loop)
+        pid = file_info.pid;
+    }
+    if ((hwnd = FindWindowW(L"MozillaWindowClass", NULL)) != NULL)
+    {
+        GetWindowThreadProcessId(hwnd, &process_id);
+        if (process_id == pid)
         {
-            hwnd = NULL;
+            found = true;
         }
-        if (NULL != hwnd && m_loop)
+    }
+    while (!found && i--)
+    {
+        process_id = 0;
+        if ((hwnd = FindWindowExW(NULL, hwnd, L"MozillaWindowClass", NULL)) != NULL)
         {
+            GetWindowThreadProcessId(hwnd, &process_id);
+        }
+        if (process_id > 0 && process_id == pid)
+        {
+            found = true;
             break;
         }
-        SleepEx(800, false);
+        SleepEx(200, FALSE);
+    }
+    if (!found)
+    {
+        hwnd = NULL;
     }
     return hwnd;
 }
@@ -213,7 +239,7 @@ init_command_data(const int args, const wchar_t **pv)
                     continue;
                 }
                 MultiByteToWideChar(CP_UTF8, 0, u8_cookies, -1, cookies, VALUE_LEN);
-                SYS_FREE(u8_cookies);
+                free(u8_cookies);
                 dot = wcsrchr(cookies, L'.');
                 if (dot && _wcsicmp(dot + 1, L"sqlite") == 0)
                 {
@@ -631,7 +657,7 @@ run_thread(void *pdata)
             euapi_curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
             if (total_size > 0)
             {
-                if ((m_ranges = SYS_MALLOC(FILE_LEN)) == NULL)
+                if ((m_ranges = calloc(FILE_LEN, 1)) == NULL)
                 {
                     break;
                 }
@@ -643,7 +669,7 @@ run_thread(void *pdata)
             }
             if (m_ranges)
             {
-                SYS_FREE(m_ranges);
+                free(m_ranges);
             }
             // 设置重定向的最大次数,301、302跳转跟随location
             euapi_curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 3);
@@ -1133,73 +1159,6 @@ init_download(const char *url, int64_t length)
     return (!m_error);
 }
 
-static HANDLE
-create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opid, const int attached)
-{
-    PROCESS_INFORMATION pi = {0};
-    WCHAR my_cmd[URL_LEN + 1] = { 0 };
-#ifndef EUAPI_LINK
-    if (!(wcmd || param))
-    {
-        GetModuleFileNameW(NULL, my_cmd, URL_LEN);
-        PathRemoveFileSpecW(my_cmd);
-        PathAppendW(my_cmd, L"tobedeleted");
-        erase_dir(my_cmd);
-        PathRemoveFileSpecW(my_cmd);
-        if (attached < 2)
-        {
-            *my_cmd = 0;
-        }
-        else if (attached == 2)
-        {
-            PathAppendW(my_cmd, L"zen.exe");
-        }
-        else
-        {
-            PathAppendW(my_cmd, L"firefox.exe");
-        }
-    }
-#endif
-    if (wcmd)
-    {
-        wcsncpy(my_cmd, wcmd, URL_LEN);
-    }
-    if (param && *param)
-    {
-        wcsncat(my_cmd, L" ", URL_LEN);
-        wcsncat(my_cmd, param, URL_LEN);
-    }
-    if (*my_cmd)
-    {
-        DWORD dwCreat = 0;
-        STARTUPINFOW si = {si.cb = sizeof(si)};
-        si.dwFlags = STARTF_USESHOWWINDOW;
-        if (flags > 1)
-        {
-            si.wShowWindow = SW_SHOWNOACTIVATE;
-        }
-        else if (flags == 1)
-        {
-            si.wShowWindow = SW_MINIMIZE;
-        }
-        else if (!flags)
-        {
-            si.wShowWindow = SW_HIDE;
-            dwCreat |= CREATE_NEW_PROCESS_GROUP;
-        }
-        if (!CreateProcessW(NULL, my_cmd, NULL, NULL, FALSE, dwCreat, NULL, pcd, &si, &pi))
-        {
-            printf("CreateProcessW error %lu\n", GetLastError());
-            return NULL;
-        }
-        if (NULL != opid)
-        {
-            *opid = pi.dwProcessId;
-        }
-    }
-    return pi.hProcess;
-}
-
 static bool
 thunder_lookup(void)
 {
@@ -1335,7 +1294,7 @@ msg_tips(void)
     if (ini_read_string("update", "msg", &lpmsg, file_info.ini, true) &&
         MultiByteToWideChar(CP_UTF8, 0, lpmsg, -1, msg, MAX_MESSAGE) > 0)
     {
-        fx = get_moz_hwnd();
+        fx = get_moz_hwnd(0);
         wstr_replace(msg, wcslen(msg), L"\\n", L"\n");
         MessageBoxW(fx, msg, L"Tips:", MB_OK | MB_SETFOREGROUND);
     }
@@ -1630,6 +1589,63 @@ wmain(int argc, wchar_t **argv)
         return exec_7z(argc, argv);
     }
 #endif
+#ifndef EUAPI_LINK
+    if (argn >= 5 && (_wcsicmp(wargv[1], L"-lua") == 0 || _wcsicmp(wargv[1], L"-msg") == 0))
+    {
+        intptr_t moz_hwnd = 0;
+        if (_wcsicmp(wargv[1], L"-lua") == 0)
+        {
+            if ((moz_hwnd = (intptr_t)get_moz_hwnd(_wtoi(wargv[2]))) != 0)
+            {
+                WCHAR hwnd_str[NAMES_LEN] = {0};
+                _snwprintf(hwnd_str, NAMES_LEN - 1, L"%zd", moz_hwnd);
+                if (enviroment_variables_set(L"UPCHECK_MOZ_HWND", hwnd_str, VARIABLES_RESET))
+                {
+                    if (enviroment_variables_set(L"UPCHECK_MOZ_PID", wargv[2], VARIABLES_RESET) && argn - 3 < NAMES_LEN)
+                    {
+                        int i = 0;
+                        WCHAR *parg[NAMES_LEN] = {NULL};
+                        for (; i < argn - 3; ++i)
+                        {
+                            parg[i] = wargv[i + 3];
+                        }
+                        ret = lua_script_loader(parg, i);
+                    }
+                }
+            }
+        }
+        else if (_wcsicmp(wargv[1], L"-msg") == 0)
+        {
+            if ((moz_hwnd = (intptr_t)get_moz_hwnd(_wtoi(wargv[2]))) != 0)
+            {
+                int msg = _wtoi(wargv[3]);
+                int wm = _wtoi(wargv[4]);
+                ret = (int)SendMessageW((HWND)moz_hwnd, msg, wm, 0);
+            }
+        }
+        LocalFree(wargv);
+        return ret;
+    }
+    if (argn == 4 && _wcsnicmp(wargv[1], L"-chrome-", 8) == 0)
+    {
+        ret = -1;
+        if (_wcsicmp(wargv[1], L"-chrome-check") == 0)
+        {
+            ret = chrome_check(wargv[2], wargv[3], false);
+        }
+        else if (_wcsicmp(wargv[1], L"-chrome-uncheck") == 0)
+        {
+            ret = chrome_check(wargv[2], wargv[3], true);
+        }
+        else if (_wcsicmp(wargv[1], L"-chrome-install") == 0)
+        {
+            ret = chrome_install(wargv[2], wargv[3]);
+        }
+        LocalFree(wargv);
+        printf("chrome return %d\n", ret);
+        return ret;
+    }
+#endif
     if (argn) // 初始化全局参数
     {
         memset(&file_info, 0, sizeof(file_info));
@@ -1687,7 +1703,7 @@ wmain(int argc, wchar_t **argv)
             }
             free(command);
             printf("dl_command: %s\n", dl);
-            if(exec_ppv(dl, NULL, 0))
+            if (exec_ppv(dl, NULL, 0))
             {
                 return UPCHECK_OK;
             }
@@ -1774,7 +1790,7 @@ wmain(int argc, wchar_t **argv)
             ret = UPCHECK_MD5_ERR;
             break;
         }
-        if (file_info.extract && extract7z(file_info.names, file_info.unzip_dir)) // 解压缩升级包
+        if (file_info.extract && extract7z(file_info.names, file_info.unzip_dir, NULL, 0)) // 解压缩升级包
         {
             ret = UPCHECK_EXTRACT_ERR;
             break;
@@ -1809,9 +1825,6 @@ wmain(int argc, wchar_t **argv)
     }
     if (wcslen(file_info.process) > 1)
     {
-    #ifndef EUAPI_LINK
-        SetEnvironmentVariableW(L"LIBPORTABLE_UPCHECK_LAUNCHER_PROCESS", L"1");
-    #endif
         CloseHandle(create_new(file_info.process, file_info.param, NULL, 2, NULL, 0));
     }
     return ret;
