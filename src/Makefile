@@ -28,7 +28,7 @@ LIBS    = $(DEP)
 !IF "$(DLL_INJECT)" == "1"
 DEP     = $(DEP) $(BIND)\detours.lib
 CFLAGS  = $(CFLAGS) -DDLL_INJECT=1
-LIBS = $(DEP) -WHOLEARCHIVE:$(BIND)\7z.lib
+LIBS    = $(DEP) $(BIND)\7z.lib
 !ELSE
 LIBS = $(DEP) $(BIND)\7z.lib
 !ENDIF
