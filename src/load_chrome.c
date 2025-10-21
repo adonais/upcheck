@@ -11,22 +11,6 @@
 static wchar_t file_src_path[URL_LEN];
 static wchar_t file_dst_path[2][URL_LEN];
 
-static wchar_t *
-chrome_utf8_utf16(const char *path)
-{
-    wchar_t *res = NULL;
-    wchar_t *u16 = ini_utf8_utf16(path, NULL);
-    if (u16 && ((res = (wchar_t *)calloc(URL_LEN, sizeof(wchar_t)))))
-    {
-        _snwprintf(res, URL_LEN - 1, L"%s", u16);
-    }
-    if (u16)
-    {
-        free(u16);
-    }
-    return res;
-}
-
 static int
 chrome_file_callback(LPCWSTR srcfile)
 {
@@ -128,7 +112,7 @@ chrome_dec_path(const wchar_t *path)
     char *u8_path = ini_utf16_utf8(path, NULL);
     if (u8_path && (dec_u8 = url_decode(u8_path)) != NULL)
     {
-        dec_path = chrome_utf8_utf16(dec_u8);
+        dec_path = path_utf8_utf16(dec_u8);
     }
     ini_safe_free(dec_u8);
     ini_safe_free(u8_path);

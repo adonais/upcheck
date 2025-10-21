@@ -168,7 +168,7 @@ clean:
 	        $(SRC)\lj_recdef.h $(SRC)\lj_recdef.h $(SRC)\jit\vmdef.lua $(SRC)\lj_folddef.h $(SRC)\luajit_relver.txt $(SRC)\luajit.h 2>nul 1>nul
 	-rd /s/q "$(DIR_O)"  2>nul 1>nul
 	-rd /s/q "$(BIN_O)"  2>nul 1>nul
-	-rd /s/q "$(BIND)\\lua"
+	-rd /s/q "$(BIND)\lua"
 
 $(MIN_OBJS)     : $(SRC)\host\minilua.c
 	$(CC) $(CFLAGS) -Fd$(BIN_O)\minilua.pdb -Fo$(DIR_O)\ -c $(SRC)\host\minilua.c

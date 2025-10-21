@@ -501,7 +501,23 @@ str_bstr(LPCSTR str)
     return bstr;
 }
 
-BOOL
+int
+thunder_lookup()
+{
+    IAgent2 *pAgent = NULL;
+    HRESULT hr = CoCreateInstance(&CLSID_Agent, NULL, CLSCTX_INPROC_SERVER, &IID_IAgent2, (void **) &pAgent);
+    if (FAILED(hr))
+    {
+        return 0;
+    }
+    if (pAgent)
+    {
+        IAgent2_Release(pAgent);
+    }
+    return 1;
+}
+
+int
 thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
 {
     HRESULT hr = 1;
@@ -509,13 +525,11 @@ thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
     BSTR url = NULL, refer = NULL, cookies = NULL;
     if (NULL == b_url || *b_url == '\0')
     {
-        return FALSE;
+        return 0;
     }
-    printf("url = %s\n", b_url);
     do
     {
         int ret = 0;
-        CoInitialize(NULL);
         hr = CoCreateInstance(&CLSID_Agent, NULL, CLSCTX_INPROC_SERVER, &IID_IAgent2, (void **) &pAgent);
         if (FAILED(hr) || pAgent == NULL)
         {
@@ -559,6 +573,5 @@ thunder_download(LPCSTR b_url, LPCSTR b_refer, LPCSTR b_cookies)
     {
         IAgent2_Release(pAgent);
     }
-    CoUninitialize();
     return SUCCEEDED(hr);
 }

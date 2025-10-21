@@ -5,8 +5,6 @@
 #include "ini_parser.h"
 #include "spinlock.h"
 
-extern  file_info_t file_info;
-
 static int g_directory_count = 0;
 static wchar_t update_src_path[URL_LEN];
 static wchar_t update_fn_erase[URL_LEN];

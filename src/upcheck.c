@@ -19,9 +19,11 @@
 #if DLL_INJECT
 #include "setdll.h"
 #endif
+
 #ifndef EUAPI_LINK
 #include "load_script.h"
 #include "load_chrome.h"
+#include "manger.h"
 #endif
 
 #if !defined(EUAPI_LINK)
@@ -31,25 +33,6 @@
 #endif
 
 #define DOWN_NUM 10
-
-enum
-{
-    UPCHECK_INJECT_ERR = -12,
-    UPCHECK_404_ERR = -11,
-    UPCHECK_EXTRACT_ERR = -10,
-    UPCHECK_MD5_ERR = -9,
-    UPCHECK_TASK_ERR = -8,
-    UPCHECK_LENTH_ERR = -7,
-    UPCHECK_RESOLVER_ERR = -6,
-    UPCHECK_INI_ERR = -5,
-    UPCKECK_DATA_ERR = -4,
-    UPCHECK_URL_ERR = -3,
-    UPCHECK_CURL_ERR = -2,
-    UPCKECK_API_ERR = -1,
-    UPCHECK_OK = 0,
-    UPCHECK_DONT_ERR = 1,
-    UPCHECK_READY_ERR = 2
-};
 
 typedef HRESULT (WINAPI *SHGetKnownFolderIDListPtr)(REFKNOWNFOLDERID rfid,
         DWORD            dwFlags,
@@ -63,26 +46,6 @@ static SHGetKnownFolderIDListPtr sSHGetKnownFolderIDListStub = NULL;
 static char g_download_url[DOWN_NUM][URL_LEN] = {0};
 
 file_info_t file_info = {0};
-
-static bool
-ini_path_init(void)
-{
-#if EUAPI_LINK
-    return true;
-#else
-    bool  ret = false;
-    WCHAR ini_path[MAX_PATH + 1] = {0};
-    if (*file_info.ini != '\0' && strlen(file_info.ini) > 10)
-    {
-        return false;
-    }
-    GetModuleFileNameW(NULL, ini_path, MAX_PATH);
-    PathRemoveFileSpecW(ini_path);
-    PathAppendW(ini_path, L"portable.ini");
-    ret = PathFileExistsW(ini_path);
-    return (ret && WideCharToMultiByte(CP_UTF8, 0, ini_path, -1, file_info.ini, MAX_PATH, NULL, NULL) > 0);
-#endif
-}
 
 static HWND
 get_moz_hwnd(int pid)
@@ -124,46 +87,88 @@ get_moz_hwnd(int pid)
     return hwnd;
 }
 
+static bool
+get_download_dir(WCHAR *path)
+{
+    bool ret = true;
+    HMODULE shell32 = NULL;
+    ITEMIDLIST* pidlist = NULL;
+    do
+    {
+        if ((shell32 = GetModuleHandleW(L"shell32.dll")) == NULL)
+        {
+            ret = false;
+            break;
+        }
+        sSHGetKnownFolderIDListStub = (SHGetKnownFolderIDListPtr)GetProcAddress(shell32, "SHGetKnownFolderIDList");
+        if (!sSHGetKnownFolderIDListStub)
+        {
+            if (FAILED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL,SHGFP_TYPE_CURRENT, path)))
+            {
+                ret = false;
+                break;
+            }
+            else
+            {
+                PathAppendW(path, L"Downloads");
+            }
+        }
+        else
+        {
+            if(FAILED(SHGetKnownFolderIDList(&FOLDERID_Downloads, 0,NULL,&pidlist)))
+            {
+                ret = false;
+                break;
+            }
+            if(FAILED(SHGetPathFromIDListW(pidlist, path)))
+            {
+                ret = false;
+                break;
+            }
+        }
+    } while(0);
+    return ret;
+}
+
 /* 智能分析需要保持的文件名并建立目录 */
 static void
 path_parsing(LPCWSTR save_path)
 {
-    if (NULL == save_path)
+    int len = 0;
+    if (NULL == save_path || *save_path == 0)
     {
         return;
     }
     if (PathFindExtensionW(save_path)[0] == L'.')
-    {
-        _snwprintf(file_info.names, MAX_PATH, L"%s", save_path);
-    }
-    else if (!PathIsFileSpecW(save_path) && save_path[1] == L':')
-    {
-        size_t len = 0;
-        _snwprintf(file_info.names, MAX_PATH, L"%s", save_path);
-        len = wcslen(file_info.names);
-        if (file_info.names[len - 1] != L'\\')
+    {   // 完整的文件路径
+        if (save_path[1] == L':')
         {
-            file_info.names[len] = L'\\';
+            _snwprintf(file_info.names, MAX_PATH, L"%s", save_path);
         }
-        create_dir(save_path);
+        else if (save_path[0] != L'.')
+        {   // 只有文件名, 默认到下载目录
+            WCHAR tmp_path[MAX_PATH + 1] = {0};
+            if (get_download_dir(tmp_path))
+            {
+                if (*save_path != L'\\')
+                {
+                    wcsncat(tmp_path, L"\\", MAX_PATH);
+                }
+                wcsncat(tmp_path, save_path, MAX_PATH);
+            }
+        }
         return;
     }
-    else
+    if (!exists_dir(save_path))
     {
-        // is file
-        WCHAR tmp_path[MAX_PATH + 1] = { 0 };
-        _snwprintf(tmp_path, MAX_PATH, L"%s\\%s", save_path, file_info.names);
-        path_combine(tmp_path, MAX_PATH);
-        _snwprintf(file_info.names, MAX_PATH, L"%s", tmp_path);
+        create_dir(save_path);
     }
-    if (true)
-    {
-        // creator dir
-        WCHAR path[MAX_PATH + 1] = { 0 };
-        _snwprintf(path, MAX_PATH, L"%s", file_info.names);
-        if (PathRemoveFileSpecW(path))
+    if ((len = _snwprintf(file_info.names, MAX_PATH, L"%s", save_path)) > 0 && len < MAX_PATH)
+    {   // 加上目录符, 下载时自动加文件名
+        len = (int)wcslen(file_info.names);
+        if (file_info.names[len - 1] != L'\\')
         {
-            create_dir(path);
+            wcsncat(file_info.names, L"\\", MAX_PATH);
         }
     }
 }
@@ -176,7 +181,7 @@ init_command_data(const int args, const wchar_t **pv)
     do
     {
         const int argn = args + 1;
-        for (int i = 0; i < argn - 1; i++)
+        for (int i = 1; i < argn - 1; ++i)
         {
             if (_wcsicmp(pv[i], L"-i") == 0)
             {
@@ -192,24 +197,20 @@ init_command_data(const int args, const wchar_t **pv)
                     }
                     continue;
                 }
-                else
+                else if (!WideCharToMultiByte(CP_UTF8, 0, tmp, -1, file_info.url, sizeof(file_info.url), NULL, NULL))
                 {   // 直接获得url参数, 转换成utf-8编码
-                    if (!WideCharToMultiByte(CP_UTF8, 0, tmp, -1, file_info.url, sizeof(file_info.url), NULL, NULL))
-                    {
-                        ret = false;
-                        break;
-                    }
-                    else if (strstr(file_info.url, "baidu.com") || strstr(file_info.url, "www.baidupcs.com"))
-                    {
-                        _snprintf(file_info.referer, VALUE_LEN, "https://pan.baidu.com/disk/home");
-                    }
+                    ret = false;
+                    break;
                 }
             } // 下载目录
             else if (_wcsicmp(pv[i], L"-o") == 0)
             {
-                found = true;
                 VERIFY(i + 1 < argn - 1);
-                path_parsing(pv[i + 1]);
+                if (wcslen(pv[i + 1]) > 1)
+                {
+                    found = true;
+                    path_parsing(pv[i + 1]);
+                }
             } // 下载时线程数目
             else if (_wcsicmp(pv[i], L"-t") == 0)
             {
@@ -229,28 +230,22 @@ init_command_data(const int args, const wchar_t **pv)
             else if (_wcsicmp(pv[i], L"-b") == 0)
             {
                 VERIFY(i + 1 < argn - 1);
-                WCHAR *dot = NULL;
-                WCHAR cookies[VALUE_LEN + 1] = { 0 };
-                char  un_cookies[MAX_PATH + 1] = { 0 };
-                WideCharToMultiByte(CP_UTF8, 0, pv[i + 1], -1, un_cookies, MAX_PATH, NULL, NULL);
-                char *u8_cookies = url_decode(un_cookies);
-                if (u8_cookies == NULL)
+                WideCharToMultiByte(CP_UTF8, 0, pv[i + 1], -1, file_info.cookiefile, MAX_PATH, NULL, NULL);
+            }
+            else if (_wcsicmp(pv[i], L"-cok") == 0)
+            {
+                VERIFY(i + 1 < argn - 1);
+                _snwprintf(file_info.cookie_tmp, MAX_PATH, L"%s", pv[i + 1]);
+                get_first_line(&(file_info.pcook), pv[i + 1]);
+            }
+            else if (_wcsicmp(pv[i], L"-ref") == 0)
+            {
+                VERIFY(i + 1 < argn - 1);
+                if (file_info.url[0])
                 {
-                    continue;
+                    WideCharToMultiByte(CP_UTF8, 0, pv[i + 1], -1, file_info.referer, MAX_PATH, NULL, NULL);
+                    printf("referer = [%s]\n", file_info.referer);
                 }
-                MultiByteToWideChar(CP_UTF8, 0, u8_cookies, -1, cookies, VALUE_LEN);
-                free(u8_cookies);
-                dot = wcsrchr(cookies, L'.');
-                if (dot && _wcsicmp(dot + 1, L"sqlite") == 0)
-                {
-                    /* encode with sqlite3 */
-                    if (dump_cookies(cookies))
-                    {
-                        printf("convert sqlite to txt fail.\n");
-                    }
-                    continue;
-                }
-                ini_make_u8(cookies, file_info.cookies, _countof(file_info.cookies));
             } // 解压目录
             else if (_wcsicmp(pv[i], L"-e") == 0)
             {
@@ -281,13 +276,17 @@ init_command_data(const int args, const wchar_t **pv)
             else if (_wcsicmp(pv[i], L"-d") == 0)
             {
                 VERIFY(i + 1 < argn - 1);
-                _snwprintf(file_info.del, VALUE_LEN, L"%s", pv[i + 1]);
+                _snwprintf(file_info.del, MAX_PATH, L"%s", pv[i + 1]);
             }
             else if (_wcsicmp(pv[i], L"-m") == 0)
             {
                 VERIFY(i + 1 < argn - 1);
                 // thunder
-                file_info.use_thunder = true;
+                file_info.use_thunder = _wtoi(pv[i + 1]);
+                if (!file_info.use_thunder)
+                {
+                    file_info.use_thunder = SELECT_AUTO;
+                }
             }
             else if (_wcsicmp(pv[i], L"-dt") == 0)
             {
@@ -312,42 +311,12 @@ init_command_data(const int args, const wchar_t **pv)
         }
         if (ret && !(found || file_info.up)) /* default download directory */
         {
-            WCHAR path[MAX_PATH + 1] = { 0 };
-            HMODULE h_shell32 = NULL;
-            ITEMIDLIST* pidlist = NULL;
-            if ((h_shell32 = GetModuleHandleW(L"shell32.dll")) == NULL)
+            WCHAR path[MAX_PATH + 1] = {0};
+            if (!get_download_dir(path))
             {
-                ret = false;
                 break;
             }
-            sSHGetKnownFolderIDListStub = (SHGetKnownFolderIDListPtr)GetProcAddress(h_shell32, "SHGetKnownFolderIDList");
-            if (!sSHGetKnownFolderIDListStub)
-            {
-                if (FAILED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL,SHGFP_TYPE_CURRENT, path)))
-                {
-                    ret = false;
-                    break;
-                }
-                else
-                {
-                    PathAppendW(path, L"Downloads");
-                    path_parsing(path);
-                }
-            }
-            else
-            {
-                if(FAILED(SHGetKnownFolderIDList(&FOLDERID_Downloads, 0,NULL,&pidlist)))
-                {
-                    ret = false;
-                    break;
-                }
-                if(FAILED(SHGetPathFromIDListW(pidlist, path)))
-                {
-                    ret = false;
-                    break;
-                }
-                path_parsing(path);
-            }
+            path_parsing(path);
             printf("download dir[%ls]\n", path);
         }
         if (ret && file_info.ini[0])
@@ -382,28 +351,15 @@ init_command_data(const int args, const wchar_t **pv)
 static void
 curl_set_cookies(CURL *curl)
 {
-    LPCSTR agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36";
-    if (strlen(file_info.referer) > 1)
+    if (strstr(file_info.url, "sf.net") || strstr(file_info.url, "sourceforge.net"))
     {
-        char cookies[COOKE_LEN + 1] = { 0 };
-        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
-        euapi_curl_easy_setopt(curl, CURLOPT_REFERER, file_info.referer);
-        if (!parse_baidu_cookies(cookies, COOKE_LEN))
-        {
-            _snprintf(file_info.cookies, COOKE_LEN, "%s", cookies);
-            euapi_curl_easy_setopt(curl, CURLOPT_COOKIE, file_info.cookies);
-        }
-    }
-    else if (strlen(file_info.cookies) > 1)
-    {
-        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, agent);
-        euapi_curl_easy_setopt(curl, CURLOPT_COOKIEFILE, file_info.cookies);
-    }
-    else
-    {
-        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "aria2/1.37.0");
+        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/8.16.0");
         euapi_curl_easy_setopt(curl, CURLOPT_COOKIE, "");
-        // printf("user_agent[%s]\n", "aria2/1.37.0");
+    }
+    else if (file_info.referer[0] && file_info.cookiefile[0])
+    {
+        euapi_curl_easy_setopt(curl, CURLOPT_REFERER, file_info.referer);
+        euapi_curl_easy_setopt(curl, CURLOPT_COOKIEFILE, file_info.cookiefile);
     }
 }
 
@@ -413,7 +369,6 @@ get_name_from_cd(char const *const cd, char *oname)
     char const *const cdtag = "Content-disposition:";
     char const *const key = "filename=";
     char *val = NULL;
-
     // Example Content-Disposition: filename=name1367; charset=funny; option=strange
     val = strcasestr(cd, key);
     if (!val)
@@ -481,6 +436,19 @@ get_name_from_url(char const *url, char *oname)
     return 0;
 }
 
+const void
+strip_url_newline(void)
+{
+    if (file_info.url[strlen(file_info.url) - 2] == '\r')
+    {
+        file_info.url[strlen(file_info.url) - 2] = 0;
+    }
+    else if (file_info.url[strlen(file_info.url) - 1] == '\n')
+    {
+        file_info.url[strlen(file_info.url) - 1] = 0;
+    }
+}
+
 size_t
 curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
 {
@@ -491,16 +459,23 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     const char *lentag = "Content-Length: ";
     const char *lctag = "Location: ";
     dnld_params_t *dnld_params = (dnld_params_t *) userdata;
-    file_info.thread_num = 1;
+    if (SELECT_AUTO != file_info.thread_num)
+    {
+        file_info.thread_num = 1;
+    }
     /* Example: Ranges supports
      * Accept-Ranges: bytes
     */
+    if (strcasestr(hdr_str, " 307"))
+    {
+        dnld_params->ret = 307;
+    }
     if (strcasestr(hdr_str, "Accept-Ranges: bytes"))
     {
+        file_info.thread_num = SELECT_AUTO;
         printf("this server Accept-Ranges: bytes\n");
-        file_info.thread_num = 0;
     }
-    else if (strcasestr(hdr_str, "404"))
+    else if (strcasestr(hdr_str, " 404"))
     {
         return 0;
     }
@@ -511,14 +486,7 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
         {
             char re[NAMES_LEN + 1] = {0};
             _snprintf(file_info.url, URL_LEN, "%s", p);
-            if (file_info.url[strlen(file_info.url) - 2] == '\r')
-            {
-                file_info.url[strlen(file_info.url) - 2] = 0;
-            }
-            else if (file_info.url[strlen(file_info.url) - 1] == '\n')
-            {
-                file_info.url[strlen(file_info.url) - 1] = 0;
-            }
+            strip_url_newline();
             if ((p = strstr(file_info.url, ".")) != NULL)
             {
                 strncpy(re, file_info.url, p - file_info.url);
@@ -664,15 +632,15 @@ run_thread(void *pdata)
                 _snprintf(m_ranges, FILE_LEN, "%I64d-%I64d", pnode->szdown, pnode->endidx);
                 euapi_curl_easy_setopt(curl, CURLOPT_RANGE, m_ranges);
                 printf("\nthead: %u[%s] setup \n", pnode->tid, m_ranges);
-                curl_set_cookies(curl);
-                euapi_curl_easy_setopt(curl, CURLOPT_SHARE, pnode->share);
             }
             if (m_ranges)
             {
                 free(m_ranges);
             }
+            curl_set_cookies(curl);
+            euapi_curl_easy_setopt(curl, CURLOPT_SHARE, pnode->share);
             // 设置重定向的最大次数,301、302跳转跟随location
-            euapi_curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 3);
+            euapi_curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 4);
             euapi_curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
         #if defined(USE_ARES)
             euapi_curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
@@ -682,14 +650,14 @@ run_thread(void *pdata)
         #endif
             // 关掉CLOSE_WAIT
             euapi_curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
-            // enable all supported built-in compressions
-            // euapi_curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
             libcurl_set_ssl(curl);
             euapi_curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
         #if defined(APP_DEBUG)
             euapi_curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
+        #endif
+        #if defined(LOG_DEBUG) || defined(APP_DEBUG)
             euapi_curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
         #endif
             // 设置代理
@@ -723,15 +691,14 @@ run_thread(void *pdata)
 /* 获取要下载的远程文件的大小                                           */
 /************************************************************************/
 static bool
-get_file_lenth(const char *url, int64_t *file_len)
+get_file_lenth(const char *url, dnld_params_t *dnld_params)
 {
-    CURLcode res = CURLE_FAILED_INIT;
-    dnld_params_t dnld_params;
     CURL *handle = NULL;
+    CURLcode res = CURLE_FAILED_INIT;
     if ((handle = euapi_curl_easy_init()) != NULL)
     {
-        memset(&dnld_params, 0, sizeof(dnld_params));
         euapi_curl_easy_setopt(handle, CURLOPT_URL, url);
+        euapi_curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
         euapi_curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "");
         euapi_curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, "HEAD");
         euapi_curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, curl_header_parse);
@@ -742,31 +709,32 @@ get_file_lenth(const char *url, int64_t *file_len)
         // curl_set_cookies(handle);
         libcurl_set_ssl(handle);
         // 设置重定向的最大次数
-        euapi_curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 3L);
+        euapi_curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 4L);
         // 设置301、302跳转跟随location
         euapi_curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
         //不需要body, 只需要header头
         euapi_curl_easy_setopt(handle, CURLOPT_NOBODY, 1);
         euapi_curl_easy_setopt(handle, CURLOPT_HEADER, 1);
+        euapi_curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
         // 设置代理
         libcurl_set_proxy(handle);
         if ((res = euapi_curl_easy_perform(handle)) == CURLE_OK)
         {
-            if (dnld_params.file_len[0])
+            if (dnld_params->file_len[0])
             {
-                *file_len = _atoi64(dnld_params.file_len);
+                dnld_params->length = _atoi64(dnld_params->file_len);
             }
             else
             {
-                *file_len = 0;
+                dnld_params->length = 0;
             }
-            printf("file_len %I64d\n", *file_len);
+            printf("length %I64d\n", dnld_params->length);
         }
         else
         {
             const char *err_string = euapi_curl_easy_strerror(res);
             printf("%s[%s] error: %s\n", __FUNCTION__, url, err_string);
-            *file_len = 0;
+            dnld_params->length = 0;
         }
         euapi_curl_easy_cleanup(handle);
     }
@@ -1039,7 +1007,7 @@ init_download(const char *url, int64_t length)
                     return resume_download(url, length, sql_name);
                 }
             }
-        } // 长度未知时,不启用sql日志文件
+        } // 长度未知时,不启用日志文件
         if (!length || init_sql_logs(sql_name))
         {
             fp = _wfopen(file_info.names, L"wb");
@@ -1062,7 +1030,7 @@ init_download(const char *url, int64_t length)
             m_error = m_node[0].error;
             break;
         }
-        if (file_info.thread_num == 0)
+        if (file_info.thread_num == 0 || file_info.thread_num == SELECT_AUTO)
         {
             file_info.thread_num = get_cpu_works();
         }
@@ -1157,31 +1125,6 @@ init_download(const char *url, int64_t length)
         }
     }
     return (!m_error);
-}
-
-static bool
-thunder_lookup(void)
-{
-    bool m_down = false;
-    if (strlen(file_info.referer) > 1)
-    {
-        char cookies[COOKE_LEN + 1] = { 0 };
-        parse_baidu_cookies(cookies, COOKE_LEN);
-        m_down = thunder_download(file_info.url, file_info.referer, cookies);
-    }
-    else
-    {
-        m_down = thunder_download(file_info.url, "", "");
-    }
-    if (m_down)
-    {
-        printf("Call thunder download\n");
-        if (file_info.cookie_handle > 0)
-        {
-            CloseHandle(file_info.cookie_handle);
-        }
-    }
-    return m_down;
 }
 
 static bool
@@ -1519,6 +1462,9 @@ curl_task(int64_t length)
     {
         res = true;
     }
+#ifndef EUAPI_LINK
+    delete_temp_cookie();
+#endif
     DESTROY_LOCK(&g_mutex);
     return res;
 }
@@ -1550,7 +1496,7 @@ wmain(int argc, wchar_t **argv)
 #endif
     if (argn < 2 || _wcsicmp(wargv[1], L"--help") == 0 || _wcsicmp(wargv[1], L"--version") == 0)
     {
-        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.5.0\n",
+        printf("Usage: %s [-i URL] [-o SAVE_PATH] [-t THREAD_NUMS] [-r REBIND] [-e EXTRACT_PATH]\nversion: 1.6.0\n",
                "upcheck.exe");
         LocalFree(wargv);
         return UPCHECK_OK;
@@ -1590,6 +1536,16 @@ wmain(int argc, wchar_t **argv)
     }
 #endif
 #ifndef EUAPI_LINK
+    if (argn == 2 && _wcsicmp(wargv[1], L"-a2quit") == 0)
+    {
+        LocalFree(wargv);
+        if (libcurl_init(CURL_GLOBAL_DEFAULT) == 0)
+        {
+            ret = select_downloader(true);
+            libcurl_destory();
+        }
+        return ret;
+    }
     if (argn >= 5 && (_wcsicmp(wargv[1], L"-lua") == 0 || _wcsicmp(wargv[1], L"-msg") == 0))
     {
         intptr_t moz_hwnd = 0;
@@ -1640,6 +1596,7 @@ wmain(int argc, wchar_t **argv)
         else if (_wcsicmp(wargv[1], L"-chrome-install") == 0)
         {
             ret = chrome_install(wargv[2], wargv[3]);
+            libcurl_destory();
         }
         LocalFree(wargv);
         printf("chrome return %d\n", ret);
@@ -1661,62 +1618,9 @@ wmain(int argc, wchar_t **argv)
         LocalFree(wargv);
         wargv = NULL;
     }
-    if (file_info.use_thunder)
-    {
-        char  *command = NULL;
-        if (!ini_path_init())
-        {
-            return UPCHECK_INI_ERR;
-        }
-        if (ini_read_string("player", "command", &command, file_info.ini, true))
-        {   // 优先调用命令行参数
-            char dl[URL_LEN] = {0};
-            char *p1 = NULL,*p2 = NULL;
-            const char *key = "%s";
-            int len_t = (int)strlen(key);
-            p1 = strstr(command, key);
-            if (p1)
-            {
-                p1 += len_t;
-                p2 = strstr(p1, key);
-            }
-            if (p1 && p2)
-            {
-                p2 += len_t;
-                if (p2[1]=='"')
-                {
-                     p2[2] = '\0';
-                }
-                else
-                {
-                    p2[1] = '\0';
-                }
-                _snprintf(dl, URL_LEN, command, file_info.url, file_info.cookies);
-            }
-            else if (p1)
-            {
-                _snprintf(dl, URL_LEN, command, file_info.url);
-            }
-            else
-            {
-                _snprintf(dl, URL_LEN, command);
-            }
-            free(command);
-            printf("dl_command: %s\n", dl);
-            if (exec_ppv(dl, NULL, 0))
-            {
-                return UPCHECK_OK;
-            }
-        }
-        *file_info.ini = '\0';
-        if (thunder_lookup()) // 调用迅雷下载
-        {
-            return UPCHECK_OK;
-        }
-    }
     do
     {
-        int64_t length = 0;
+        dnld_params_t dt = {0};
         if (file_info.up || file_info.handle > 0) // 执行升级任务
         {
             update_task();
@@ -1730,6 +1634,15 @@ wmain(int argc, wchar_t **argv)
             printf("Can not load curl.dll\n");
             break;
         }
+    #ifndef EUAPI_LINK
+        if (file_info.use_thunder > 0)
+        {
+            if (UPCHECK_OK == select_downloader(false))
+            {
+                break;
+            }
+        }
+    #endif
         if (strlen(file_info.ini) > 1 || strlen(file_info.ini_uri) > 0) // 下载并解析ini文件
         {
             ret = init_resolver();
@@ -1769,18 +1682,24 @@ wmain(int argc, wchar_t **argv)
             printf("Is it already being downloaded?\n");
             break;
         }
-        if (!get_file_lenth(file_info.url, &length)) // 获取远程文件大小
+        if (!get_file_lenth(file_info.url, &dt)) // 获取远程文件大小
         {
             printf("get_file_lenth return false\n");
             *file_info.ini = '\0';
             ret = UPCHECK_LENTH_ERR;  //or UPCHECK_404_ERR
-            break;
+            if (dt.ret != 307)
+            {
+            #ifndef EUAPI_LINK
+                delete_temp_cookie();
+            #endif
+                break;
+            }
         }
-        if (length == 0 && file_info.thread_num >= 1)
+        if (dt.length == 0 && file_info.thread_num >= 1)
         {
             file_info.thread_num = 0;
         }
-        if (!curl_task(length)) // 开始下载任务
+        if (!curl_task(dt.length)) // 开始下载任务
         {
             ret = UPCHECK_TASK_ERR;
             break;
@@ -1802,11 +1721,8 @@ wmain(int argc, wchar_t **argv)
         ret = UPCHECK_OK;
     } while (0);
     libcurl_destory();
-    if (file_info.cookie_handle > 0)
-    {
-        CloseHandle(file_info.cookie_handle);
-    }
 #ifndef EUAPI_LINK
+    close_cookie_handle();
     if (!file_info.up && strlen(file_info.ini) > 1)
     {
         logs_update(ret);

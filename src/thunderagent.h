@@ -5,7 +5,8 @@
 extern "C" {
 #endif
 
-extern BOOL thunder_download(char *b_url, char *b_refer, char *b_cookies);
+extern int thunder_lookup(void);
+extern int thunder_download(char *b_url, char *b_refer, char *b_cookies);
 
 #if defined(__cplusplus)
 }

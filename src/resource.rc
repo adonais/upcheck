@@ -52,8 +52,8 @@ IDI_DIALOG ICON ICON_PATH
 //
 
 1 VERSIONINFO
-FILEVERSION     1,5,0,100
-PRODUCTVERSION  1,5,0,100
+FILEVERSION     1,6,0,100
+PRODUCTVERSION  1,6,0,100
 FILEFLAGSMASK   0x3fL
 BEGIN
   BLOCK "StringFileInfo"
@@ -62,12 +62,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "ZH_CN NetWork"
       VALUE "FileDescription", __CURRENT_APP_DESCRIPTION
-      VALUE "FileVersion", "1.5.0"
+      VALUE "FileVersion", "1.6.0"
       VALUE "InternalName", "upcheck"
       VALUE "LegalCopyright", "License: BSD 2\0"
       VALUE "OriginalFilename", "upcheck.exe"
       VALUE "ProductName", "upcheck"
-      VALUE "ProductVersion", "1.5.0"
+      VALUE "ProductVersion", "1.6.0"
     END
   END
 

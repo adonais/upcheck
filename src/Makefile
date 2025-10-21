@@ -61,6 +61,7 @@ OBJS = \
 !IF "$(EUAPI_LINK)" != "1"
     $(OBJD)\load_script.obj    \
     $(OBJD)\load_chrome.obj    \
+    $(OBJD)\manger.obj         \
 !ENDIF
     $(OBJD)\resource.res       \
 
@@ -94,22 +95,23 @@ $(BIND)\upcheck$(BITS).exe : $(OBJS) $(DEP) $(BIND)\7z.lib
     $(LD) /out:$@ $(OBJS) $(LDFLAGS) $(LIBS)
     -copy /y $@ $(BIND)\upcheck.exe
 
-$(OBJD)\ini_parser.obj  : ini_parser.c *.h
 $(OBJD)\upcheck.obj     : upcheck.c *.h
+$(OBJD)\ini_parser.obj  : ini_parser.c ini_parser.h
 $(OBJD)\urlcode.obj     : urlcode.c urlcode.h
-$(OBJD)\spinlock.obj    : spinlock.c spinlock.h
-$(OBJD)\extract7z.obj   : extract7z.c extract7z.h
-$(OBJD)\progressui.obj  : progressui.c progressui.h
-$(OBJD)\updates.obj     : updates.c updates.h
+$(OBJD)\spinlock.obj    : spinlock.c spinlock.h ini_parser.h
+$(OBJD)\extract7z.obj   : extract7z.c extract7z.h spinlock.h
+$(OBJD)\progressui.obj  : progressui.c progressui.h spinlock.h ini_parser.h
+$(OBJD)\updates.obj     : updates.c updates.h spinlock.h ini_parser.h
 !IF "$(DLL_INJECT)" == "1"
-$(OBJD)\setdll.obj      : setdll.c setdll.h
+$(OBJD)\setdll.obj      : setdll.c setdll.h spinlock.h
 !ENDIF
-$(OBJD)\thunderagent.obj: thunderagent.c thunderagent.h
-$(OBJD)\xml.obj         : xml.c xml.h
+$(OBJD)\thunderagent.obj: thunderagent.c thunderagent.h spinlock.h
+$(OBJD)\xml.obj         : xml.c xml.h  spinlock.h ini_parser.h
 $(OBJD)\sqlite3.obj     : sqlite3.c sqlite3.h
-$(OBJD)\cookies.obj     : cookies.c cookies.h
+$(OBJD)\cookies.obj     : cookies.c cookies.h sqlite3.h spinlock.h ini_parser.h
 !IF "$(EUAPI_LINK)" != "1"
-$(OBJD)\load_script.obj : load_script.c load_script.h
-$(OBJD)\load_script.obj : load_chrome.c load_chrome.h
+$(OBJD)\load_script.obj : load_script.c load_script.h spinlock.h ini_parser.h xml.h
+$(OBJD)\load_chrome.obj : load_chrome.c load_chrome.h spinlock.h ini_parser.h xml.h extract7z.h
+$(OBJD)\manger.obj      : manger.c manger.h ini_parser.h spinlock.h thunderagent.h
 !ENDIF
 $(OBJD)\resource.res    : resource.rc resource.h upcheck.exe.manifest

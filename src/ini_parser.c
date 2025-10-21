@@ -269,7 +269,6 @@ ini_utf16_utf8(const wchar_t *utf16, size_t *out_len)
 {
     int   m, size = 0;
     char *utf8 = NULL;
-
     size = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, NULL, 0, NULL, NULL);
     utf8 = size > 0 ? (char*) malloc(size+1) : 0;
     if (NULL == utf8 )

@@ -8,8 +8,6 @@
 extern "C" {
 #endif
 
-extern int  dump_cookies(const wchar_t *sql_path);
-extern int  parse_baidu_cookies(char *cookies, int len);
 extern void clean_sql_logs(void);
 extern bool init_sql_logs(const wchar_t *logs);
 extern int  get_ranges(sql_node *node);

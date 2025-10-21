@@ -26,6 +26,7 @@ ptr_curl_global_init euapi_curl_global_init = NULL;
 ptr_curl_easy_init euapi_curl_easy_init = NULL;
 ptr_curl_global_cleanup euapi_curl_global_cleanup = NULL;
 ptr_curl_easy_cleanup euapi_curl_easy_cleanup = NULL;
+ptr_curl_easy_reset euapi_curl_easy_reset = NULL;
 
 #ifdef LOG_DEBUG
 static char logfile_buf[MAX_PATH];
@@ -34,36 +35,55 @@ void __cdecl
 logmsg(const char * format, ...)
 {
     va_list args;
-    char    buffer[MAX_MESSAGE];
+    char    buffer[MAX_MESSAGE] = {0};
     va_start (args, format);
     if (strlen(logfile_buf) > 0)
     {
         FILE *pFile = NULL;
-        int  len = wvnsprintfA(buffer,MAX_MESSAGE,format, args);
-        if ( len > 0 && len < MAX_MESSAGE )
+        int  len = wvnsprintfA(buffer, MAX_MESSAGE, format, args);
+        if (len > 0 && len < MAX_MESSAGE)
         {
             buffer[len] = '\0';
-            if ( (pFile = fopen(logfile_buf,"a+")) != NULL )
+            if ((pFile = fopen(logfile_buf, "a+")) != NULL)
             {
-                fwrite(buffer,strlen(buffer),1,pFile);
+                fwrite(buffer, strlen(buffer), 1, pFile);
                 fclose(pFile);
             }
         }
     }
     va_end(args);
-    return;
 }
 
 void
 init_logs(void)
 {
-    if ( *logfile_buf == '\0' && GetEnvironmentVariableA("APPDATA",logfile_buf,MAX_PATH) > 0 )
+    if (*logfile_buf == '\0' && GetEnvironmentVariableA("APPDATA", logfile_buf, MAX_PATH) > 0)
     {
-        strncat(logfile_buf,"\\",MAX_PATH);
-        strncat(logfile_buf,"upcheck.log",MAX_PATH);
+        strncat(logfile_buf, "\\", MAX_PATH);
+        strncat(logfile_buf, "upcheck.log", MAX_PATH);
     }
 }
 #endif
+
+bool
+ini_path_init(void)
+{
+#if EUAPI_LINK
+    return true;
+#else
+    bool  ret = false;
+    WCHAR ini_path[MAX_PATH + 1] = {0};
+    if (*file_info.ini != '\0' && strlen(file_info.ini) > 10)
+    {
+        return false;
+    }
+    GetModuleFileNameW(NULL, ini_path, MAX_PATH);
+    PathRemoveFileSpecW(ini_path);
+    PathAppendW(ini_path, L"portable.ini");
+    ret = PathFileExistsW(ini_path);
+    return (ret && WideCharToMultiByte(CP_UTF8, 0, ini_path, -1, file_info.ini, MAX_PATH, NULL, NULL) > 0);
+#endif
+}
 
 void
 wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
@@ -72,14 +92,13 @@ wchr_replace(LPWSTR path)        /* 替换unix风格的路径符号 */
     intptr_t pos;
     do
     {
-        lp =  StrChrW(path,L'/');
+        lp = StrChrW(path, L'/');
         if (lp)
         {
-            pos = lp-path;
+            pos = lp - path;
             path[pos] = L'\\';
         }
-    } while (lp!=NULL);
-    return;
+    } while (lp != NULL);
 }
 
 bool
@@ -110,6 +129,24 @@ create_dir(LPCWSTR dir)
         CreateDirectoryW(tmp_name, NULL);
     }
     return (CreateDirectoryW(tmp_name, NULL)||GetLastError() == ERROR_ALREADY_EXISTS);
+}
+
+WCHAR *
+path_utf8_utf16(const char *path)
+{
+    size_t len = 0;
+    wchar_t *res = NULL;
+    wchar_t *u16 = ini_utf8_utf16(path, &len);
+    if (u16 && len < URL_LEN)
+    {
+        if ((res = (wchar_t *)calloc(URL_LEN, sizeof(wchar_t))))
+        {
+            _snwprintf(res, URL_LEN - 1, L"%s", u16);
+        }
+        free(u16);
+        return res;
+    }
+    return u16;
 }
 
 WCHAR *
@@ -147,26 +184,62 @@ move_file_wrapper(const WCHAR *srcfile, const WCHAR *dst, uint32_t flags)
 }
 
 bool
-path_combine(LPWSTR lpfile, int len)
+path_combine(LPWSTR lpfile, const int len)
 {
     int n = 1;
     if (NULL == lpfile || *lpfile == L' ')
     {
         return false;
     }
-    if (lpfile[1] != L':')
+    if (len > 0 && lpfile[1] != L':')
     {
-        WCHAR modname[MAX_PATH+1] = {0};
+        WCHAR modname[MAX_PATH + 1] = {0};
+        wchr_replace(lpfile);
         if (GetModuleFileNameW(NULL, modname, MAX_PATH) > 0)
         {
             WCHAR tmp_path[MAX_PATH] = {0};
             if (PathRemoveFileSpecW(modname) && PathCombineW(tmp_path, modname, lpfile))
             {
-                n = _snwprintf(lpfile, len, L"%s", tmp_path);
+                n = _snwprintf(lpfile, (size_t)len, L"%s", tmp_path);
             }
         }
     }
     return (n > 0 && n < len);
+}
+
+// 判断*pstr文件是否存在, *pstr必须是已分配的堆内存
+// 如果它是相对路径, 转换为绝对路径, 会重新分配内存
+bool
+utf8_path_exist(char **pstr)
+{
+    bool ret = false;
+    if (pstr && *pstr)
+    {
+        WCHAR *u16 = NULL;
+        if (strlen(*pstr) > 0 && (u16 = path_utf8_utf16(*pstr)) != NULL)
+        {
+            size_t len = wcslen(u16);
+            if (len < URL_LEN)
+            {
+                len = URL_LEN;
+            }
+            if (path_combine(u16, (const int)len))
+            {
+                char *tmp = NULL;
+                if (PathFileExistsW(u16))
+                {
+                    ret = true;
+                }
+                if ((*pstr)[1] != ':' && (tmp = ini_utf16_utf8(u16, NULL)) != NULL)
+                {
+                    free(*pstr);
+                    *pstr = tmp;
+                }
+            }
+            free(u16);
+        }
+    }
+    return ret;
 }
 
 int
@@ -529,9 +602,14 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
             si.wShowWindow = SW_HIDE;
             dw |= CREATE_NEW_PROCESS_GROUP;
         }
-        else
+        else if (flags == 1)
         {
             si.wShowWindow = SW_SHOWNOACTIVATE;
+        }
+        else
+        {
+            si.wShowWindow = SW_NORMAL;
+            dw |= CREATE_NEW_CONSOLE;
         }
         if(!CreateProcessW(NULL,
                           process,
@@ -626,8 +704,24 @@ url_decode(const char *input)
             *working++ = *input++;
         }
     }
-    *working = 0;  //null terminate
+    printf("working - 1 = [0x%02x]\n", *(working - 1));
+    //*working = 0;  //null terminate
     return output;
+}
+
+wchar_t *
+u16_dec_path(const wchar_t *path)
+{
+    char *dec_u8 = NULL;
+    wchar_t *dec_path = NULL;
+    char *u8_path = ini_utf16_utf8(path, NULL);
+    if (u8_path && (dec_u8 = url_decode(u8_path)) != NULL)
+    {
+        dec_path = ini_utf8_utf16(dec_u8, NULL);
+    }
+    ini_safe_free(dec_u8);
+    ini_safe_free(u8_path);
+    return dec_path;
 }
 
 WCHAR *
@@ -645,9 +739,49 @@ get_process_path(WCHAR *path, const int len)
     return path;
 }
 
+size_t
+get_first_line(char **lineptr, const WCHAR *path)
+{
+    size_t len = 0;
+    FILE * stream = _wfopen(path, L"rb");
+    if (stream)
+    {
+        int trash = 0;
+        char *buf = NULL;
+        while (!feof(stream))
+        {
+            trash = fgetc(stream);
+            if (trash == '\n')
+            {
+                break;
+            }
+            ++len;
+        }
+        fseek(stream, 0, SEEK_SET);
+        if (len > 0 && (buf = (char *)malloc(len + 1)) != NULL)
+        {
+            if ((len = fread(buf, 1, len, stream)) > 0)
+            {
+                buf[len] = 0;
+                *lineptr = buf;
+            }
+        }
+        fclose(stream);
+    }
+    if (!len)
+    {
+        *lineptr = _strdup("");
+    }
+    return len;
+}
+
 CURLcode
 libcurl_init(long flags)
 {
+    if (euapi_curl_global_init)
+    {
+        return CURLE_OK;
+    }
 #if defined(EUAPI_LINK) && EUAPI_LINK > 0
     WCHAR path[MAX_PATH + 1] = {0};
     WCHAR main_path[MAX_PATH + 1] = {0};
@@ -680,6 +814,7 @@ libcurl_init(long flags)
     euapi_curl_share_init = (ptr_curl_share_init)GetProcAddress(curl_symbol,"curl_share_init");
     euapi_curl_share_setopt = (ptr_curl_share_setopt)GetProcAddress(curl_symbol,"curl_share_setopt");
     euapi_curl_share_cleanup = (ptr_curl_share_cleanup)GetProcAddress(curl_symbol,"curl_share_cleanup");
+    euapi_curl_easy_reset = (ptr_curl_easy_reset)GetProcAddress(curl_symbol,"curl_easy_reset");
 #else
     euapi_curl_global_init = curl_global_init;
     euapi_curl_easy_init = curl_easy_init;
@@ -694,10 +829,11 @@ libcurl_init(long flags)
     euapi_curl_share_init = curl_share_init;
     euapi_curl_share_setopt = curl_share_setopt;
     euapi_curl_share_cleanup = curl_share_cleanup;
+    euapi_curl_easy_reset = curl_easy_reset;
 #endif
     if (euapi_curl_global_init && euapi_curl_easy_init && euapi_curl_global_cleanup && euapi_curl_easy_setopt && euapi_curl_easy_perform &&
         euapi_curl_easy_cleanup && euapi_curl_slist_append && euapi_curl_slist_free_all && euapi_curl_easy_getinfo && euapi_curl_easy_strerror &&
-        euapi_curl_share_init && euapi_curl_share_setopt && euapi_curl_share_cleanup)
+        euapi_curl_share_init && euapi_curl_share_setopt && euapi_curl_share_cleanup && euapi_curl_easy_reset)
     {
         return euapi_curl_global_init(flags);
     }
@@ -707,14 +843,14 @@ libcurl_init(long flags)
 void
 libcurl_destory(void)
 {
-    if (curl_symbol)
+    if (euapi_curl_global_cleanup)
     {
-        if (euapi_curl_global_cleanup)
+        euapi_curl_global_cleanup();
+        if (curl_symbol)
         {
-            euapi_curl_global_cleanup();
+            FreeLibrary(curl_symbol);
+            curl_symbol = NULL;
         }
-        FreeLibrary(curl_symbol);
-        curl_symbol = NULL;
         euapi_curl_global_init = NULL;
         euapi_curl_easy_init = NULL;
         euapi_curl_global_cleanup = NULL;
@@ -728,6 +864,7 @@ libcurl_destory(void)
         euapi_curl_share_init = NULL;
         euapi_curl_share_setopt = NULL;
         euapi_curl_share_cleanup = NULL;
+        euapi_curl_easy_reset = NULL;
     }
 }
 
@@ -1053,24 +1190,24 @@ strpath_copy(wchar_t *s1, const wchar_t *s2)
 }
 
 bool
-getw_cwd(LPWSTR lpstrName, DWORD wlen)
+getw_cwd(LPWSTR lpstr, DWORD wlen)
 {
     int   i = 0;
-    WCHAR lpFullPath[MAX_PATH+1] = {0};
-    if (GetModuleFileNameW(NULL, lpFullPath, MAX_PATH) > 0)
+    WCHAR fullpath[MAX_PATH+1] = {0};
+    if (GetModuleFileNameW(NULL, fullpath, MAX_PATH) > 0)
     {
-        for(i = (int)wcslen(lpFullPath); i>0; i--)
+        for(i = (int)wcslen(fullpath); i>0; i--)
         {
-            if (lpFullPath[i] == L'\\')
+            if (fullpath[i] == L'\\')
             {
-                lpFullPath[i] = L'\0';
+                fullpath[i] = L'\0';
                 break;
             }
         }
         if (i > 0)
         {
-            i = _snwprintf(lpstrName, wlen, L"%s", lpFullPath);
+            i = _snwprintf(lpstr, wlen, L"%s", fullpath);
         }
     }
-    return (i>0 && i<(int)wlen);
+    return (i > 0 && i < (int)wlen);
 }
