@@ -14,10 +14,14 @@ CFLAGS = $(CFLAGS) $(DEBUG_L)
 CFLAGS = $(CFLAGS) $(RELEASE)
 !ENDIF
 OBJS = \
+  $(OBJD)\lib7z\7zCrcOpt.obj   \
+  $(OBJD)\lib7z\XzCrc64Opt.obj \
+  $(OBJD)\lib7z\Sha1Opt.obj    \
+  $(OBJD)\lib7z\Sha256Opt.obj  \
+  $(OBJD)\lib7z\AesOpt.obj     \
   $(OBJD)\lib7z\7zAlloc.obj    \
   $(OBJD)\lib7z\7zBuf.obj      \
   $(OBJD)\lib7z\7zCrc.obj      \
-  $(OBJD)\lib7z\7zCrcOpt.obj   \
   $(OBJD)\lib7z\7zFile.obj     \
   $(OBJD)\lib7z\7zDec.obj      \
   $(OBJD)\lib7z\7zArcIn.obj    \

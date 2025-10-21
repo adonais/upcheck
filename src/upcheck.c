@@ -1529,11 +1529,6 @@ wmain(int argc, wchar_t **argv)
         LocalFree(wargv);
         return ret;
     }
-    if (argn >= 2 &&  _wcsicmp(wargv[1], L"-7") == 0)
-    {
-        LocalFree(wargv);
-        return exec_7z(argc, argv);
-    }
 #endif
 #ifndef EUAPI_LINK
     if (argn == 2 && _wcsicmp(wargv[1], L"-a2quit") == 0)

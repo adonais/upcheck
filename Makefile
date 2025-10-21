@@ -12,10 +12,8 @@ all:
 !ENDIF
 !IF "$(DLL_INJECT)" == "1"
 	@if exist "$(MAKEDIR)\src\detours\Makefile" cd "$(MAKEDIR)\src\detours" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
-	@if exist "$(MAKEDIR)\src\lib7z\CPP\7zip\Bundles\Alone" cd "$(MAKEDIR)\src\lib7z\CPP\7zip\Bundles\Alone" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
-!ELSE
-	@if exist "$(MAKEDIR)\src\lib7z\Makefile" cd "$(MAKEDIR)\src\lib7z" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
 !ENDIF
+	@if exist "$(MAKEDIR)\src\lib7z\Makefile" cd "$(MAKEDIR)\src\lib7z" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
 	cd "$(MAKEDIR)\src"
 	@$(MAKE) /NOLOGO /$(MAKEFLAGS)
 	cd "$(MAKEDIR)"
@@ -28,7 +26,6 @@ clean:
 	@if exist "$(MAKEDIR)\src\libcurl\Makefile" cd "$(MAKEDIR)\src\libcurl" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\luajit\Makefile" cd "$(MAKEDIR)\src\luajit" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\detours\Makefile" cd "$(MAKEDIR)\src\detours" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
-	@if exist "$(MAKEDIR)\src\lib7z\CPP\7zip\Bundles\Alone" cd "$(MAKEDIR)\src\lib7z\CPP\7zip\Bundles\Alone" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\lib7z\Makefile" cd "$(MAKEDIR)\src\lib7z" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	cd "$(MAKEDIR)\src"
 	@$(MAKE) /NOLOGO /$(MAKEFLAGS) clean
