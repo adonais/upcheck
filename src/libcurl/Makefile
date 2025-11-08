@@ -128,7 +128,7 @@ OBJS = \
     $(OBJD)\libcurl\curl_fnmatch.obj            \
     $(OBJD)\libcurl\fileinfo.obj                \
     $(OBJD)\libcurl\ftplistparser.obj           \
-    $(OBJD)\libcurl\krb5.obj                    \
+    $(OBJD)\libcurl\multi_ntfy.obj              \
     $(OBJD)\libcurl\memdebug.obj                \
     $(OBJD)\libcurl\http_chunks.obj             \
     $(OBJD)\libcurl\cshutdn.obj                 \
@@ -190,7 +190,6 @@ OBJS = \
     $(OBJD)\libcurl\rand.obj                    \
     $(OBJD)\libcurl\fake_addrinfo.obj           \
     $(OBJD)\libcurl\headers.obj                 \
-    $(OBJD)\libcurl\fopen.obj                   \
     $(OBJD)\libcurl\easyoptions.obj             \
     $(OBJD)\libcurl\easygetopt.obj              \
     $(OBJD)\libcurl\conncache.obj               \
@@ -205,7 +204,7 @@ OBJS = \
     $(OBJD)\libcurl\http2.obj                   \
     $(OBJD)\libcurl\smb.obj                     \
     $(OBJD)\libcurl\curl_endian.obj             \
-    $(OBJD)\libcurl\curl_des.obj                \
+    $(OBJD)\libcurl\curl_fopen.obj              \
     $(OBJD)\libcurl\system_win32.obj            \
     $(OBJD)\libcurl\mime.obj                    \
     $(OBJD)\libcurl\sha256.obj                  \
@@ -236,6 +235,8 @@ OBJS = \
     $(OBJD)\libcurl\curlx\winapi.obj            \
     $(OBJD)\libcurl\curlx\inet_ntop.obj         \
     $(OBJD)\libcurl\curlx\wait.obj              \
+    $(OBJD)\libcurl\curlx\fopen.obj             \
+    $(OBJD)\libcurl\curlx\strerr.obj            \
     $(OBJD)\libcurl\vauth\vauth.obj             \
     $(OBJD)\libcurl\vauth\cleartext.obj         \
     $(OBJD)\libcurl\vauth\cram.obj              \
@@ -257,7 +258,6 @@ OBJS = \
     $(OBJD)\libcurl\vssh\curl_path.obj          \
     $(OBJD)\libcurl\vssh\libssh.obj             \
     $(OBJD)\libcurl\vssh\libssh2.obj            \
-    $(OBJD)\libcurl\vssh\wolfssh.obj            \
     $(OBJD)\libcurl\vtls\gtls.obj               \
     $(OBJD)\libcurl\vtls\hostcheck.obj          \
     $(OBJD)\libcurl\vtls\keylog.obj             \
@@ -273,6 +273,7 @@ OBJS = \
     $(OBJD)\libcurl\vtls\wolfssl.obj            \
     $(OBJD)\libcurl\vtls\x509asn1.obj           \
     $(OBJD)\libcurl\vtls\cipher_suite.obj       \
+    $(OBJD)\libcurl\vtls\apple.obj              \
 
 # --------------------------------
 # Only our custom inference rules

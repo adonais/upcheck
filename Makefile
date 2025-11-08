@@ -6,7 +6,7 @@ all:
 	@if exist "$(MAKEDIR)\src\zlib\Makefile" cd "$(MAKEDIR)\src\zlib" && $(MAKE)  /NOLOGO /$(MAKEFLAGS)
 !IF "$(EUAPI_LINK)" != "1"
 	@if exist "$(MAKEDIR)\src\libcares\Makefile" cd "$(MAKEDIR)\src\libcares" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
-	@if exist "$(MAKEDIR)\src\libnhgttp2\Makefile" cd "$(MAKEDIR)\src\libngttp2" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
+	@if exist "$(MAKEDIR)\src\libnghttp2\Makefile" cd "$(MAKEDIR)\src\libnghttp2" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
 	@if exist "$(MAKEDIR)\src\libcurl\Makefile" cd "$(MAKEDIR)\src\libcurl" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
 	@if exist "$(MAKEDIR)\src\luajit\Makefile" cd "$(MAKEDIR)\src\luajit" && $(MAKE) /NOLOGO /$(MAKEFLAGS)
 !ENDIF
@@ -22,7 +22,7 @@ clean:
 	cd "$(MAKEDIR)"
 	@if exist "$(MAKEDIR)\src\zlib\Makefile" cd "$(MAKEDIR)\src\zlib" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\libcares\Makefile" cd "$(MAKEDIR)\src\libcares" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
-	@if exist "$(MAKEDIR)\src\libnghttp2\Makefile" cd "$(MAKEDIR)\src\libngttp2" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
+	@if exist "$(MAKEDIR)\src\libnghttp2\Makefile" cd "$(MAKEDIR)\src\libnghttp2" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\libcurl\Makefile" cd "$(MAKEDIR)\src\libcurl" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\luajit\Makefile" cd "$(MAKEDIR)\src\luajit" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
 	@if exist "$(MAKEDIR)\src\detours\Makefile" cd "$(MAKEDIR)\src\detours" && $(MAKE) /NOLOGO /$(MAKEFLAGS) clean
