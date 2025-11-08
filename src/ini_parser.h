@@ -69,6 +69,7 @@ extern int  __stdcall inicache_read_int(const char *sec, const char *key, ini_ca
 extern int  __stdcall ini_read_int(const char *sec, const char *key, const char *path, const bool isfile);
 extern bool __stdcall inicache_sort_section(const char *sec, ini_cache *ini);
 extern bool __stdcall ini_sort_section(const char *sec, const char *path);
+extern bool __stdcall ini_section_exists(const char *value, const char *path);
 extern void __stdcall inicache_foreach_section(char (*lpdata)[LEN_SECTION], const int line, ini_cache *ini);
 extern void __stdcall ini_foreach_section(char (*lpdata)[LEN_SECTION], const int line, const char *path, const bool isfile);
 extern char* __stdcall ini_utf16_utf8(const wchar_t *utf16, size_t *out_len);

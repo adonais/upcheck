@@ -576,11 +576,11 @@ lua_script_loader(wchar_t **parg, const int len)
         {
             break;
         }
-        if (!(path = (wchar_t *)calloc(URL_LEN, sizeof(wchar_t))))
+        if (!(path = (wchar_t *)calloc(BUFF_LEN, sizeof(wchar_t))))
         {
             break;
         }
-        if (!get_process_path(path, URL_LEN - 1) || *path == 0)
+        if (!get_process_path(path, BUFF_LEN - 1) || *path == 0)
         {
             break;
         }
@@ -606,11 +606,11 @@ lua_script_loader(wchar_t **parg, const int len)
         }
         if (enviroment_variables_set(L"UPCHECK_MOZ_BIN", path, VARIABLES_RESET))
         {
-            wcsncat(path, L";", URL_LEN);
-            wcsncat(path, chrome, URL_LEN);
-            wcsncat(path, L";", URL_LEN);
-            wcsncat(path, chrome, URL_LEN);
-            wcsncat(path, L"\\lua", URL_LEN);
+            wcsncat(path, L";", BUFF_LEN);
+            wcsncat(path, chrome, BUFF_LEN);
+            wcsncat(path, L";", BUFF_LEN);
+            wcsncat(path, chrome, BUFF_LEN);
+            wcsncat(path, L"\\lua", BUFF_LEN);
         }
         if (!enviroment_variables_set(L"PATH", path, VARIABLES_APPEND))
         {
@@ -628,17 +628,17 @@ lua_script_loader(wchar_t **parg, const int len)
         {
             break;
         }
-        if (!(filename = (char *)calloc(URL_LEN, 1)))
+        if (!(filename = (char *)calloc(BUFF_LEN, 1)))
         {
             break;
         }
         if (name[1] != ':')
         {
-            _snprintf(filename, URL_LEN - 1, "%s\\lua\\%s", dec_chrome, dec_name);
+            _snprintf(filename, BUFF_LEN - 1, "%s\\lua\\%s", dec_chrome, dec_name);
         }
         else
         {
-            _snprintf(filename, URL_LEN - 1, "%s", dec_name);
+            _snprintf(filename, BUFF_LEN - 1, "%s", dec_name);
         }
         status = luax_open(filename, &parg[2], len - 2);
         printf("lua status = [%d]\n", status);

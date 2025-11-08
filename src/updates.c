@@ -6,9 +6,9 @@
 #include "spinlock.h"
 
 static int g_directory_count = 0;
-static wchar_t update_src_path[URL_LEN];
-static wchar_t update_fn_erase[URL_LEN];
-static wchar_t update_dst_path[2][URL_LEN];
+static wchar_t update_src_path[BUFF_LEN];
+static wchar_t update_fn_erase[BUFF_LEN];
+static wchar_t update_dst_path[2][BUFF_LEN];
 
 static int
 update_deleted(LPCWSTR srcfile)
@@ -60,7 +60,7 @@ update_file_callback(LPCWSTR srcfile)
             return 0;
         }
         strpath_copy(name, p);
-        if (name[0] && (dst = (wchar_t *)calloc(URL_LEN, sizeof(wchar_t))) != NULL)
+        if (name[0] && (dst = (wchar_t *)calloc(BUFF_LEN, sizeof(wchar_t))) != NULL)
         {   // iceweasel包含App目录, 特殊处理
             if (_wcsicmp(name, L"App") == 0)
             {
@@ -73,16 +73,16 @@ update_file_callback(LPCWSTR srcfile)
             }
             if (_wcsicmp(name, L"readme.txt") == 0)
             {
-                _snwprintf(dst, URL_LEN - 1, L"%s\\%s", update_dst_path[1], p);
+                _snwprintf(dst, BUFF_LEN - 1, L"%s\\%s", update_dst_path[1], p);
             }
             else if (_wcsicmp(name, L"erased_lists.bat") == 0)
             {
-                _snwprintf(dst, URL_LEN - 1, L"%s\\%s", update_dst_path[1], p);
-                _snwprintf(update_fn_erase, URL_LEN - 1, L"%s", dst);
+                _snwprintf(dst, BUFF_LEN - 1, L"%s\\%s", update_dst_path[1], p);
+                _snwprintf(update_fn_erase, BUFF_LEN - 1, L"%s", dst);
             }
             else
             {
-                _snwprintf(dst, URL_LEN - 1, L"%s\\%s", update_dst_path[0], p);
+                _snwprintf(dst, BUFF_LEN - 1, L"%s\\%s", update_dst_path[0], p);
             }
             if (!move_file_wrapper(srcfile, dst, MOVEFILE_COPY_ALLOWED|MOVEFILE_REPLACE_EXISTING))
             {
@@ -113,11 +113,11 @@ do_update(LPCWSTR src, LPCWSTR dst)
 {
     int ret = 1;
     // 保存源路径, 用于目标路径拼接
-    _snwprintf(update_src_path, URL_LEN - 1, L"%s", src);
+    _snwprintf(update_src_path, BUFF_LEN - 1, L"%s", src);
     // 进程所在目录
-    _snwprintf(update_dst_path[0], URL_LEN - 1, L"%s", dst);
+    _snwprintf(update_dst_path[0], BUFF_LEN - 1, L"%s", dst);
     // 进程所在的上一级目录
-    _snwprintf(update_dst_path[1], URL_LEN - 1, L"%s", dst);
+    _snwprintf(update_dst_path[1], BUFF_LEN - 1, L"%s", dst);
     PathRemoveFileSpecW(update_dst_path[1]);
     if (do_file_copy(src, update_directory_callback, false) == 0)
     {
@@ -132,8 +132,8 @@ int
 update_thread(void *p)
 {
     // 准备复制更新文件到file_info.process所在目录
-    WCHAR dst[URL_LEN] = {0};
-    wcsncpy(dst, file_info.process, URL_LEN - 1);
+    WCHAR dst[BUFF_LEN] = {0};
+    wcsncpy(dst, file_info.process, BUFF_LEN - 1);
     PathRemoveFileSpecW(dst);
     if (do_update(file_info.unzip_dir, dst) != 0)
     {

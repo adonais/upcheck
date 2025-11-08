@@ -31,7 +31,8 @@
 #define NAMES_LEN   64
 #define VALUE_LEN   128
 #define COOKE_LEN   512
-#define URL_LEN     1024
+#define BUFF_LEN    1024
+#define URL_LEN     1024*2
 #define MD5_DIGEST_LENGTH 16
 
 #if EUAPI_LINK
@@ -193,6 +194,7 @@ extern bool getw_cwd(LPWSTR lpstrName, DWORD wlen);
 extern size_t get_first_line(char **lineptr, const WCHAR *path);
 extern bool utf8_path_exist(char **pstr);
 extern bool ini_path_init(void);
+extern char *path_add_quotes(const char *path);
 
 #ifdef __cplusplus
 }

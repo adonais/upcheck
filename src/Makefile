@@ -62,6 +62,7 @@ OBJS = \
     $(OBJD)\load_script.obj    \
     $(OBJD)\load_chrome.obj    \
     $(OBJD)\manger.obj         \
+    $(OBJD)\integration.obj    \
 !ENDIF
     $(OBJD)\resource.res       \
 
@@ -113,5 +114,6 @@ $(OBJD)\cookies.obj     : cookies.c cookies.h sqlite3.h spinlock.h ini_parser.h
 $(OBJD)\load_script.obj : load_script.c load_script.h spinlock.h ini_parser.h xml.h
 $(OBJD)\load_chrome.obj : load_chrome.c load_chrome.h spinlock.h ini_parser.h xml.h extract7z.h
 $(OBJD)\manger.obj      : manger.c manger.h ini_parser.h spinlock.h thunderagent.h
+$(OBJD)\integration.obj : integration.c integration.h ini_parser.h spinlock.h thunderagent.h load_chrome.h
 !ENDIF
 $(OBJD)\resource.res    : resource.rc resource.h upcheck.exe.manifest

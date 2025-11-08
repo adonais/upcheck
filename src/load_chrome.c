@@ -8,8 +8,8 @@
 #include "xml.h"
 #include "extract7z.h"
 
-static wchar_t file_src_path[URL_LEN];
-static wchar_t file_dst_path[2][URL_LEN];
+static wchar_t file_src_path[BUFF_LEN];
+static wchar_t file_dst_path[2][BUFF_LEN];
 
 static int
 chrome_file_callback(LPCWSTR srcfile)
@@ -22,16 +22,16 @@ chrome_file_callback(LPCWSTR srcfile)
     {
         p += wcslen(file_src_path) + 1;
         strpath_copy(name, p);
-        if (name[0] && (dst = (wchar_t *)calloc(URL_LEN, sizeof(wchar_t))) != NULL)
+        if (name[0] && (dst = (wchar_t *)calloc(BUFF_LEN, sizeof(wchar_t))) != NULL)
         {
             p += wcslen(name);
             if (_wcsicmp(name, L"App") == 0)
             {
-                _snwprintf(dst, URL_LEN - 1, L"%s%s", file_dst_path[0], p);
+                _snwprintf(dst, BUFF_LEN - 1, L"%s%s", file_dst_path[0], p);
             }
             else if (_wcsicmp(name, L"Profiles") == 0)
             {
-                _snwprintf(dst, URL_LEN - 1, L"%s%s", file_dst_path[1], p);
+                _snwprintf(dst, BUFF_LEN - 1, L"%s%s", file_dst_path[1], p);
             }
             if (_wcsicmp(name, L"update.log") == 0)
             {
@@ -56,9 +56,9 @@ chrome_file_callback(LPCWSTR srcfile)
 static int
 chrome_update(const wchar_t *bin, const wchar_t *profd, const wchar_t *temp)
 {
-    _snwprintf(file_src_path, URL_LEN - 1, L"%s", temp);
-    _snwprintf(file_dst_path[0], URL_LEN - 1, L"%s", bin);
-    _snwprintf(file_dst_path[1], URL_LEN - 1, L"%s\\chrome", profd);
+    _snwprintf(file_src_path, BUFF_LEN - 1, L"%s", temp);
+    _snwprintf(file_dst_path[0], BUFF_LEN - 1, L"%s", bin);
+    _snwprintf(file_dst_path[1], BUFF_LEN - 1, L"%s\\chrome", profd);
     return do_file_copy(temp, chrome_file_callback, true);
 }
 
@@ -69,7 +69,6 @@ chrome_download(const wchar_t *bin, xml_buffer *pbuf)
     char *ini = NULL;
     char *url = NULL;
     wchar_t *profile = NULL;
-    char md5_str[MD5_DIGEST_LENGTH * 2 + 1] = {0};
     do
     {
         if (!bin || !pbuf)
@@ -92,7 +91,7 @@ chrome_download(const wchar_t *bin, xml_buffer *pbuf)
         {
             break;
         }
-        if (!ini_read_string("chrome", "url", &url, ini, true))
+        if (!ini_read_string("chrome", "uc_url", &url, ini, true))
         {
             url = _strdup("https://sourceforge.net/projects/libportable/files/Iceweasel/userchrome.7z/download");
         }
@@ -104,28 +103,11 @@ chrome_download(const wchar_t *bin, xml_buffer *pbuf)
     return ret;
 }
 
-static wchar_t *
-chrome_dec_path(const wchar_t *path)
-{
-    char *dec_u8 = NULL;
-    wchar_t *dec_path = NULL;
-    char *u8_path = ini_utf16_utf8(path, NULL);
-    if (u8_path && (dec_u8 = url_decode(u8_path)) != NULL)
-    {
-        dec_path = path_utf8_utf16(dec_u8);
-    }
-    ini_safe_free(dec_u8);
-    ini_safe_free(u8_path);
-    return dec_path;
-}
-
 int
 chrome_install(const wchar_t *bin, const wchar_t *profd)
 {
     int ret = -1;
     wchar_t *temp = NULL;
-    wchar_t *dec_bin = NULL;
-    wchar_t *dec_profd = NULL;
     xml_buffer xbuf = {0};
     do
     {
@@ -133,22 +115,14 @@ chrome_install(const wchar_t *bin, const wchar_t *profd)
         {
             break;
         }
-        if (!(temp = (wchar_t *)calloc(URL_LEN + 1, sizeof(wchar_t))))
+        if (!(temp = (wchar_t *)calloc(BUFF_LEN + 1, sizeof(wchar_t))))
         {
             break;
         }
-        if (!(dec_bin = chrome_dec_path(bin)))
-        {
-            break;
-        }
-        if (!(dec_profd = chrome_dec_path(profd)))
-        {
-            break;
-        }
-        if ((ret = chrome_download(dec_bin, &xbuf)) == 0)
+        if ((ret = chrome_download(bin, &xbuf)) == 0)
         {
             time_t cc = time(NULL);
-            _snwprintf(temp, URL_LEN, L"%s\\%I64d", dec_profd, cc);
+            _snwprintf(temp, BUFF_LEN, L"%s\\ch%I64d", profd, cc);
             if (!create_dir(temp))
             {
                 ret = 1;
@@ -159,12 +133,10 @@ chrome_install(const wchar_t *bin, const wchar_t *profd)
                 ret = 1;
                 break;
             }
-            ret = chrome_update(dec_bin, dec_profd, temp);
+            ret = chrome_update(bin, profd, temp);
         }
     } while(0);
     ini_safe_free(temp);
-    ini_safe_free(dec_bin);
-    ini_safe_free(dec_profd);
     ini_safe_free(xbuf.str);
     return ret;
 }
@@ -187,11 +159,11 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
         {
             break;
         }
-        if (!(path = chrome_dec_path(bin)))
+        if (!(path = path_utf16_clone(bin)))
         {
             break;
         }
-        if (!(mjs = chrome_dec_path(profd)))
+        if (!(mjs = path_utf16_clone(profd)))
         {
             break;
         }
@@ -199,7 +171,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
         {
             break;
         }
-        wcsncat(path, L"\\defaults\\pref\\autoconfig.js", URL_LEN);
+        wcsncat(path, L"\\defaults\\pref\\autoconfig.js", BUFF_LEN);
         if (!uncheck)
         {
             if (!PathFileExistsW(path))
@@ -216,7 +188,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
                 aprefs = true;
             }
             ret =  (aprefs || prefs ? 1 : 0);
-            _snwprintf(path, URL_LEN, L"%s\\Iceweasel.cfg", clone);
+            _snwprintf(path, BUFF_LEN, L"%s\\Iceweasel.cfg", clone);
             if (!PathFileExistsW(path))
             {
                 PathRemoveFileSpecW(path);
@@ -232,7 +204,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
             }
             ret =  (acfg || cfg ? ret : 0);
         }
-        wcsncat(mjs, L"\\chrome\\userChrome.js", URL_LEN);
+        wcsncat(mjs, L"\\chrome\\userChrome.js", BUFF_LEN);
         if (!uncheck)
         {
             if (!PathFileExistsW(mjs))
@@ -249,7 +221,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
             if (!(acfg || cfg || aprefs || prefs || chrome))
             {   // 测试目录是否可写入
                 FILE *fd = NULL;
-                wcsncat(path, L".tmp", URL_LEN);
+                wcsncat(path, L".tmp", BUFF_LEN);
                 if (!(fd = _wfopen(path, L"w+b")))
                 {
                     ret = -1;
@@ -262,18 +234,9 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
                     break;
                 }
             }
-            if (aprefs)
-            {
-                _snwprintf(path, URL_LEN, L"%s\\defaults\\pref\\autoconfig.js", clone);
-                if (!DeleteFileW(path))
-                {
-                    ret = -1;
-                    break;
-                }
-            }
             if (prefs)
             {
-                _snwprintf(path, URL_LEN, L"%s\\defaults\\pref\\config-prefs.js", clone);
+                _snwprintf(path, BUFF_LEN, L"%s\\defaults\\pref\\config-prefs.js", clone);
                 if (!DeleteFileW(path))
                 {
                     ret = -1;
@@ -282,7 +245,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
             }
             if (chrome)
             {
-                _snwprintf(path, URL_LEN, L"%s.old", mjs);
+                _snwprintf(path, BUFF_LEN, L"%s.old", mjs);
                 if (!MoveFileExW(mjs, path, MOVEFILE_COPY_ALLOWED|MOVEFILE_REPLACE_EXISTING))
                 {
                     ret = -1;
@@ -293,19 +256,19 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
         else if (uncheck)
         {
             ret = 0;
-            _snwprintf(path, URL_LEN, L"%s\\defaults\\pref\\autoconfig.js", clone);
+            _snwprintf(path, BUFF_LEN, L"%s\\defaults\\pref\\autoconfig.js", clone);
             if (PathFileExistsW(path))
             {
                 ret = DeleteFileW(path) ? 0 : -1;
             }
-            _snwprintf(path, URL_LEN, L"%s\\defaults\\pref\\config-prefs.js", clone);
+            _snwprintf(path, BUFF_LEN, L"%s\\Iceweasel.cfg", clone);
             if (PathFileExistsW(path))
             {
                 ret = DeleteFileW(path) ? 0 : -1;
             }
             if (PathFileExistsW(mjs))
             {
-                _snwprintf(path, URL_LEN, L"%s.old", mjs);
+                _snwprintf(path, BUFF_LEN, L"%s.old", mjs);
                 ret = MoveFileExW(mjs, path, MOVEFILE_COPY_ALLOWED|MOVEFILE_REPLACE_EXISTING) ? 0 : -1;
             }
         }

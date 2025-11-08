@@ -24,6 +24,7 @@
 #include "load_script.h"
 #include "load_chrome.h"
 #include "manger.h"
+#include "integration.h"
 #endif
 
 #if !defined(EUAPI_LINK)
@@ -155,6 +156,7 @@ path_parsing(LPCWSTR save_path)
                     wcsncat(tmp_path, L"\\", MAX_PATH);
                 }
                 wcsncat(tmp_path, save_path, MAX_PATH);
+                _snwprintf(file_info.names, MAX_PATH, L"%s", tmp_path);
             }
         }
         return;
@@ -244,7 +246,9 @@ init_command_data(const int args, const wchar_t **pv)
                 if (file_info.url[0])
                 {
                     WideCharToMultiByte(CP_UTF8, 0, pv[i + 1], -1, file_info.referer, MAX_PATH, NULL, NULL);
+                #ifdef LOG_DEBUG
                     printf("referer = [%s]\n", file_info.referer);
+                #endif
                 }
             } // 解压目录
             else if (_wcsicmp(pv[i], L"-e") == 0)
@@ -317,7 +321,9 @@ init_command_data(const int args, const wchar_t **pv)
                 break;
             }
             path_parsing(path);
+        #ifdef LOG_DEBUG
             printf("download dir[%ls]\n", path);
+        #endif
         }
         if (ret && file_info.ini[0])
         {
@@ -526,7 +532,6 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
             if (strlen(p) > 1)
             {
                 _snprintf(dnld_params->file_len, UINT_LEN, "%s", &p[0]);
-                printf("file_len = %s\n", dnld_params->file_len);
             }
         }
     } while (0);
@@ -582,7 +587,9 @@ download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
         {
             written = fwrite(ptr, 1, (size_t)real_size, node->fp);
             node->szdown += written;
-            // printf("[thread: %u], node->szdown = %zd\n", node->tid, node->szdown);
+        #ifdef LOG_DEBUG
+            printf("[thread: %u], node->szdown = %zd\n", node->tid, node->szdown);
+        #endif
         }
     } while (0);
     downloaded_size += written;
@@ -702,7 +709,7 @@ get_file_lenth(const char *url, dnld_params_t *dnld_params)
         euapi_curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "");
         euapi_curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST, "HEAD");
         euapi_curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, curl_header_parse);
-        euapi_curl_easy_setopt(handle, CURLOPT_HEADERDATA, &dnld_params);
+        euapi_curl_easy_setopt(handle, CURLOPT_HEADERDATA, dnld_params);
         // 设置链接超时
         euapi_curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 120L);
         euapi_curl_easy_setopt(handle, CURLOPT_TIMEOUT, 180L);
@@ -728,7 +735,6 @@ get_file_lenth(const char *url, dnld_params_t *dnld_params)
             {
                 dnld_params->length = 0;
             }
-            printf("length %I64d\n", dnld_params->length);
         }
         else
         {
@@ -1317,8 +1323,8 @@ update_self(LPCWSTR self, LPCWSTR sz_clone)
         // 准备更新自身
         PROCESS_INFORMATION pi;
         STARTUPINFOW si = {sizeof(si)};
-        WCHAR sz_cmdLine[URL_LEN] = {0};
-        _snwprintf(sz_cmdLine, URL_LEN - 1, L"\"%s\" -h %zu -d \"%s\"", self, (uintptr_t)hself, sz_clone);
+        WCHAR sz_cmdLine[BUFF_LEN] = {0};
+        _snwprintf(sz_cmdLine, BUFF_LEN - 1, L"\"%s\" -h %zu -d \"%s\"", self, (uintptr_t)hself, sz_clone);
         CreateProcessW(NULL, sz_cmdLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
         CloseHandle(hself);
         CloseHandle(pi.hProcess);
@@ -1339,7 +1345,9 @@ update_task(void)
         CloseHandle(file_info.handle);
         if (!DeleteFileW(file_info.del))
         {
+        #ifdef LOG_DEBUG
             printf("%S DeleteFileW occurred: %lu.\n", file_info.del, GetLastError());
+        #endif
         }
         ExitProcess(0);
     }
@@ -1531,12 +1539,19 @@ wmain(int argc, wchar_t **argv)
     }
 #endif
 #ifndef EUAPI_LINK
-    if (argn == 2 && _wcsicmp(wargv[1], L"-a2quit") == 0)
+    if (argn == 2 && (_wcsicmp(wargv[1], L"-a2quit") == 0 || _wcsicmp(wargv[1], L"-collect") == 0))
     {
         LocalFree(wargv);
         if (libcurl_init(CURL_GLOBAL_DEFAULT) == 0)
         {
-            ret = select_downloader(true);
+            if (_wcsicmp(wargv[1], L"-a2quit") == 0)
+            {
+                ret = select_downloader(true, false);
+            }
+            else
+            {
+                ret = select_downloader(false, true);
+            }
             libcurl_destory();
         }
         return ret;
@@ -1594,7 +1609,31 @@ wmain(int argc, wchar_t **argv)
             libcurl_destory();
         }
         LocalFree(wargv);
+    #ifdef LOG_DEBUG
         printf("chrome return %d\n", ret);
+    #endif
+        return ret;
+    }
+    if (argn == 4 && _wcsnicmp(wargv[1], L"-integration-", 13) == 0)
+    {
+        ret = -1;
+        if (_wcsicmp(wargv[1], L"-integration-check") == 0)
+        {
+            ret = integration_check(wargv[2], wargv[3], false);
+        }
+        else if (_wcsicmp(wargv[1], L"-integration-uncheck") == 0)
+        {
+            ret = integration_check(wargv[2], wargv[3], true);
+        }
+        else if (_wcsicmp(wargv[1], L"-integration-install") == 0)
+        {
+            ret = integration_install(wargv[2], wargv[3]);
+            libcurl_destory();
+        }
+        LocalFree(wargv);
+    #ifdef LOG_DEBUG
+        printf("integration return %d\n", ret);
+    #endif
         return ret;
     }
 #endif
@@ -1632,7 +1671,7 @@ wmain(int argc, wchar_t **argv)
     #ifndef EUAPI_LINK
         if (file_info.use_thunder > 0)
         {
-            if (UPCHECK_OK == select_downloader(false))
+            if (UPCHECK_OK == select_downloader(false, false))
             {
                 break;
             }

@@ -1446,6 +1446,30 @@ ini_new_section(const char *value, const char *path)
     return res;
 }
 
+bool WINAPI
+inicache_section_exists(const char *value, ini_cache *ini)
+{
+    if (value && ini)
+    {
+        return (list_find(&(*ini)->pd, value) != NULL);
+    }
+    return false;
+}
+
+bool WINAPI
+ini_section_exists(const char *value, const char *path)
+{
+    bool res = false;
+    ini_cache plist = iniparser_create_cache(path, false, true);
+    if (!plist)
+    {
+        return false;
+    }
+    res = inicache_section_exists(value, &plist);
+    iniparser_destroy_cache(&plist);
+    return res;
+}
+
 void WINAPI
 inicache_foreach_section(char (*lpdata)[LEN_SECTION], const int line, ini_cache *ini)
 {

@@ -137,11 +137,11 @@ path_utf8_utf16(const char *path)
     size_t len = 0;
     wchar_t *res = NULL;
     wchar_t *u16 = ini_utf8_utf16(path, &len);
-    if (u16 && len < URL_LEN)
+    if (u16 && len < BUFF_LEN)
     {
-        if ((res = (wchar_t *)calloc(URL_LEN, sizeof(wchar_t))))
+        if ((res = (wchar_t *)calloc(BUFF_LEN, sizeof(wchar_t))))
         {
-            _snwprintf(res, URL_LEN - 1, L"%s", u16);
+            _snwprintf(res, BUFF_LEN - 1, L"%s", u16);
         }
         free(u16);
         return res;
@@ -153,11 +153,30 @@ WCHAR *
 path_utf16_clone(const wchar_t *path)
 {
     wchar_t *res = NULL;
-    if (path && ((res = (wchar_t *)calloc(URL_LEN, sizeof(wchar_t)))))
+    if (path && ((res = (wchar_t *)calloc(BUFF_LEN, sizeof(wchar_t)))))
     {
-        _snwprintf(res, URL_LEN - 1, L"%s", path);
+        _snwprintf(res, BUFF_LEN - 1, L"%s", path);
     }
     return res;
+}
+
+char *
+path_add_quotes(const char *path)
+{
+    char *buf = NULL;
+    if (path)
+    {
+        int len = (int)strlen(path) + 4;
+        if (*path == '"')
+        {
+            buf = _strdup(path);
+        }
+        else if ((buf = (char *)calloc(1, len + 1)) != NULL)
+        {
+            _snprintf(buf, len, "\"%s\"", path);
+        }
+    }
+    return buf;
 }
 
 BOOL
@@ -683,10 +702,9 @@ search_process(LPCWSTR names)
 char*
 url_decode(const char *input)
 {
-    int input_length = (int)strlen(input);
-    size_t output_length = (input_length + 1);
     char *working, *output;
-    if ((working = output = calloc(output_length, 1)) == NULL)
+    size_t output_length = (int)strlen(input) + NAMES_LEN;
+    if ((working = output = calloc(1, output_length)) == NULL)
     {
         return NULL;
     }
@@ -694,7 +712,7 @@ url_decode(const char *input)
     {
         if(*input == '%')
         {
-            char buffer[3] = { input[1], input[2], 0 };
+            char buffer[3] = {input[1], input[2], 0};
             *working = (char)strtol(buffer, NULL, 16);
             working++;
             input += 3;
@@ -704,8 +722,6 @@ url_decode(const char *input)
             *working++ = *input++;
         }
     }
-    printf("working - 1 = [0x%02x]\n", *(working - 1));
-    //*working = 0;  //null terminate
     return output;
 }
 
