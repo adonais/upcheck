@@ -202,7 +202,8 @@ integration_install(const wchar_t *bin, const wchar_t *profd)
 int
 integration_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
 {
-    int ret = -1;
+    // 防止返回值在js中抛出异常, 不返回负数
+    int ret = 0;
     wchar_t *mjs = NULL;
     do
     {
