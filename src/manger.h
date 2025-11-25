@@ -1,8 +1,6 @@
 #ifndef _MANGER_H_
 #define _MANGER_H_
 
-#define SELECT_AUTO 999
-
 #ifdef __cplusplus
 extern "C" {
 #endif

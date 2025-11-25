@@ -33,7 +33,8 @@
 #endif
 #endif
 
-#define DOWN_NUM 10
+#define DOWN_NUM    10
+#define SELECT_AUTO 999
 
 typedef HRESULT (WINAPI *SHGetKnownFolderIDListPtr)(REFKNOWNFOLDERID rfid,
         DWORD            dwFlags,
@@ -282,6 +283,7 @@ init_command_data(const int args, const wchar_t **pv)
                 VERIFY(i + 1 < argn - 1);
                 _snwprintf(file_info.del, MAX_PATH, L"%s", pv[i + 1]);
             }
+        #ifndef EUAPI_LINK
             else if (_wcsicmp(pv[i], L"-m") == 0)
             {
                 VERIFY(i + 1 < argn - 1);
@@ -292,6 +294,7 @@ init_command_data(const int args, const wchar_t **pv)
                     file_info.use_thunder = SELECT_AUTO;
                 }
             }
+        #endif
             else if (_wcsicmp(pv[i], L"-dt") == 0)
             {
                 VERIFY(i + 1 < argn - 1);
