@@ -138,7 +138,7 @@ void *LJ_WIN_LOADLIBA(const char *path)
   HANDLE lib = NULL;
   wchar_t *wpath = lj_utf8_utf16(path, NULL);
   if (wpath) {
-  #if LJ_TARGET_UWP
+  #if LJ_TARGET_UWP  
     lib = LoadPackagedLibrary(wpath, 0);
   #else
     lib = LoadLibraryW(wpath);
