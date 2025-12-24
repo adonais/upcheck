@@ -1544,7 +1544,6 @@ wmain(int argc, wchar_t **argv)
 #ifndef EUAPI_LINK
     if (argn == 2 && (_wcsicmp(wargv[1], L"-a2quit") == 0 || _wcsicmp(wargv[1], L"-collect") == 0))
     {
-        LocalFree(wargv);
         if (libcurl_init(CURL_GLOBAL_DEFAULT) == 0)
         {
             if (_wcsicmp(wargv[1], L"-a2quit") == 0)
@@ -1557,6 +1556,7 @@ wmain(int argc, wchar_t **argv)
             }
             libcurl_destory();
         }
+        LocalFree(wargv);
         return ret;
     }
     if (argn >= 5 && (_wcsicmp(wargv[1], L"-lua") == 0 || _wcsicmp(wargv[1], L"-msg") == 0))

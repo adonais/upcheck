@@ -316,6 +316,9 @@ select_downloader(const bool quit, const bool collect)
         if (quit)
         {
             ret = use_rpc ? (aria2_rpc_try(aria2_rpc, aria2_token, "quit", "aria2.forceShutdown") ? 0 : 1) : UPCHECK_OK;
+        #ifdef LOG_DEBUG
+            printf("aria2.forceShutdown, ret = %d\n", ret);
+        #endif
             break;
         }
         if (thunder_lookup())
