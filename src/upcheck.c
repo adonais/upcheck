@@ -1643,7 +1643,7 @@ wmain(int argc, wchar_t **argv)
     if (argn) // 初始化全局参数
     {
         memset(&file_info, 0, sizeof(file_info));
-        if (!init_command_data(argn ,wargv))
+        if (!init_command_data(argn, wargv))
         {
             printf("init_command_data failed\n");
             LocalFree(wargv);

@@ -269,8 +269,8 @@ ini_utf16_utf8(const wchar_t *utf16, size_t *out_len)
 {
     int   m, size = 0;
     char *utf8 = NULL;
-    size = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, NULL, 0, NULL, NULL);
-    utf8 = size > 0 ? (char*) malloc(size+1) : 0;
+    size = utf16 ? WideCharToMultiByte(CP_UTF8, 0, utf16, -1, NULL, 0, NULL, NULL) : 0;
+    utf8 = size > 0 ? (char*) malloc(size+1) : NULL;
     if (NULL == utf8 )
     {
         return NULL;
@@ -301,8 +301,8 @@ ini_utf16_mbcs(int codepage, const wchar_t *utf16, size_t *out_len)
     {
         codepage= AreFileApisANSI() ? CP_ACP : CP_OEMCP;
     }
-    size = WideCharToMultiByte(codepage, 0, utf16, -1, NULL, 0, NULL, NULL);
-    a8 = size > 0 ? (char*) malloc(size+ 1) : 0;
+    size = utf16 ? WideCharToMultiByte(codepage, 0, utf16, -1, NULL, 0, NULL, NULL) : 0;
+    a8 = size > 0 ? (char*) malloc(size+ 1) : NULL;
     if (NULL == a8)
     {
         return NULL;
@@ -332,8 +332,8 @@ ini_mbcs_utf16(int codepage, const char *ansi, size_t *out_len)
     {
         codepage= AreFileApisANSI() ? CP_ACP : CP_OEMCP;
     }
-    size = MultiByteToWideChar(codepage, 0, ansi, -1, NULL, 0);
-    u16 = size > 0 ? (wchar_t*) malloc(sizeof(wchar_t) * (size + 1)) : 0;
+    size = ansi ? MultiByteToWideChar(codepage, 0, ansi, -1, NULL, 0) : 0;
+    u16 = size > 0 ? (wchar_t*) malloc(sizeof(wchar_t) * (size + 1)) : NULL;
     if (!u16)
     {
         return NULL;
@@ -376,8 +376,8 @@ ini_utf8_utf16(const char *utf8, size_t *out_len)
 {
     int size;
     wchar_t *u16 = NULL;
-    size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
-    u16 = size > 0 ? (wchar_t*) malloc(sizeof(wchar_t) * (size + 1)) : 0;
+    size = utf8 ? MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0) : 0;
+    u16 = size > 0 ? (wchar_t*) malloc(sizeof(wchar_t) * (size + 1)) : NULL;
     if (!u16)
     {
         return NULL;

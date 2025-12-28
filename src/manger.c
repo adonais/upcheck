@@ -94,7 +94,8 @@ aria2_init_socket(CURL **pcurl, const struct curl_slist *headers, const char *rp
         euapi_curl_easy_setopt(*pcurl, CURLOPT_URL, rpc);
         euapi_curl_easy_setopt(*pcurl, CURLOPT_HTTPHEADER, headers);
         euapi_curl_easy_setopt(*pcurl, CURLOPT_POSTFIELDS, pstr);
-        euapi_curl_easy_setopt(*pcurl, CURLOPT_CONNECTTIMEOUT, 2L);
+        euapi_curl_easy_setopt(*pcurl, CURLOPT_CONNECTTIMEOUT, 3L);
+        euapi_curl_easy_setopt(*pcurl, CURLOPT_TIMEOUT, 6L);
         libcurl_set_ssl(*pcurl);
     #ifdef LOG_DEBUG
         printf("pstr = <%s>\n", pstr);
@@ -123,21 +124,28 @@ aria2_rpc_download(const char *aria2, const char *rpc, const char *token)
         if (remote_rpc)
         {
             res = 0;
+        #ifdef LOG_DEBUG
+            printf("remote_rpc starting ...\n");
+        #endif
         }
         else
         {
             res = euapi_curl_easy_perform(curl);
+        #ifdef LOG_DEBUG
+            printf("Testing version here: res = %d\n", res);
+        #endif
         }
-        // 0x7, aria2c可能没启动, 尝试启动aria2 rpc
-        if (res == 7L && exec_ppv(aria2, NULL, 0))
+        // 0x7, 主机链接不可达
+        // 0x1c, 链接超时, 都代表Aria2c可能没启动, 尝试启动aria2 rpc
+        if (res == 7L || res == 28L)
         {
+            res = exec_ppv(aria2, NULL, 0) ? 0 : -1;
+        #ifdef LOG_DEBUG
+            printf("Start the [%s] process here: res = %d\n", aria2, res);
+        #endif
             Sleep(1000);
-            if (aria2_init_socket(&curl, headers, rpc, token, "upcheck", "aria2.addUri", file_info.url, file_info.referer, cookie))
-            {
-                res = euapi_curl_easy_perform(curl);
-            }
         }
-        else if (!res)
+        if (!res)
         {
             res = aria2_init_socket(&curl, headers, rpc, token, "upcheck", "aria2.addUri", file_info.url, file_info.referer, cookie) ? 0 : 1;
             if (!res)
@@ -154,6 +162,9 @@ aria2_rpc_download(const char *aria2, const char *rpc, const char *token)
     {
         euapi_curl_slist_free_all(headers);
     }
+#ifdef LOG_DEBUG
+    printf("Function aria2_rpc_download: res = %d\n", res);
+#endif
     return res == 0;
 }
 

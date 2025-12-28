@@ -602,6 +602,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
     WCHAR *process = ini_utf8_utf16(cmd, NULL);
     if (!process)
     {
+        printf("Function exec_ppv, ini_utf8_utf16 failed\n");
         return false;
     }
     do
