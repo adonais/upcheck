@@ -488,6 +488,7 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     {
         return 0;
     }
+    /*
     if ((p = strcasestr(hdr_str, lctag)) != NULL && strcasestr(p, "dl.sourceforge.net") != NULL)
     {
         p += strlen(lctag);
@@ -507,6 +508,7 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
             printf("Redirecting to[%s]\n", file_info.url);
         }
     }
+    */
     do
     {
         int ret = 0;
@@ -653,7 +655,7 @@ run_thread(void *pdata)
             euapi_curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 4);
             euapi_curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
         #if defined(USE_ARES)
-            euapi_curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+            euapi_curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
         #else
             // 禁用掉alarm信号，防止多线程中使用超时崩溃
             euapi_curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
