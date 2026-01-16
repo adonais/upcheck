@@ -117,12 +117,12 @@ get_download_dir(WCHAR *path)
         }
         else
         {
-            if(FAILED(SHGetKnownFolderIDList(&FOLDERID_Downloads, 0,NULL,&pidlist)))
+            if (FAILED(SHGetKnownFolderIDList(&FOLDERID_Downloads, 0, NULL, &pidlist)))
             {
                 ret = false;
                 break;
             }
-            if(FAILED(SHGetPathFromIDListW(pidlist, path)))
+            if (FAILED(SHGetPathFromIDListW(pidlist, path)))
             {
                 ret = false;
                 break;

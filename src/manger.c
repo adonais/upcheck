@@ -190,7 +190,7 @@ aria2_rpc_try(const char *rpc, const char *token, const char *id, const char *cm
 }
 
 static int
-aria2_cmd_launch(const char *aria2, const int nohide)
+aria2_cmd_launch(const char *aria2, const char *arg, const int nohide)
 {
     int ret = 1;
     char  *dl = NULL;
@@ -201,13 +201,13 @@ aria2_cmd_launch(const char *aria2, const int nohide)
         internal_file_path(&dir, &file);
         if (file_info.cookiefile[0])
         {
-            _snprintf(dl, RPC_BUFFER, "\"%s\" \"%s\" --no-conf --referer=\"%s\" --load-cookies=\"%s\"",
-                     aria2, file_info.url, file_info.referer, file_info.cookiefile);
+            _snprintf(dl, RPC_BUFFER, "\"%s\" \"%s\" --no-conf %s --referer=\"%s\" --load-cookies=\"%s\"",
+                     aria2, file_info.url, arg, file_info.referer, file_info.cookiefile);
         }
         else
         {
-            _snprintf(dl, RPC_BUFFER, "\"%s\" \"%s\" --no-conf --referer=\"%s\" --load-cookies=\"%s\"",
-                     aria2, file_info.url, file_info.referer, file_info.cookiefile);
+            _snprintf(dl, RPC_BUFFER, "\"%s\" \"%s\" --no-conf %s --referer=\"%s\" --load-cookies=\"%s\"",
+                     aria2, file_info.url, arg, file_info.referer, file_info.cookiefile);
         }
         if (file)
         {
@@ -220,7 +220,7 @@ aria2_cmd_launch(const char *aria2, const int nohide)
             strncat(dl, dir, RPC_BUFFER);
         }
     #ifdef LOG_DEBUG
-        printf("dl_command: [%s]\n", dl);
+        printf("dl_command: [%s], nohide = [%s]\n", dl, nohide ? "true" : "false");
     #endif
         if (exec_ppv(dl, NULL, nohide ? 2 : 0))
         {
@@ -264,6 +264,7 @@ delete_temp_cookie(void)
 int
 select_downloader(const bool quit, const bool collect)
 {
+    char *arg = NULL;
     char *aria2_path = NULL;
     char *aria2_arg = NULL;
     char *aria2_rpc = NULL;
@@ -292,7 +293,6 @@ select_downloader(const bool quit, const bool collect)
         }
         if (inicache_read_string("aria2", "path", &aria2_path, &ini) && utf8_path_exist(&aria2_path))
         {   // 本地RPC,获取路径, 当没有启动时尝试帮助启动
-            char *arg = NULL;
             use_aria = true;
             if (inicache_read_string("aria2", "rpc", &aria2_rpc, &ini))
             {
@@ -301,20 +301,16 @@ select_downloader(const bool quit, const bool collect)
             }
             if (!quit && !collect)
             {
-                if (use_rpc && inicache_read_string("aria2", "arg", &arg, &ini))
+                if (inicache_read_string("aria2", "arg", &arg, &ini) && use_rpc)
                 {
                     if ((aria2_arg = (char *)calloc(1, BUFF_LEN)))
                     {
                         _snprintf(aria2_arg, BUFF_LEN - 1, "%s %s", aria2_path, arg);
                     }
                 }
-                if (!use_rpc)
-                {
-                    // 使用aria2命令行下载时才产生作用
-                    nohide = inicache_read_int("aria2", "nohide", &ini);
-                }
+                // 读取nohide参数, 当aria2命令行下载时才产生作用
+                nohide = inicache_read_int("aria2", "nohide", &ini);
             }
-            ini_safe_free(arg);
         }
         else if (inicache_read_string("aria2", "rpc", &aria2_rpc, &ini))
         {   // 远程RPC, 是否存在token
@@ -375,7 +371,7 @@ select_downloader(const bool quit, const bool collect)
             {
                 if (use_aria)
                 {
-                    aria2_cmd_launch(aria2_path, nohide);
+                    aria2_cmd_launch(aria2_path, arg ? arg : "", nohide);
                     ret = UPCHECK_OK;
                 }
                 break;
@@ -395,7 +391,7 @@ select_downloader(const bool quit, const bool collect)
                 {
                     ret = UPCHECK_OK;
                 }
-                else if (use_aria && aria2_cmd_launch(aria2_path, nohide) == 0)
+                else if (use_aria && aria2_cmd_launch(aria2_path, arg ? arg : "", nohide) == 0)
                 {
                     ret = UPCHECK_OK;
                 }
@@ -416,6 +412,7 @@ select_downloader(const bool quit, const bool collect)
     ini_safe_free(aria2_arg);
     ini_safe_free(aria2_rpc);
     ini_safe_free(aria2_token);
+    ini_safe_free(arg);
     iniparser_destroy_cache(&ini);
     if (!quit)
     {
