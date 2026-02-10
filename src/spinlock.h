@@ -98,6 +98,7 @@ typedef struct _file_info_t
     bool     extract;
     bool     re_bind;
     bool     up;
+    bool     ranges;
 } file_info_t;
 
 typedef struct _sql_node

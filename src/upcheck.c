@@ -468,21 +468,21 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     const char *lentag = "Content-Length: ";
     const char *lctag = "Location: ";
     dnld_params_t *dnld_params = (dnld_params_t *) userdata;
-    if (SELECT_AUTO != file_info.thread_num)
-    {
-        file_info.thread_num = 1;
-    }
-    /* Example: Ranges supports
-     * Accept-Ranges: bytes
-    */
     if (strcasestr(hdr_str, " 307"))
     {
         dnld_params->ret = 307;
     }
+    /* Example: Ranges supports
+     * Accept-Ranges: bytes
+    */
     if (strcasestr(hdr_str, "Accept-Ranges: bytes"))
     {
-        file_info.thread_num = SELECT_AUTO;
-        printf("this server Accept-Ranges: bytes\n");
+        if (!(file_info.thread_num > 0 && file_info.thread_num < SELECT_AUTO))
+        {
+            file_info.thread_num = SELECT_AUTO;
+        }
+        file_info.ranges = true;
+        printf("this server Accept-Ranges: bytes，file_info.thread_num = %d\n", file_info.thread_num);
     }
     else if (strcasestr(hdr_str, " 404"))
     {
@@ -1012,6 +1012,11 @@ init_download(const char *url, int64_t length)
                 if (!PathFileExistsW(file_info.names))
                 {
                     DeleteFileW(sql_name);
+                }
+                else if (!file_info.ranges)
+                {
+                    DeleteFileW(sql_name);
+                    DeleteFileW(file_info.names);
                 } // 存在日志记录文件,准备续传
                 else
                 {
@@ -1041,7 +1046,11 @@ init_download(const char *url, int64_t length)
             m_error = m_node[0].error;
             break;
         }
-        if (file_info.thread_num == 0 || file_info.thread_num == SELECT_AUTO)
+        if (!file_info.ranges)
+        {
+            file_info.thread_num = 1;
+        }
+        else if (file_info.thread_num == 0 || file_info.thread_num == SELECT_AUTO)
         {
             file_info.thread_num = get_cpu_works();
         }
