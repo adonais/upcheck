@@ -27,7 +27,7 @@ internal_file_path(char **pout, char **pfile)
         if (pout)
         {
             _snwprintf(tmp, p - file_info.names + 1, L"\"%s", file_info.names);
-            wcsncat(tmp, L"\"", MAX_PATH);
+            wp_wcsncat(tmp, L"\"", MAX_PATH);
             *pout = ini_utf16_utf8(tmp, NULL);
         }
         _snwprintf(tmp, MAX_PATH, L"\"%s\"", &p[1]);
@@ -77,11 +77,11 @@ aria2_init_socket(CURL **pcurl, const struct curl_slist *headers, const char *rp
             }
             if (file)
             {   // 输出文件已经加了双引号
-                strncat(pstr, ",\"out\":", RPC_BUFFER);
-                strncat(pstr, file, RPC_BUFFER);
+                wp_strncat(pstr, ",\"out\":", RPC_BUFFER);
+                wp_strncat(pstr, file, RPC_BUFFER);
             }
             ini_safe_free(file);
-            strncat(pstr, "}]}", RPC_BUFFER);
+            wp_strncat(pstr, "}]}", RPC_BUFFER);
         }
         else if (token)
         {
@@ -211,13 +211,13 @@ aria2_cmd_launch(const char *aria2, const char *arg, const int nohide)
         }
         if (file)
         {
-            strncat(dl, " --out=", RPC_BUFFER);
-            strncat(dl, file, RPC_BUFFER);
+            wp_strncat(dl, " --out=", RPC_BUFFER);
+            wp_strncat(dl, file, RPC_BUFFER);
         }
         if (dir)
         {
-            strncat(dl, " --dir=", RPC_BUFFER);
-            strncat(dl, dir, RPC_BUFFER);
+            wp_strncat(dl, " --dir=", RPC_BUFFER);
+            wp_strncat(dl, dir, RPC_BUFFER);
         }
     #ifdef LOG_DEBUG
         printf("dl_command: [%s], nohide = [%s]\n", dl, nohide ? "true" : "false");

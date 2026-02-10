@@ -154,9 +154,9 @@ path_parsing(LPCWSTR save_path)
             {
                 if (*save_path != L'\\')
                 {
-                    wcsncat(tmp_path, L"\\", MAX_PATH);
+                    wp_wcsncat(tmp_path, L"\\", MAX_PATH);
                 }
-                wcsncat(tmp_path, save_path, MAX_PATH);
+                wp_wcsncat(tmp_path, save_path, MAX_PATH);
                 _snwprintf(file_info.names, MAX_PATH, L"%s", tmp_path);
             }
         }
@@ -171,7 +171,7 @@ path_parsing(LPCWSTR save_path)
         len = (int)wcslen(file_info.names);
         if (file_info.names[len - 1] != L'\\')
         {
-            wcsncat(file_info.names, L"\\", MAX_PATH);
+            wp_wcsncat(file_info.names, L"\\", MAX_PATH);
         }
     }
 }
@@ -824,7 +824,7 @@ fill_file_name(const char *url)
             printf("MultiByteToWideChar to file_info.names false\n");
             return false;
         }
-        wcsncat(file_info.names, tmp, MAX_PATH);
+        wp_wcsncat(file_info.names, tmp, MAX_PATH);
     }
     return true;
 }

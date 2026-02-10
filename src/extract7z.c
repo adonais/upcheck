@@ -350,8 +350,8 @@ extract7z(LPCWSTR srcFile, LPCWSTR dstPath, char *buffer, size_t msize)
                 size_t processedSize;
                 UInt16 *name = (UInt16 *) temp;
                 wcsncpy(destPath, dstPath, MAX_PATH);
-                wcsncat(destPath, L"\\", MAX_PATH);
-                wcsncat(destPath, name, MAX_PATH);
+                wp_wcsncat(destPath, L"\\", MAX_PATH);
+                wp_wcsncat(destPath, name, MAX_PATH);
 
                 if (isDir)
                 {

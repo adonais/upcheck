@@ -171,7 +171,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
         {
             break;
         }
-        wcsncat(path, L"\\defaults\\pref\\autoconfig.js", BUFF_LEN);
+        wp_wcsncat(path, L"\\defaults\\pref\\autoconfig.js", BUFF_LEN);
         if (!uncheck)
         {
             if (!PathFileExistsW(path))
@@ -204,7 +204,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
             }
             ret =  (acfg || cfg ? ret : 0);
         }
-        wcsncat(mjs, L"\\chrome\\userChrome.js", BUFF_LEN);
+        wp_wcsncat(mjs, L"\\chrome\\userChrome.js", BUFF_LEN);
         if (!uncheck)
         {
             if (!PathFileExistsW(mjs))
@@ -221,7 +221,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
             if (!(acfg || cfg || aprefs || prefs || chrome))
             {   // 测试目录是否可写入
                 FILE *fd = NULL;
-                wcsncat(path, L".tmp", BUFF_LEN);
+                wp_wcsncat(path, L".tmp", BUFF_LEN);
                 if (!(fd = _wfopen(path, L"w+b")))
                 {
                     ret = -1;

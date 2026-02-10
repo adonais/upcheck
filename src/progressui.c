@@ -249,7 +249,7 @@ set_ui_strings(void)
     char *names = NULL;
     char *app_ini = NULL;
     WCHAR *pini = NULL;
-    char result[6] = { 0 };
+    
     do
     {
         if ((pini = init_file_strings(L"application.ini", NULL)) == NULL)
@@ -268,17 +268,28 @@ set_ui_strings(void)
     } while(0);
     if (ret)
     {
-        wcsncat(sUIStrings.title, L" ", MAX_PATH);
+        wp_wcsncat(sUIStrings.title, L" ", MAX_PATH);
         wcsncpy(sUIStrings.info, sUIStrings.title, MAX_PATH);
-        if (find_local_str(result, 5) && strcmp(result, "zh-CN") == 0)
+        switch (find_user_local())
         {
-            wcsncat(sUIStrings.title, L"更新", MAX_PATH);
-            wcsncat(sUIStrings.info, L"正在安装更新，将于稍后启动…", MAX_PATH);
-        }
-        else
-        {
-            wcsncat(sUIStrings.title, L"Update", MAX_PATH);
-            wcsncat(sUIStrings.info, L"Is Installing Your Updates And Will Start In A Few Moments…", MAX_PATH);
+            case 1:
+            {
+                wp_wcsncat(sUIStrings.title, L"更新", MAX_PATH);
+                wp_wcsncat(sUIStrings.info, L"正在安装更新，将于稍后启动…", MAX_PATH);
+                break;
+            }
+            case 2:
+            {
+                wp_wcsncat(sUIStrings.title, L"更新", MAX_PATH);
+                wp_wcsncat(sUIStrings.info, L"正在安裝更新，將于稍后啟動…", MAX_PATH);
+                break;
+            }
+            default:
+            {
+                wp_wcsncat(sUIStrings.title, L"Update", MAX_PATH);
+                wp_wcsncat(sUIStrings.info, L"Is Installing Your Updates And Will Start In A Few Moments…", MAX_PATH);
+                break;
+            }
         }
     }
     ini_safe_free(names);

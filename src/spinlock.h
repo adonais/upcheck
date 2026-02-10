@@ -1,7 +1,6 @@
 #ifndef __SPIN_LOCK__
 #define __SPIN_LOCK__
 
-#include "spinlock.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <curl/curl.h>
@@ -9,6 +8,7 @@
 #include <pthread.h>
 #endif
 #include <windows.h>
+#include <errno.h>
 
 #ifdef __GNUC__
 #define LOCK_MUTEXT pthread_mutex_t
@@ -195,6 +195,10 @@ extern size_t get_first_line(char **lineptr, const WCHAR *path);
 extern bool utf8_path_exist(char **pstr);
 extern bool ini_path_init(void);
 extern char *path_add_quotes(const char *path);
+
+extern int find_user_local(void);
+extern errno_t wp_strncat(char *dst, const char *src, size_t number);
+extern errno_t wp_wcsncat(wchar_t *dst, const wchar_t *src, size_t number);
 
 #ifdef __cplusplus
 }

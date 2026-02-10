@@ -274,16 +274,16 @@ ini_query_ice(xml_buffer *pbuf, const bool upgrade)
     if (find_local_str(result, 5) && strcmp(result, "zh-CN") == 0)
     {
         printf("locales:zh-CN\n");
-        strncat(info, "zh-CN", INFO_LEN);
+        wp_strncat(info, "zh-CN", INFO_LEN);
     }
     else
     {
         printf("locales:en-US\n");
-        strncat(info, "en-US", INFO_LEN);
+        wp_strncat(info, "en-US", INFO_LEN);
     }
     if (get_os_version() < 1000)
     {
-        strncat(info, ".esr", INFO_LEN);
+        wp_strncat(info, ".esr", INFO_LEN);
     }
     do
     {

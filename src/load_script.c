@@ -606,11 +606,11 @@ lua_script_loader(wchar_t **parg, const int len)
         }
         if (enviroment_variables_set(L"UPCHECK_MOZ_BIN", path, VARIABLES_RESET))
         {
-            wcsncat(path, L";", BUFF_LEN);
-            wcsncat(path, chrome, BUFF_LEN);
-            wcsncat(path, L";", BUFF_LEN);
-            wcsncat(path, chrome, BUFF_LEN);
-            wcsncat(path, L"\\lua", BUFF_LEN);
+            wp_wcsncat(path, L";", BUFF_LEN);
+            wp_wcsncat(path, chrome, BUFF_LEN);
+            wp_wcsncat(path, L";", BUFF_LEN);
+            wp_wcsncat(path, chrome, BUFF_LEN);
+            wp_wcsncat(path, L"\\lua", BUFF_LEN);
         }
         if (!enviroment_variables_set(L"PATH", path, VARIABLES_APPEND))
         {

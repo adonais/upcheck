@@ -5,8 +5,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #endif
-#include <wchar.h>
 #ifdef _WIN32
+#include <wchar.h>
 #include <windows.h>
 #endif
 #include "ini_parser.h"
@@ -36,6 +36,8 @@
     }
 
 typedef bool (* remove_fn)(node *en, const char *v);
+
+extern errno_t wp_strncat(char *dst, const char *src, size_t number);
 
 static int
 truncate_file(FILE *fp, long n)
@@ -1386,7 +1388,7 @@ replace_insert(node **pnode, const char *in, const char *sub, const char *by)
         {
             strncpy(res, in_ptr, needle - in_ptr);
         }
-        strncat(res, by, in_size - 1);
+        wp_strncat(res, by, in_size - 1);
         list_insert(pnode, NULL, res);
         in_ptr = needle + (int) strlen(sub);
     }
@@ -1511,11 +1513,11 @@ inicache_write_string(const char *sec, const char *key, const char *value, ini_c
             }
             if ((*ini)->breaks == CHR_WIN)
             {
-                strncat(pos->content, "\r\n", LEN_CONTENT);
+                wp_strncat(pos->content, "\r\n", LEN_CONTENT);
             }
             else
             {
-                strncat(pos->content, "\n", LEN_CONTENT);
+                wp_strncat(pos->content, "\n", LEN_CONTENT);
             }
         }
         else

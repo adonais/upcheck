@@ -28,6 +28,46 @@ ptr_curl_global_cleanup euapi_curl_global_cleanup = NULL;
 ptr_curl_easy_cleanup euapi_curl_easy_cleanup = NULL;
 ptr_curl_easy_reset euapi_curl_easy_reset = NULL;
 
+errno_t wp_strncat(char *dst, const char *src, size_t number)
+{
+    if (dst == NULL)
+    {
+        return EINVAL;
+    }
+    else if (src == NULL)
+    {
+        dst[0] = '\0';
+        return EINVAL;
+    }
+    else if (number <= strlen(dst) + strlen(src))
+    {
+        dst[0] = '\0';
+        return ERANGE;
+    }
+    strcat(dst, src);
+    return 0;
+}
+
+errno_t wp_wcsncat(wchar_t *dst, const wchar_t *src, size_t number)
+{
+    if (dst == NULL)
+    {
+        return EINVAL;
+    }
+    else if (src == NULL)
+    {
+        dst[0] = L'\0';
+        return EINVAL;
+    }
+    else if (number <= wcslen(dst) + wcslen(src))
+    {
+        dst[0] = L'\0';
+        return ERANGE;
+    }
+    wcscat(dst, src);
+    return 0;
+}
+
 #ifdef LOG_DEBUG
 static char logfile_buf[MAX_PATH];
 
@@ -59,8 +99,8 @@ init_logs(void)
 {
     if (*logfile_buf == '\0' && GetEnvironmentVariableA("APPDATA", logfile_buf, MAX_PATH) > 0)
     {
-        strncat(logfile_buf, "\\", MAX_PATH);
-        strncat(logfile_buf, "upcheck.log", MAX_PATH);
+        wp_strncat(logfile_buf, "\\", MAX_PATH);
+        wp_strncat(logfile_buf, "upcheck.log", MAX_PATH);
     }
 }
 #endif
@@ -421,6 +461,29 @@ find_local_str(char *result, const int len)
     return found;
 }
 
+int
+find_user_local(void)
+{
+    wchar_t result[LOCALE_NAME_MAX_LENGTH] = {0};
+    int ret = GetUserDefaultLocaleName(result, LOCALE_NAME_MAX_LENGTH);
+    if (ret > 0)
+    {
+        if (_wcsicmp(result, L"zh-CN") == 0)
+        {
+            ret = 1;
+        }
+        else if (_wcsicmp(result, L"zh-TW") == 0)
+        {
+            ret = 2;
+        }
+        else
+        {
+            ret = 0;
+        }
+    }
+    return ret;
+}
+
 /* 将hex编码的MD5转换成字符串 */
 static void
 md5_to_str(byte* in_md5_hex, char* out_md5_str)
@@ -557,8 +620,8 @@ create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opi
     }
     if (param && *param)
     {
-        wcsncat(my_cmd, L" ", URL_LEN);
-        wcsncat(my_cmd, param, URL_LEN);
+        wp_wcsncat(my_cmd, L" ", URL_LEN);
+        wp_wcsncat(my_cmd, param, URL_LEN);
     }
     if (*my_cmd)
     {
@@ -587,6 +650,7 @@ create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opi
         {
             *opid = pi.dwProcessId;
         }
+        CloseHandle(pi.hThread);
     }
     return pi.hProcess;
 }
@@ -639,7 +703,8 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
                           dw,
                           NULL,
                           wdir,
-                          &si,&pi))
+                          &si,
+                          &pi))
         {
             printf("CreateProcessw error %lu\n", GetLastError());
             break;
@@ -648,6 +713,7 @@ exec_ppv(LPCSTR cmd, LPCSTR pcd, int flags)
         {
             res = true;
         }
+        CloseHandle(pi.hThread);
         CloseHandle(pi.hProcess);
     }while(0);
     if (wdir)
@@ -812,7 +878,7 @@ libcurl_init(long flags)
     {
         return CURLE_FAILED_INIT;
     }
-    wcsncat(path, L"\\libcurl.dll" , MAX_PATH);
+    wp_wcsncat(path, L"\\libcurl.dll" , MAX_PATH);
     if (!curl_symbol && !(curl_symbol = LoadLibraryExW(path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)))
     {
         printf("LoadLibraryExW[%ls] failed, cause: %lu\n", path, GetLastError());

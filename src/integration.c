@@ -219,7 +219,7 @@ integration_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
         {
             break;
         }
-        wcsncat(mjs, L"\\chrome\\SubScript\\DownloadUpcheck.uc.js", BUFF_LEN);
+        wp_wcsncat(mjs, L"\\chrome\\SubScript\\DownloadUpcheck.uc.js", BUFF_LEN);
         if (!uncheck)
         {
             if (!(ret = PathFileExistsW(mjs)))
