@@ -467,6 +467,7 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     const char *cdtag = "Content-Disposition: ";
     const char *lentag = "Content-Length: ";
     const char *lctag = "Location: ";
+    const char *etag = "Etag: ";
     dnld_params_t *dnld_params = (dnld_params_t *) userdata;
     if (strcasestr(hdr_str, " 307"))
     {
@@ -482,33 +483,40 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
             file_info.thread_num = SELECT_AUTO;
         }
         file_info.ranges = true;
-        printf("this server Accept-Ranges: bytes，file_info.thread_num = %d\n", file_info.thread_num);
+        printf("\nthis server Accept-Ranges: bytes, file_info.thread_num = %d\n", file_info.thread_num);
     }
     else if (strcasestr(hdr_str, " 404"))
     {
         return 0;
     }
-    /*
-    if ((p = strcasestr(hdr_str, lctag)) != NULL && strcasestr(p, "dl.sourceforge.net") != NULL)
+    if ((p = strcasestr(hdr_str, etag)) != NULL)
     {
-        p += strlen(lctag);
-        if (strncasecmp(p, file_info.url, strlen(file_info.url)))
+        size_t len = 0;
+        p += strlen(etag);
+        if (*p == '"')
         {
-            char re[NAMES_LEN + 1] = {0};
-            _snprintf(file_info.url, URL_LEN, "%s", p);
-            strip_url_newline();
-            if ((p = strstr(file_info.url, ".")) != NULL)
+            ++p;
+        }
+        _snprintf(file_info.etag, NAMES_LEN, "%s", p);
+        if ((len = strlen(file_info.etag)) > 1)
+        {
+            if (file_info.etag[len - 1] == '\n')
             {
-                strncpy(re, file_info.url, p - file_info.url);
+                file_info.etag[len - 1] = 0;
+                len = strlen(file_info.etag);
             }
-            if (re[0])
+            if (file_info.etag[len - 1] == '\r')
             {
-                str_replace(file_info.url, URL_LEN, re, "https://liquidtelecom");
+                file_info.etag[len - 1] = 0;
+                len = strlen(file_info.etag);
             }
-            printf("Redirecting to[%s]\n", file_info.url);
+            if (file_info.etag[len - 1] == '"')
+            {
+                file_info.etag[len - 1] = 0;
+            }
+            printf("file_info.etag[%s]\n", file_info.etag);
         }
     }
-    */
     do
     {
         int ret = 0;
@@ -1013,10 +1021,11 @@ init_download(const char *url, int64_t length)
                 {
                     DeleteFileW(sql_name);
                 }
-                else if (!file_info.ranges)
+                else if (!file_info.ranges || get_etag_different(sql_name))
                 {
                     DeleteFileW(sql_name);
                     DeleteFileW(file_info.names);
+                    printf("Not ranges or Etag different, file_info.ranges = %d\n", file_info.ranges);
                 } // 存在日志记录文件,准备续传
                 else
                 {
@@ -1098,7 +1107,7 @@ init_download(const char *url, int64_t length)
                 m_error = true;
                 break;
             }
-            else if (!thread_insert(url, m_node[i].startidx, m_node[i].endidx, m_node[i].startidx, 0, m_node[i].tid, GetCurrentProcessId(), 0))
+            else if (!thread_insert(url, file_info.etag, m_node[i].startidx, m_node[i].endidx, m_node[i].startidx, 0, m_node[i].tid, GetCurrentProcessId(), 0))
             {
                 printf("thread_insert() false.\n");
                 m_error = true;

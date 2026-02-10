@@ -19,10 +19,17 @@
     }
 
 static int
-back_downloaded(int64_t *psize, int count, char **column, char **names)
+back_downloaded(void *psize, int count, char **column, char **names)
 {
-    *psize = _atoi64(column[0]);
+    *((int64_t  *)psize) = _atoi64(column[0]);
     return 0;
+}
+
+static int
+etag_callback(void *ptag, int count, char **column, char **names)
+{
+    strcpy(*(char **)ptag, column[0]);
+    return SQLITE_ABORT;
 }
 
 bool
@@ -33,7 +40,7 @@ get_down_size(int64_t *psize)
     const char *m_sql = "select max(szTotal) AS szTotal from download_info;";
     if (NULL == file_info.sql)
     {
-        return 0;
+        return false;
     }
     rc = sqlite3_exec(file_info.sql, m_sql, back_downloaded, psize, &msg);
     CHECK_RC(rc, "get szTotal error", msg, file_info.sql);
@@ -123,7 +130,7 @@ update_ranges(uint32_t thread, int64_t begin, int64_t size)
 }
 
 bool
-thread_insert(const char *url, int64_t begin, int64_t end, int64_t down, int64_t total, uint32_t thread, uint32_t pid, int status)
+thread_insert(const char *url, const char *etag, int64_t begin, int64_t end, int64_t down, int64_t total, uint32_t thread, uint32_t pid, int status)
 {
     int  rc = 0;
     char *msg = NULL;
@@ -132,8 +139,8 @@ thread_insert(const char *url, int64_t begin, int64_t end, int64_t down, int64_t
     {
         return false;
     }
-    _snprintf(m_sql, COOKE_LEN - 1, "insert into download_info(szUrl,szBegin,szEnd,szDown,szTotal,szThread,szPid,szStatus) values('%s',%I64d,%I64d,%I64d,%I64d,%u,%u,%d);"
-              ,url, begin, end, down, total, thread, pid, status);
+    _snprintf(m_sql, COOKE_LEN - 1, "insert into download_info(szUrl,szEtag,szBegin,szEnd,szDown,szTotal,szThread,szPid,szStatus) values('%s','%s',%I64d,%I64d,%I64d,%I64d,%u,%u,%d);"
+              ,url, etag, begin, end, down, total, thread, pid, status);
     rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
     CHECK_RC(rc, "thread_insert error", msg, file_info.sql);
     return true;
@@ -153,7 +160,7 @@ init_sql_logs(const wchar_t *logs)
 {
     int   rc = 0;
     char  *msg = NULL;
-    const char *sql = "create table download_info(szId INTEGER PRIMARY KEY, szUrl char, szBegin BIGINT, szEnd BIGINT, szDown BIGINT, "
+    const char *sql = "create table download_info(szId INTEGER PRIMARY KEY, szUrl char(2048), szEtag char(64), szBegin BIGINT, szEnd BIGINT, szDown BIGINT,"
                       "szTotal BIGINT, szThread INT UNSIGNED, szPid INT UNSIGNED, szStatus int);";
     char  utf8[MAX_PATH + 2];
     sqlite3 *db = NULL;
@@ -188,4 +195,24 @@ init_sql_logs(const wchar_t *logs)
     }
     file_info.sql = db;
     return true;
+}
+
+bool
+get_etag_different(const wchar_t *name)
+{
+    int  rc = 0;
+    bool ret = true;
+    char *etag = NULL;
+    const char *m_sql = "select szEtag from download_info;";
+    if ((NULL != name) && init_sql_logs(name) && ((etag = (char *)calloc(NAMES_LEN, 1)) != NULL))
+    {
+        rc = sqlite3_exec(file_info.sql, m_sql, etag_callback, &etag, NULL);
+        if (*etag && _stricmp(etag, file_info.etag) == 0)
+        {
+            ret = false;
+        }
+        free(etag);
+    }
+    clean_sql_logs();
+    return ret;
 }

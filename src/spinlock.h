@@ -95,6 +95,7 @@ typedef struct _file_info_t
     char     url[URL_LEN+1];
     char     ini_proxy[MAX_PATH+1];
     char     ini_usewd[NAMES_LEN+1];
+    char     etag[NAMES_LEN];
     bool     extract;
     bool     re_bind;
     bool     up;
