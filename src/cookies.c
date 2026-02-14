@@ -43,7 +43,7 @@ get_down_size(int64_t *psize)
         return false;
     }
     rc = sqlite3_exec(file_info.sql, m_sql, back_downloaded, psize, &msg);
-    CHECK_RC(rc, "get szTotal error", msg, file_info.sql);
+    CHECK_RC(rc, "get szTotal", msg, file_info.sql);
     return true;
 }
 
@@ -107,7 +107,7 @@ update_status(uint32_t thread, int status)
     }
     _snprintf(m_sql, VALUE_LEN - 1, "update download_info set szStatus=%d where szThread=%u;" ,status, thread);
     rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
-    CHECK_RC(rc, "update_status error", msg, file_info.sql);
+    CHECK_RC(rc, "update_status", msg, file_info.sql);
     return true;
 }
 
@@ -122,10 +122,10 @@ update_ranges(uint32_t thread, int64_t begin, int64_t size)
         return false;
     }
     rc = sqlite3_exec(file_info.sql, "PRAGMA journal_mode=OFF;", 0, 0, &msg);
-    CHECK_RC(rc, "journal_mode=OFF error", msg, file_info.sql);
+    CHECK_RC(rc, "journal_mode=OFF", msg, file_info.sql);
     _snprintf(m_sql, VALUE_LEN - 1, "update download_info set szDown=%I64d,szTotal=%I64d where szThread=%u;" ,begin, size, thread);
     rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
-    CHECK_RC(rc, "update ranges error", msg, file_info.sql);
+    CHECK_RC(rc, "update ranges", msg, file_info.sql);
     return true;
 }
 
@@ -134,15 +134,15 @@ thread_insert(const char *url, const char *etag, int64_t begin, int64_t end, int
 {
     int  rc = 0;
     char *msg = NULL;
-    char m_sql[COOKE_LEN] = {0};
+    char m_sql[URL_LEN] = {0};
     if (NULL == file_info.sql)
     {
         return false;
     }
-    _snprintf(m_sql, COOKE_LEN - 1, "insert into download_info(szUrl,szEtag,szBegin,szEnd,szDown,szTotal,szThread,szPid,szStatus) values('%s','%s',%I64d,%I64d,%I64d,%I64d,%u,%u,%d);"
+    _snprintf(m_sql, URL_LEN - 1, "insert into download_info(szUrl,szEtag,szBegin,szEnd,szDown,szTotal,szThread,szPid,szStatus) values('%s','%s',%I64d,%I64d,%I64d,%I64d,%u,%u,%d);"
               ,url, etag, begin, end, down, total, thread, pid, status);
     rc = sqlite3_exec(file_info.sql, m_sql, 0, 0, &msg);
-    CHECK_RC(rc, "thread_insert error", msg, file_info.sql);
+    CHECK_RC(rc, "thread_insert", msg, file_info.sql);
     return true;
 }
 

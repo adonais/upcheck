@@ -377,11 +377,11 @@ init_file_strings(LPCWSTR names, size_t *psize)
     WCHAR *path = NULL;
     do
     {
-        if ((path = (WCHAR *)calloc(1, sizeof(WCHAR) * URL_LEN)) == NULL)
+        if ((path = (WCHAR *)calloc(1, sizeof(WCHAR) * BUFF_LEN)) == NULL)
         {
             break;
         }
-        if (!GetModuleFileNameW(NULL, path, URL_LEN))
+        if (!GetModuleFileNameW(NULL, path, BUFF_LEN))
         {
             break;
         }
