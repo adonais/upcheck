@@ -685,6 +685,10 @@ run_thread(void *pdata)
             euapi_curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
             euapi_curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
             euapi_curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
+            if (i > 0)
+            {
+                Sleep(1000);
+            }
             res = euapi_curl_easy_perform(curl);
             euapi_curl_easy_cleanup(curl);
             if (res == CURLE_OK)
@@ -693,12 +697,18 @@ run_thread(void *pdata)
                 printf("\ndownload message: ok, %u thread exit\n", pnode->tid);
                 break;
             }
-            else // CURLE_PARTIAL_FILE, CURLE_OPERATION_TIMEDOUT
+            else if (res == CURLE_COULDNT_CONNECT || res == CURLE_HTTP2_STREAM)
             {
                 pnode->error = true;
-                printf("\ndownload error: code[%d], retry...\n", res);
+                printf("\ndownload error: code[%d], retry[%s]\n", res, file_info.re_bind ? "true": "false");
             }
-        } // 非严重错误时自动重试8次
+            else
+            {
+                pnode->error = true;
+                printf("\ndownload error: code[%d]\n", res);
+                break;
+            }
+        } // 非严重错误时自动重试8次, 间隔1秒
     } while (file_info.re_bind && ++i < URL_ITERATIONS);
     if (!pnode->error && total_size > 0)
     {
