@@ -209,7 +209,29 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
         {
             if (!PathFileExistsW(mjs))
             {
-                ret = 0;
+                if (ret > 0 && acfg && PathFileExistsW(path))
+                {
+                    FILE *fp = _wfopen(path, L"rb");
+                    ret = 0;
+                    if (fp)
+                    {
+                        char buff[1024] = {0};
+                        size_t buf_len = 0;
+                        if ((buf_len = fread(buff, 1, 1024, fp)) > 0)
+                        {
+                            if (check_memstr(buff, (int)buf_len, "/boot.sys.mjs") != NULL)
+                            {
+                                ret = 1;
+                                break;
+                            }
+                        }
+                        fclose(fp);
+                    }
+                }
+                else
+                {
+                    ret = 0;
+                }
             }
             else
             {
@@ -261,8 +283,16 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
             {
                 ret = DeleteFileW(path) ? 0 : -1;
             }
+            else if (_snwprintf(path, BUFF_LEN, L"%s\\defaults\\pref\\config-prefs.js", clone) > 0 && PathFileExistsW(path))
+            {
+                ret = DeleteFileW(path) ? 0 : -1;
+            }
             _snwprintf(path, BUFF_LEN, L"%s\\Iceweasel.cfg", clone);
             if (PathFileExistsW(path))
+            {
+                ret = DeleteFileW(path) ? 0 : -1;
+            }
+            else if (_snwprintf(path, BUFF_LEN, L"%s\\config.js", clone) > 0 && PathFileExistsW(path))
             {
                 ret = DeleteFileW(path) ? 0 : -1;
             }
