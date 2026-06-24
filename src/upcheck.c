@@ -43,7 +43,6 @@ typedef HRESULT (WINAPI *SHGetKnownFolderIDListPtr)(REFKNOWNFOLDERID rfid,
 
 static int64_t downloaded_size = 0;
 static int64_t total_size = 0;
-static LOCK_MUTEXT g_mutex = {0};
 static SHGetKnownFolderIDListPtr sSHGetKnownFolderIDListStub = NULL;
 static char g_download_url[DOWN_NUM][URL_LEN] = {0};
 
@@ -559,25 +558,6 @@ curl_header_parse(void *hdr, size_t size, size_t nmemb, void *userdata)
     return cb;
 }
 
-static void
-lock_cb(CURL *handle, curl_lock_data data, curl_lock_access access, void *userptr)
-{
-    (void) access;  /* unused */
-    (void) userptr; /* unused */
-    (void) handle;  /* unused */
-    (void) data;    /* unused */
-    DO_LOCK(&g_mutex);
-}
-
-static void
-unlock_cb(CURL *handle, curl_lock_data data, void *userptr)
-{
-    (void) userptr; /* unused */
-    (void) handle;  /* unused */
-    (void) data;    /* unused */
-    DO_UNLOCK(&g_mutex);
-}
-
 static size_t
 download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -893,8 +873,6 @@ init_resume(const char *url, int64_t length)
         euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
         euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
         euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
-        euapi_curl_share_setopt(share, CURLSHOPT_LOCKFUNC, lock_cb);
-        euapi_curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, unlock_cb);
         for (i = 0; i < file_info.thread_num; i++)
         {
             m_node[i].fp = fp;
@@ -1091,8 +1069,6 @@ init_download(const char *url, int64_t length)
             euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
             euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
             euapi_curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
-            euapi_curl_share_setopt(share, CURLSHOPT_LOCKFUNC, lock_cb);
-            euapi_curl_share_setopt(share, CURLSHOPT_UNLOCKFUNC, unlock_cb);
         }
         for (i = 0; i < file_info.thread_num; i++)
         {
@@ -1498,7 +1474,6 @@ static bool
 curl_task(int64_t length)
 {
     bool res = false;
-    INIT_LOCK(&g_mutex);
     if (init_download(file_info.url, length))
     {
         res = true;
@@ -1506,7 +1481,6 @@ curl_task(int64_t length)
 #ifndef EUAPI_LINK
     delete_temp_cookie();
 #endif
-    DESTROY_LOCK(&g_mutex);
     return res;
 }
 
