@@ -26,6 +26,7 @@
 #define NGHTTP2_H
 
 #if defined _WIN32
+#ifndef ssize_t
 #ifndef _SSIZE_T_DEFINED
 #  if defined(__MINGW32__)
 #  elif defined(_M_X64)
@@ -35,6 +36,7 @@
 #    define _SSIZE_T_DEFINED
 #    define ssize_t int
 #  endif
+#endif
 #endif
 #endif
 /* Define WIN32 when build target is Win32 API (borrowed from
@@ -3264,7 +3266,7 @@ NGHTTP2_EXTERN void nghttp2_option_set_max_continuations(nghttp2_option *option,
  * regenerated per second.  When a suspicious activity is detected,
  * some amount of tokens are consumed.  If there is no token
  * available, GOAWAY is sent to tear down the connection.  |burst| and
- * |rate| default to 1000 and 33 respectively.
+ * |rate| default to 10000 and 330 respectively.
  */
 NGHTTP2_EXTERN void nghttp2_option_set_glitch_rate_limit(nghttp2_option *option,
                                                          uint64_t burst,
