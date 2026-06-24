@@ -1689,10 +1689,23 @@ wmain(int argc, wchar_t **argv)
             ret = init_resolver();
             if (ret == 0)
             {
+                char *fast = NULL;
                 printf("init_resolver ok.\n");
                 if ((strstr(file_info.url, "sourceforge.net") || strstr(file_info.url, "github.com")) && (file_info.re_bind == 0))
                 {
                     file_info.re_bind = 1;
+                }
+                if (!strncmp(file_info.url, "https://sourceforge.net", strlen("https://sourceforge.net")) && ini_read_string("update", "faster", &fast, file_info.ini, true))
+                {
+                    char re[URL_LEN+1] = {0};
+                    if (fast[strlen(fast) - 1] == '/')
+                    {
+                        fast[strlen(fast) - 1] = 0;
+                    }
+                    _snprintf(re, URL_LEN, "%s/%s", fast, file_info.url);
+                    _snprintf(file_info.url, URL_LEN, "%s", re);
+                    printf("Redirect to [%s]\n", file_info.url);
+                    free(fast);
                 }
             }
             else if (ret > 0)
