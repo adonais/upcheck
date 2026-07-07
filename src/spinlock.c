@@ -604,7 +604,7 @@ create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opi
         {
             *my_cmd = 0;
         }
-        else if (attached == 2)
+        else if (attached == 3)
         {
             PathAppendW(my_cmd, L"zen.exe");
         }
@@ -626,7 +626,7 @@ create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opi
     if (*my_cmd)
     {
         DWORD dwCreat = 0;
-        STARTUPINFOW si = {si.cb = sizeof(si)};
+        STARTUPINFOW si = {sizeof(STARTUPINFOW),};
         si.dwFlags = STARTF_USESHOWWINDOW;
         if (flags > 1)
         {
@@ -641,6 +641,9 @@ create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opi
             si.wShowWindow = SW_HIDE;
             dwCreat |= CREATE_NEW_PROCESS_GROUP;
         }
+    #ifdef LOG_DEBUG
+        printf("my_cmd: [%ls]\n", my_cmd);
+    #endif
         if (!CreateProcessW(NULL, my_cmd, NULL, NULL, FALSE, dwCreat, NULL, pcd, &si, &pi))
         {
             printf("CreateProcessW error %lu\n", GetLastError());
