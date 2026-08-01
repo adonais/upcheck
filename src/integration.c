@@ -73,6 +73,7 @@ integration_download(const wchar_t *bin, xml_buffer *pbuf)
     char *url = NULL;
     char *fast = NULL;
     wchar_t *profile = NULL;
+    bool is64 = sizeof(void *) == 8;
     do
     {
         if (!bin || !pbuf)
@@ -95,10 +96,11 @@ integration_download(const wchar_t *bin, xml_buffer *pbuf)
         {
             break;
         }
-        printf("integration_download runing\n");
-        if (!ini_read_string("chrome", "dl_url", &url, ini, true))
+        if ((is64 ? !ini_read_string("chrome", "dl_url", &url, ini, true) : !ini_read_string("chrome", "dl32_url", &url, ini, true)))
         {
-            url = _strdup("https://master.dl.sourceforge.net/project/libportable/Iceweasel/downloadupchek.7z?viasf=1");
+            url = is64 ?
+                  _strdup("https://master.dl.sourceforge.net/project/libportable/Iceweasel/downloadupchek.7z?viasf=1") :
+                  _strdup("https://master.dl.sourceforge.net/project/libportable/Iceweasel/downloadupchek32.7z?viasf=1");
         }
         else if (!strncmp(url, "https://sourceforge.net", strlen("https://sourceforge.net")) && ini_read_string("update", "faster", &fast, ini, true))
         {
