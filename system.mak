@@ -32,7 +32,7 @@ CFLAGS   = $(CFLAGS) -DWIN64 -D_WIN64 -D_WIN32_WINNT=0x0600 -I$(INCD)
 !IF "$(CC)" == "cl"
 CFLAGS   = $(CFLAGS) -favor:blend
 !ENDIF
-!ELSEIF "$(PLATFORM)"=="x86" || "$(TARGET_CPU)"=="x86" || "$(VSCMD_ARG_TGT_ARCH)"=="x86"
+!ELSEIF "$(Platform)"=="x86" || "$(TARGET_CPU)"=="x86" || "$(VSCMD_ARG_TGT_ARCH)"=="x86"
 PLATFORM = X86
 BITS	 = 32
 CFLAGS   = $(CFLAGS) -DWIN32 -D_WIN32_WINNT=0x0600 -I$(INCD)
