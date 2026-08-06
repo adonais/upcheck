@@ -5,8 +5,9 @@
 extern "C" {
 #endif
 
-int chrome_check(const wchar_t *bin, const wchar_t *chrome, const bool uncheck);
-int chrome_install(const wchar_t *bin, const wchar_t *chrome);
+int  chrome_check(const wchar_t *bin, const wchar_t *chrome, const bool uncheck);
+int  chrome_install(const wchar_t *bin, const wchar_t *chrome);
+bool chrome_faster(const char *ini, char **purl);
 
 #ifdef __cplusplus
 }

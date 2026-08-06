@@ -71,7 +71,6 @@ integration_download(const wchar_t *bin, xml_buffer *pbuf)
     int ret = -1;
     char *ini = NULL;
     char *url = NULL;
-    char *fast = NULL;
     wchar_t *profile = NULL;
     bool is64 = sizeof(void *) == 8;
     do
@@ -102,23 +101,14 @@ integration_download(const wchar_t *bin, xml_buffer *pbuf)
                   _strdup("https://master.dl.sourceforge.net/project/libportable/Iceweasel/downloadupchek.7z?viasf=1") :
                   _strdup("https://master.dl.sourceforge.net/project/libportable/Iceweasel/downloadupchek32.7z?viasf=1");
         }
-        else if (!strncmp(url, "https://sourceforge.net", strlen("https://sourceforge.net")) && ini_read_string("update", "faster", &fast, ini, true))
+        else if (!strncmp(url, "https://sourceforge.net", strlen("https://sourceforge.net")) && chrome_faster(ini, &url))
         {
-            char re[URL_LEN+1] = {0};
-            if (fast[strlen(fast) - 1] == '/')
-            {
-                fast[strlen(fast) - 1] = 0;
-            }
-            _snprintf(re, URL_LEN, "%s/%s", fast, url);
-            free(url);
-            url = _strdup(re);
             printf("Downloadupchek [%s]\n", url);
         }
         ret = init_process(url, &write_data_callback, pbuf);
     } while(0);
     ini_safe_free(ini);
     ini_safe_free(url);
-    ini_safe_free(fast);
     ini_safe_free(profile);
     return ret;
 }

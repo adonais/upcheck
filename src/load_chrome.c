@@ -62,6 +62,25 @@ chrome_update(const wchar_t *bin, const wchar_t *profd, const wchar_t *temp)
     return do_file_copy(temp, chrome_file_callback, true);
 }
 
+bool
+chrome_faster(const char *ini, char **purl)
+{
+    char *fast = NULL;
+    if (purl && *purl && ini_read_string("update", "faster", &fast, ini, true))
+    {
+        char re[URL_LEN+1] = {0};
+        if (fast[strlen(fast) - 1] == '/')
+        {
+            fast[strlen(fast) - 1] = 0;
+        }
+        _snprintf(re, URL_LEN, "%s/%s", fast, *purl);
+        free(fast);
+        free(*purl);
+        return ((*purl = _strdup(re)) != NULL);
+    }
+    return false;
+}
+
 static int
 chrome_download(const wchar_t *bin, xml_buffer *pbuf)
 {
@@ -94,6 +113,13 @@ chrome_download(const wchar_t *bin, xml_buffer *pbuf)
         if (!ini_read_string("chrome", "uc_url", &url, ini, true))
         {
             url = _strdup("https://sourceforge.net/projects/libportable/files/Iceweasel/userchrome.7z/download");
+        }
+        if (!strncmp(url, "https://sourceforge.net", strlen("https://sourceforge.net")))
+        {
+            if (!chrome_faster(ini, &url))
+            {
+                break;
+            }
         }
         ret = init_process(url, &write_data_callback, pbuf);
     } while(0);
