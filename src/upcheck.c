@@ -1490,6 +1490,7 @@ wmain(int argc, wchar_t **argv)
     int argn = 0;
     int ret = 0;
     wchar_t **wargv = NULL;
+    wchar_t *crtbase = NULL;
     HANDLE mapped = NULL;
     const HMODULE hlib = GetModuleHandleW(L"kernel32.dll");
     SetDllDirectoryW(L"");
@@ -1546,6 +1547,12 @@ wmain(int argc, wchar_t **argv)
     }
 #endif
 #ifndef EUAPI_LINK
+    if ((crtbase = init_file_strings(L"ucrtbase.dll", NULL)) != NULL)
+    {   // 把此目录加入环境变量, 因为aria2c使用了动态链接
+        PathRemoveFileSpecW(crtbase);
+        enviroment_variables_set(L"PATH", crtbase, VARIABLES_APPEND);
+        free(crtbase);
+    }
     if (argn == 2 && (_wcsicmp(wargv[1], L"-a2quit") == 0 || _wcsicmp(wargv[1], L"-collect") == 0))
     {
         if (libcurl_init(CURL_GLOBAL_DEFAULT) == 0)
