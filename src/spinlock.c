@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <shlwapi.h>
 #include <tlhelp32.h>
+#include <bcrypt.h>
 #include "ini_parser.h"
 #include <curl/curl.h>
 #include "spinlock.h"
@@ -1296,4 +1297,25 @@ getw_cwd(LPWSTR lpstr, DWORD wlen)
         }
     }
     return (i > 0 && i < (int)wlen);
+}
+
+wchar_t *init_win32_random(const wchar_t *prex)
+{
+#define RANDOM_LENGHT 8
+#define RANDOM_BUFFER 32
+    wchar_t *buf = NULL;
+    int  offset = prex ? (int)wcslen(prex) : 0;
+    uint8_t entropy[RANDOM_LENGHT] = {0};
+    if ((offset > 0 && offset < RANDOM_LENGHT) && BCryptGenRandom(NULL, entropy, RANDOM_LENGHT, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == 0 && (buf = (wchar_t *)calloc(RANDOM_BUFFER, 2)) != NULL)
+    {
+        _snwprintf(buf, RANDOM_BUFFER, L"%s", prex);
+        for (int i = 0; i < RANDOM_LENGHT; ++i)
+        {
+            int n = swprintf(buf + offset, 4, L"%.2x", entropy[i]);
+            offset += n;
+        }
+    }
+    return buf;
+#undef RANDOM_LENGHT
+#undef RANDOM_BUFFER
 }

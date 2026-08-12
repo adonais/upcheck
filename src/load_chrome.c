@@ -7,6 +7,12 @@
 #include "ini_parser.h"
 #include "xml.h"
 #include "extract7z.h"
+#include "load_chrome.h"
+
+#define BROKEN_LNK   "https://sourceforge.net/projects/libportable/files/Iceweasel/userchrome.7z/download"
+#define REDIRECT_URL "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/userchrome.7z/download"
+#define MG_URL       "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/mousegestures.7z/download"
+#define AP_URL       "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/addonspage.7z/download"
 
 static wchar_t file_src_path[BUFF_LEN];
 static wchar_t file_dst_path[2][BUFF_LEN];
@@ -66,7 +72,11 @@ bool
 chrome_faster(const char *ini, char **purl)
 {
     char *fast = NULL;
-    if (purl && *purl && ini_read_string("update", "faster", &fast, ini, true))
+    if (!(purl && *purl))
+    {
+        return false;
+    }
+    if (ini_read_string("update", "faster", &fast, ini, true))
     {
         char re[URL_LEN+1] = {0};
         if (fast[strlen(fast) - 1] == '/')
@@ -78,11 +88,11 @@ chrome_faster(const char *ini, char **purl)
         free(*purl);
         return ((*purl = _strdup(re)) != NULL);
     }
-    return false;
+    return true;
 }
 
 static int
-chrome_download(const wchar_t *bin, xml_buffer *pbuf)
+chrome_download(const wchar_t *bin, xml_buffer *pbuf, mozscr srcid)
 {
     int ret = -1;
     char *ini = NULL;
@@ -110,9 +120,37 @@ chrome_download(const wchar_t *bin, xml_buffer *pbuf)
         {
             break;
         }
-        if (!ini_read_string("chrome", "uc_url", &url, ini, true))
+        switch (srcid)
         {
-            url = _strdup("https://sourceforge.net/projects/libportable/files/Iceweasel/userchrome.7z/download");
+            case MOZ_CHROME:
+                if (!ini_read_string("chrome", "uc_url", &url, ini, true))
+                {
+                    url = _strdup(REDIRECT_URL);
+                }
+                else if (_stricmp(url, BROKEN_LNK) == 0)
+                {
+                    free(url);
+                    url = _strdup(REDIRECT_URL);
+                }
+                break;
+            case MOZ_MOUSEGESTURES:
+                if (!ini_read_string("chrome", "mg_url", &url, ini, true))
+                {
+                    url = _strdup(MG_URL);
+                }
+                break;
+            case MOZ_UCADDONS:
+                if (!ini_read_string("chrome", "ap_url", &url, ini, true))
+                {
+                    url = _strdup(AP_URL);
+                }
+                break;
+            default:
+                break;
+        }
+        if (!url)
+        {
+            break;
         }
         if (!strncmp(url, "https://sourceforge.net", strlen("https://sourceforge.net")))
         {
@@ -130,10 +168,11 @@ chrome_download(const wchar_t *bin, xml_buffer *pbuf)
 }
 
 int
-chrome_install(const wchar_t *bin, const wchar_t *profd)
+chrome_install(const wchar_t *bin, const wchar_t *profd, mozscr srcid)
 {
     int ret = -1;
     wchar_t *temp = NULL;
+    wchar_t *cc = NULL;
     xml_buffer xbuf = {0};
     do
     {
@@ -141,29 +180,72 @@ chrome_install(const wchar_t *bin, const wchar_t *profd)
         {
             break;
         }
+        if (srcid != MOZ_CHROME && chrome_check(bin, profd, false) <= 0)
+        {
+            break;
+        }
         if (!(temp = (wchar_t *)calloc(BUFF_LEN + 1, sizeof(wchar_t))))
         {
             break;
         }
-        if ((ret = chrome_download(bin, &xbuf)) == 0)
+        if (!(cc = init_win32_random(L"ch")))
         {
-            time_t cc = time(NULL);
-            _snwprintf(temp, BUFF_LEN, L"%s\\ch%I64d", profd, cc);
-            if (!create_dir(temp))
+            break;
+        }
+        if ((ret = chrome_download(bin, &xbuf, srcid)) == 0)
+        {
+            ret = 1;
+            if (srcid == MOZ_CHROME || srcid == MOZ_DOWNLOADUPCHECK)
             {
-                ret = 1;
+                _snwprintf(temp, BUFF_LEN, L"%s\\%s", profd, cc);
+                if (!create_dir(temp))
+                {
+                    break;
+                }
+                if (extract7z(NULL, temp, xbuf.str, xbuf.cur) != 0)
+                {
+                    break;
+                }
+                ret = chrome_update(bin, profd, temp);
+            }
+            else if (extract7z(NULL, profd, xbuf.str, xbuf.cur) != 0)
+            {
                 break;
             }
-            if (extract7z(NULL, temp, xbuf.str, xbuf.cur) != 0)
-            {
-                ret = 1;
-                break;
-            }
-            ret = chrome_update(bin, profd, temp);
+            ret = 0;
         }
     } while(0);
     ini_safe_free(temp);
+    ini_safe_free(cc);
     ini_safe_free(xbuf.str);
+    return ret;
+}
+
+int chrome_uncheck(const wchar_t *bin, const wchar_t *profd, mozscr srcid)
+{
+    int ret = -1;
+    wchar_t *mjs = path_utf16_clone(profd);
+    if (mjs)
+    {
+        switch (srcid)
+        {
+            case MOZ_CHROME:
+                wp_wcsncat(mjs, L"\\chrome\\userChrome.us.js", BUFF_LEN);
+                break;
+            case MOZ_MOUSEGESTURES:
+                wp_wcsncat(mjs, L"\\chrome\\SubScript\\MouseGestures.uc.js", BUFF_LEN);
+                break;
+            case MOZ_UCADDONS:
+                wp_wcsncat(mjs, L"\\chrome\\SubScript\\AddonsPage.uc.js", BUFF_LEN);
+                break;
+            default:
+                break;
+        }
+        if (PathFileExistsW(mjs))
+        {
+            ret = DeleteFileW(mjs) ? 0 : -1;
+        }
+    }
     return ret;
 }
 
@@ -324,8 +406,7 @@ chrome_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
             }
             if (PathFileExistsW(mjs))
             {
-                _snwprintf(path, BUFF_LEN, L"%s.old", mjs);
-                ret = MoveFileExW(mjs, path, MOVEFILE_COPY_ALLOWED|MOVEFILE_REPLACE_EXISTING) ? 0 : -1;
+                ret = DeleteFileW(mjs) ? 0 : -1;
             }
         }
     } while(0);

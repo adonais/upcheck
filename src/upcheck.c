@@ -1619,12 +1619,48 @@ wmain(int argc, wchar_t **argv)
         }
         else if (_wcsicmp(wargv[1], L"-chrome-install") == 0)
         {
-            ret = chrome_install(wargv[2], wargv[3]);
+            ret = chrome_install(wargv[2], wargv[3], MOZ_CHROME);
             libcurl_destory();
         }
         LocalFree(wargv);
     #ifdef LOG_DEBUG
         printf("chrome return %d\n", ret);
+    #endif
+        return ret;
+    }
+    if (argn == 4 && _wcsnicmp(wargv[1], L"-mousegestures-", 15) == 0)
+    {
+        ret = -1;
+        if (_wcsicmp(wargv[1], L"-mousegestures-uncheck") == 0)
+        {
+            ret = chrome_uncheck(wargv[2], wargv[3], MOZ_MOUSEGESTURES);
+        }
+        else if (_wcsicmp(wargv[1], L"-mousegestures-install") == 0)
+        {
+            ret = chrome_install(wargv[2], wargv[3], MOZ_MOUSEGESTURES);
+            libcurl_destory();
+        }
+        LocalFree(wargv);
+    #ifdef LOG_DEBUG
+        printf("mousegestures return %d\n", ret);
+    #endif
+        return ret;
+    }
+    if (argn == 4 && _wcsnicmp(wargv[1], L"-ucaddons-", 10) == 0)
+    {
+        ret = -1;
+        if (_wcsicmp(wargv[1], L"-ucaddons-uncheck") == 0)
+        {
+            ret = chrome_uncheck(wargv[2], wargv[3], MOZ_UCADDONS);
+        }
+        else if (_wcsicmp(wargv[1], L"-ucaddons-install") == 0)
+        {
+            ret = chrome_install(wargv[2], wargv[3], MOZ_UCADDONS);
+            libcurl_destory();
+        }
+        LocalFree(wargv);
+    #ifdef LOG_DEBUG
+        printf("ucaddons return %d\n", ret);
     #endif
         return ret;
     }

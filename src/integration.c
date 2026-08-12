@@ -9,6 +9,10 @@
 #include "extract7z.h"
 #include "load_chrome.h"
 
+#define DL_BROKEN "https://sourceforge.net/projects/libportable/files/Iceweasel/downloadupchek.7z/download"
+#define DL_URL    "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/downloadupchek.7z/download"
+#define DL32_URL  "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/downloadupchek32.7z/download"
+
 static wchar_t cp_src_path[BUFF_LEN];
 static wchar_t cp_dst_path[2][BUFF_LEN];
 
@@ -95,13 +99,27 @@ integration_download(const wchar_t *bin, xml_buffer *pbuf)
         {
             break;
         }
-        if ((is64 ? !ini_read_string("chrome", "dl_url", &url, ini, true) : !ini_read_string("chrome", "dl32_url", &url, ini, true)))
+        if (is64)
         {
-            url = is64 ?
-                  _strdup("https://master.dl.sourceforge.net/project/libportable/Iceweasel/downloadupchek.7z?viasf=1") :
-                  _strdup("https://master.dl.sourceforge.net/project/libportable/Iceweasel/downloadupchek32.7z?viasf=1");
+            if (!ini_read_string("chrome", "dl_url", &url, ini, true))
+            {
+                url = _strdup(DL_URL);
+            }
+            else if (_stricmp(url, DL_BROKEN) == 0)
+            {
+                free(url);
+                url = _strdup(DL_URL);
+            }
         }
-        else if (!strncmp(url, "https://sourceforge.net", strlen("https://sourceforge.net")) && chrome_faster(ini, &url))
+        else if (!ini_read_string("chrome", "dl32_url", &url, ini, true))
+        {
+            url = _strdup(DL_URL);
+        }
+        if (!url)
+        {
+            break;
+        }
+        if (!strncmp(url, "https://sourceforge.net", strlen("https://sourceforge.net")) && chrome_faster(ini, &url))
         {
             printf("Downloadupchek [%s]\n", url);
         }
@@ -166,6 +184,7 @@ integration_install(const wchar_t *bin, const wchar_t *profd)
 {
     int ret = -1;
     wchar_t *temp = NULL;
+    wchar_t *cc = NULL;
     xml_buffer xbuf = {0};
     do
     {
@@ -181,10 +200,13 @@ integration_install(const wchar_t *bin, const wchar_t *profd)
         {
             break;
         }
+        if (!(cc = init_win32_random(L"dl")))
+        {
+            break;
+        }
         if ((ret = integration_download(bin, &xbuf)) == 0)
         {
-            time_t cc = time(NULL);
-            _snwprintf(temp, BUFF_LEN, L"%s\\dl%I64d", profd, cc);
+            _snwprintf(temp, BUFF_LEN, L"%s\\%s", profd, cc);
             if (!create_dir(temp))
             {
                 ret = 1;
@@ -202,6 +224,7 @@ integration_install(const wchar_t *bin, const wchar_t *profd)
         }
     } while(0);
     ini_safe_free(temp);
+    ini_safe_free(cc);
     ini_safe_free(xbuf.str);
     return ret;
 }

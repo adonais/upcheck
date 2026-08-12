@@ -197,6 +197,7 @@ extern size_t get_first_line(char **lineptr, const WCHAR *path);
 extern bool utf8_path_exist(char **pstr);
 extern bool ini_path_init(void);
 extern char *path_add_quotes(const char *path);
+extern wchar_t *init_win32_random(const wchar_t *prex);
 
 extern int find_user_local(void);
 extern errno_t wp_strncat(char *dst, const char *src, size_t number);
