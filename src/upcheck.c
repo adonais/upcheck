@@ -1337,6 +1337,7 @@ update_self(LPCWSTR self, LPCWSTR sz_clone)
         CreateProcessW(NULL, sz_cmdLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
         CloseHandle(hself);
         CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
     }
 }
 
