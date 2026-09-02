@@ -47,7 +47,8 @@ LD   = link -nologo
 AR   = llvm-lib -nologo -llvmlibthin
 LD   = lld-link -nologo
 CFLAGS   = -flto=thin $(CFLAGS) -Wno-unused-variable -Wno-unused-function \
-           -Wno-incompatible-pointer-types -Wno-unused-but-set-variable
+           -Wno-incompatible-pointer-types -Wno-unused-but-set-variable \
+           -Wno-deprecated-declarations
 !IF "$(BITS)" == "32"
 CFLAGS   = --target=i686-pc-windows-msvc $(CFLAGS) 
 !ENDIF
@@ -55,10 +56,16 @@ CFLAGS   = --target=i686-pc-windows-msvc $(CFLAGS)
 !ERROR Unknown compiler
 !ENDIF
 
-!if "$(EUAPI_LINK)"=="1"
-CFLAGS = $(CFLAGS) -MD -DEUAPI_LINK=1 -Ilibcurl/include
+!if "$(CRT_STATIC)"=="1"
+CFLAGS = $(CFLAGS) -DCRT_STATIC -MT
 !ELSE
 CFLAGS = $(CFLAGS) -MD
+!ENDIF
+
+!if "$(EUAPI_LINK)"=="1"
+CFLAGS = $(CFLAGS) -DEUAPI_LINK=1 -Ilibcurl/include
+!ELSE
+CFLAGS = $(CFLAGS)
 !ENDIF
 
 !IFNDEF MY_NO_UNICODE
