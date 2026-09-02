@@ -444,7 +444,7 @@ get_name_from_url(char const *url, char *oname)
     return 0;
 }
 
-const void
+void
 strip_url_newline(void)
 {
     if (file_info.url[strlen(file_info.url) - 2] == '\r')
@@ -1574,9 +1574,10 @@ wmain(int argc, wchar_t **argv)
     if (argn >= 5 && (_wcsicmp(wargv[1], L"-lua") == 0 || _wcsicmp(wargv[1], L"-msg") == 0))
     {
         intptr_t moz_hwnd = 0;
+        uint32_t moz_pid = _wtoi(wargv[2]);
         if (_wcsicmp(wargv[1], L"-lua") == 0)
         {
-            if ((moz_hwnd = (intptr_t)get_moz_hwnd(_wtoi(wargv[2]))) != 0)
+            if ((moz_hwnd = (intptr_t)get_moz_hwnd(moz_pid)) != 0)
             {
                 WCHAR hwnd_str[NAMES_LEN] = {0};
                 _snwprintf(hwnd_str, NAMES_LEN - 1, L"%zd", moz_hwnd);
@@ -1590,6 +1591,7 @@ wmain(int argc, wchar_t **argv)
                         {
                             parg[i] = wargv[i + 3];
                         }
+                        file_info.pid = moz_pid;
                         ret = lua_script_loader(parg, i);
                     }
                 }
@@ -1597,7 +1599,7 @@ wmain(int argc, wchar_t **argv)
         }
         else if (_wcsicmp(wargv[1], L"-msg") == 0)
         {
-            if ((moz_hwnd = (intptr_t)get_moz_hwnd(_wtoi(wargv[2]))) != 0)
+            if ((moz_hwnd = (intptr_t)get_moz_hwnd(moz_pid)) != 0)
             {
                 int msg = _wtoi(wargv[3]);
                 int wm = _wtoi(wargv[4]);
