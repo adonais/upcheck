@@ -5,7 +5,7 @@ ROOT = ..
 CFLAGS = -nologo -W3 -WX- -wd4996 -wd4819 -O2 -Zi -Gd -D "_CRT_SECURE_NO_WARNINGS"  \
          -D "SQLITE_OMIT_BUILTIN_TEST" -utf-8 -D "USE_ARES" $(CFLAGS) -D "COBJMACROS"
 
-CXXFLAGS = $(CFLAGS) /TP
+CXXFLAGS = $(CFLAGS) -TP
 
 RFLAGS  = -nologo -D "_UNICODE" -D "UNICODE"
 

@@ -16,7 +16,7 @@ ROOT = ..\..
 # --------------------------
 CARES_OBJDIR = $(OBJD)\libcares
 STATICLIB = $(BIND)\lib$(NAME).lib
-CFLAGS = -nologo -I. -Iinclude -Isrc\include -W3 -EHsc -O2 -Zi -Fd"$(BIND)\libcares" -DCARES_BUILDING_LIBRARY \
+CFLAGS = -nologo -I. -Iinclude -Isrc\include -Isrc -W3 -EHsc -O2 -Zi -Fd"$(BIND)\libcares" -DCARES_BUILDING_LIBRARY \
          -DCARES_STATICLIB -DHAVE_CONFIG_H=1 -DWIN32_LEAN_AND_MEAN -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_DEPRECATE $(CFLAGS)
 
 !if "$(APP_DEBUG)"=="1"
