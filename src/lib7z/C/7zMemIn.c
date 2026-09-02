@@ -4,6 +4,7 @@
 ** This file is public domain.
 */
 
+#include <string.h>
 #include "7zMemIn.h"
 
 static SRes MemInStream_Look(ILookInStreamPtr pp, const void **buf, size_t *size)
