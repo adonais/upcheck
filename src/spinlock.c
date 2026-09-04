@@ -121,7 +121,10 @@ ini_path_init(void)
     GetModuleFileNameW(NULL, ini_path, MAX_PATH);
     PathRemoveFileSpecW(ini_path);
     PathAppendW(ini_path, L"portable.ini");
-    ret = PathFileExistsW(ini_path);
+    if (!(ret = PathFileExistsW(ini_path)))
+    {
+        ret = PathRemoveFileSpecW(ini_path) && PathAppendW(ini_path, L"tmemutil.ini") && PathFileExistsW(ini_path);
+    }
     return (ret && WideCharToMultiByte(CP_UTF8, 0, ini_path, -1, file_info.ini, MAX_PATH, NULL, NULL) > 0);
 #endif
 }

@@ -91,7 +91,7 @@ integration_download(const wchar_t *bin, xml_buffer *pbuf)
         {
             break;
         }
-        if (!PathFileExistsW(profile))
+        if (!(PathFileExistsW(profile) || (PathRemoveFileSpecW(profile) && PathAppendW(profile, L"tmemutil.ini") && PathFileExistsW(profile))))
         {
             break;
         }
@@ -145,6 +145,10 @@ integration_write_ini(const wchar_t *bin)
             break;
         }
         if (!PathAppendW(profile, L"portable.ini"))
+        {
+            break;
+        }
+        if (!(PathFileExistsW(profile) || (PathRemoveFileSpecW(profile) && PathAppendW(profile, L"tmemutil.ini") && PathFileExistsW(profile))))
         {
             break;
         }

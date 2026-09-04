@@ -112,7 +112,7 @@ chrome_download(const wchar_t *bin, xml_buffer *pbuf, mozscr srcid)
         {
             break;
         }
-        if (!PathFileExistsW(profile))
+        if (!(PathFileExistsW(profile) || (PathRemoveFileSpecW(profile) && PathAppendW(profile, L"tmemutil.ini") && PathFileExistsW(profile))))
         {
             break;
         }

@@ -350,7 +350,7 @@ init_resolver(void)
     xml_buffer xbuf = {0};
     if (*file_info.ini && !ini_read_string("update", "url", &url, file_info.ini, true))
     {
-        printf("ini_read_string portable.ini update return false\n");
+        printf("ini_read_string [%s] return false\n", file_info.ini);
         return res;
     }
     else if (*file_info.ini_uri && !(url = _strdup(file_info.ini_uri)))
