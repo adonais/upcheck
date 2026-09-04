@@ -271,6 +271,7 @@ init_command_data(const int args, const wchar_t **pv)
             {
                 VERIFY(i + 1 < argn - 1);
                 file_info.up = true;
+                _snwprintf(file_info.profd, MAX_PATH, L"%s\\compatibility.ini", pv[i + 1]);
             }
             else if (_wcsicmp(pv[i], L"-h") == 0)
             {
@@ -1341,6 +1342,23 @@ update_self(LPCWSTR self, LPCWSTR sz_clone)
     }
 }
 
+#ifndef EUAPI_LINK
+static void
+clear_cache(void)
+{
+    if (file_info.profd[0] && PathFileExistsW(file_info.profd) && DeleteFileW(file_info.profd))
+    {
+        LPCWSTR kmozilla = L"SOFTWARE\\Mozilla\\Firefox\\Launcher";
+        if (RegDeleteTreeW(HKEY_CURRENT_USER, kmozilla) != ERROR_SUCCESS)
+        {
+        #ifdef LOG_DEBUG
+            printf("RegDeleteTreeW failed: case[%lu].\n", GetLastError());
+        #endif
+        }
+    }
+}
+#endif
+
 static void
 update_task(void)
 {
@@ -1440,6 +1458,9 @@ update_task(void)
         {
             WaitForSingleObject(thread, 300);
             quit_progress();
+        #ifndef EUAPI_LINK
+            clear_cache();
+        #endif
             update_self(self, sz_clone);
         }
         else

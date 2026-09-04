@@ -75,6 +75,7 @@ typedef struct _file_info_t
     HANDLE   handle;
     WCHAR    cookie_tmp[MAX_PATH+1];
     WCHAR    names[MAX_PATH+1];
+    WCHAR    profd[MAX_PATH+1];
     WCHAR    process[MAX_PATH+1];
     WCHAR    param[MAX_PATH+1];
     WCHAR    unzip_dir[MAX_PATH+1];
