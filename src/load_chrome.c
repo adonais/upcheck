@@ -224,8 +224,9 @@ chrome_install(const wchar_t *bin, const wchar_t *profd, mozscr srcid)
 int chrome_uncheck(const wchar_t *bin, const wchar_t *profd, mozscr srcid)
 {
     int ret = -1;
+    wchar_t *ucjs = NULL;
     wchar_t *mjs = path_utf16_clone(profd);
-    if (mjs)
+    if (mjs && (ucjs = _wcsdup(mjs)))
     {
         switch (srcid)
         {
@@ -234,17 +235,30 @@ int chrome_uncheck(const wchar_t *bin, const wchar_t *profd, mozscr srcid)
                 break;
             case MOZ_MOUSEGESTURES:
                 wp_wcsncat(mjs, L"\\chrome\\SubScript\\MouseGestures.uc.js", BUFF_LEN);
+                if (!PathFileExistsW(mjs))
+                {
+                    _snwprintf(mjs, BUFF_LEN, L"%s\\chrome\\uc\\MouseGestures.uc.js", ucjs);
+                }
                 break;
             case MOZ_UCADDONS:
                 wp_wcsncat(mjs, L"\\chrome\\SubScript\\AddonsPage.uc.js", BUFF_LEN);
+                if (!PathFileExistsW(mjs))
+                {
+                    _snwprintf(mjs, BUFF_LEN, L"%s\\chrome\\uc\\AddonsPage.uc.js", ucjs);
+                }
                 break;
             default:
                 break;
         }
+        free(ucjs);
         if (PathFileExistsW(mjs))
         {
             ret = DeleteFileW(mjs) ? 0 : -1;
         }
+    }
+    if (mjs)
+    {
+        free(mjs);
     }
     return ret;
 }

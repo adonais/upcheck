@@ -237,8 +237,10 @@ int
 integration_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
 {
     // 防止返回值在js中抛出异常, 不返回负数
+    // 文件存在, 返回1, 不存在, 返回0
     int ret = 0;
     wchar_t *mjs = NULL;
+    wchar_t *ucjs = NULL;
     do
     {
         if (!bin[0] || !profd[0])
@@ -256,16 +258,27 @@ integration_check(const wchar_t *bin, const wchar_t *profd, const bool uncheck)
         wp_wcsncat(mjs, L"\\chrome\\SubScript\\DownloadUpcheck.uc.js", BUFF_LEN);
         if (!uncheck)
         {
-            if (!(ret = PathFileExistsW(mjs)))
+            ret = PathFileExistsW(mjs);
+            if (!ret && (ucjs = _wcsdup(mjs)))
             {
-                break;
+                _snwprintf(mjs, BUFF_LEN, L"%s\\chrome\\uc\\DownloadUpcheck.uc.js", ucjs);
+                ret = PathFileExistsW(mjs);
             }
         }
-        else
+        else if (PathFileExistsW(mjs))
         {
             DeleteFileW(mjs);
         }
+        else if ((ucjs = _wcsdup(mjs)))
+        {
+            _snwprintf(mjs, BUFF_LEN, L"%s\\chrome\\uc\\DownloadUpcheck.uc.js", ucjs);
+            DeleteFileW(mjs);
+        }
     } while(0);
+    if (ucjs)
+    {
+        free(ucjs);
+    }
     if (mjs)
     {
         free(mjs);
