@@ -12,6 +12,7 @@
 #define BROKEN_LNK   "https://sourceforge.net/projects/libportable/files/Iceweasel/userchrome.7z/download"
 #define REDIRECT_URL "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/userchrome.7z/download"
 #define MG_URL       "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/mousegestures.7z/download"
+#define MT_URL       "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/multilinetabs.7z/download"
 #define AP_URL       "https://sourceforge.net/projects/libportable/files/Iceweasel/scripts/win32/addonspage.7z/download"
 
 static wchar_t file_src_path[BUFF_LEN];
@@ -139,6 +140,12 @@ chrome_download(const wchar_t *bin, xml_buffer *pbuf, mozscr srcid)
                     url = _strdup(MG_URL);
                 }
                 break;
+            case MOZ_MULTILINES:
+                if (!ini_read_string("chrome", "mt_url", &url, ini, true))
+                {
+                    url = _strdup(MT_URL);
+                }
+                break;
             case MOZ_UCADDONS:
                 if (!ini_read_string("chrome", "ap_url", &url, ini, true))
                 {
@@ -238,6 +245,13 @@ int chrome_uncheck(const wchar_t *bin, const wchar_t *profd, mozscr srcid)
                 if (!PathFileExistsW(mjs))
                 {
                     _snwprintf(mjs, BUFF_LEN, L"%s\\chrome\\uc\\MouseGestures.uc.js", ucjs);
+                }
+                break;
+            case MOZ_MULTILINES:
+                wp_wcsncat(mjs, L"\\chrome\\SubScript\\MultiRowTabLiteforFx.uc.js", BUFF_LEN);
+                if (!PathFileExistsW(mjs))
+                {
+                    _snwprintf(mjs, BUFF_LEN, L"%s\\chrome\\uc\\MultiRowTabLiteforFx.uc.js", ucjs);
                 }
                 break;
             case MOZ_UCADDONS:

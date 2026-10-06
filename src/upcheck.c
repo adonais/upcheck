@@ -1670,6 +1670,24 @@ wmain(int argc, wchar_t **argv)
     #endif
         return ret;
     }
+    if (argn == 4 && _wcsnicmp(wargv[1], L"-multiline-", 11) == 0)
+    {
+        ret = -1;
+        if (_wcsicmp(wargv[1], L"-multiline-uncheck") == 0)
+        {
+            ret = chrome_uncheck(wargv[2], wargv[3], MOZ_MULTILINES);
+        }
+        else if (_wcsicmp(wargv[1], L"-multiline-install") == 0)
+        {
+            ret = chrome_install(wargv[2], wargv[3], MOZ_MULTILINES);
+            libcurl_destory();
+        }
+        LocalFree(wargv);
+    #ifdef LOG_DEBUG
+        printf("multiline return %d\n", ret);
+    #endif
+        return ret;
+    }
     if (argn == 4 && _wcsnicmp(wargv[1], L"-ucaddons-", 10) == 0)
     {
         ret = -1;
