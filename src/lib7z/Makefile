@@ -8,11 +8,13 @@ STATICLIB = $(BIND)\$(NAME).lib
 
 CFLAGS = -nologo -c -W4 -WX -TC -Gy -GR- -GF -GS- -Zc:forScope -Zc:wchar_t \
          -O2 -DZ7_PPMD_SUPPORT -DZ7_EXTRACT_ONLY -Zi -Fd"$(BIND)\7z" $(CFLAGS)
+
 !if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
 !ELSE
 CFLAGS = $(CFLAGS) $(RELEASE)
 !ENDIF
+
 OBJS = \
   $(OBJD)\lib7z\7zAlloc.obj    \
   $(OBJD)\lib7z\7zBuf.obj      \
