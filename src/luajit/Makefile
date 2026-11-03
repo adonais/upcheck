@@ -12,9 +12,14 @@ STATICLIB = $(BIND)\luajit.lib
 MINILUA = $(BIN_O)\minilua.exe
 BUILDVM = $(BIN_O)\buildvm.exe
 
-CFLAGS  = -nologo -Zi -Oy -Ob1 -DHAVE_CONFIG_H -I$(SRC) -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS \
-          $(RELEASE) $(CFLAGS)
-          
+CFLAGS  = -nologo -Zi -Oy -O1 -Ob1 -DHAVE_CONFIG_H -I$(SRC) -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS $(CFLAGS)
+
+!if "$(APP_DEBUG)"=="1"
+CFLAGS = $(CFLAGS) $(DEBUG_L)
+!ELSE
+CFLAGS = $(CFLAGS) $(RELEASE)
+!ENDIF
+
 MIN_OBJS =                          \
     $(DIR_O)\minilua.obj            \
 
