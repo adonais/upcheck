@@ -18,6 +18,7 @@ NGHTTP2_OBJDIR = $(OBJD)\nghttp2
 STATICLIB = $(BIND)\$(NAME).lib
 CFLAGS = -nologo -I. -Iinclude -Iinclude/nghttp2 -W3 -EHsc -O2 -Zi -Fd"$(BIND)\nghttp2" -D_CRT_SECURE_NO_WARNINGS \
          -DBUILDING_NGHTTP2 -DNGHTTP2_STATICLIB -DWIN32 -D_WINDOWS $(CFLAGS)
+
 !if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
 !ELSE

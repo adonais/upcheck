@@ -362,7 +362,7 @@ curl_set_cookies(CURL *curl)
 {
     if (strstr(file_info.url, "sf.net") || strstr(file_info.url, "sourceforge.net"))
     {
-        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/8.16.0");
+        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "curl/8.17.0");
         euapi_curl_easy_setopt(curl, CURLOPT_COOKIE, "");
     }
     else if (file_info.referer[0] && file_info.cookiefile[0])
@@ -650,11 +650,11 @@ run_thread(void *pdata)
             euapi_curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
         #endif
             // 关掉CLOSE_WAIT
-            euapi_curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
+            euapi_curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_package);
             euapi_curl_easy_setopt(curl, CURLOPT_WRITEDATA, pnode);
             libcurl_set_ssl(curl);
-            euapi_curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+            euapi_curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         #if defined(APP_DEBUG)
             euapi_curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, sets_progress_func);
         #endif
@@ -665,7 +665,7 @@ run_thread(void *pdata)
             libcurl_set_proxy(curl);
             euapi_curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 3L);
             euapi_curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
-            euapi_curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0);
+            euapi_curl_easy_setopt(curl, CURLOPT_RESUME_FROM, 0L);
             if (i > 0)
             {
                 Sleep(1000);
@@ -1348,13 +1348,13 @@ clear_cache(void)
 {
     if (file_info.profd[0] && PathFileExistsW(file_info.profd) && DeleteFileW(file_info.profd))
     {
-        LPCWSTR kmozilla = L"SOFTWARE\\Mozilla\\Firefox\\Launcher";
-        if (RegDeleteTreeW(HKEY_CURRENT_USER, kmozilla) != ERROR_SUCCESS)
-        {
-        #ifdef LOG_DEBUG
-            printf("RegDeleteTreeW failed: case[%lu].\n", GetLastError());
-        #endif
-        }
+        // LPCWSTR kmozilla = L"SOFTWARE\\Mozilla\\Firefox\\Launcher";
+        // if (RegDeleteTreeW(HKEY_CURRENT_USER, kmozilla) != ERROR_SUCCESS)
+        // {
+        // #ifdef LOG_DEBUG
+        //     printf("RegDeleteTreeW failed: case[%lu].\n", GetLastError());
+        // #endif
+        // }
     }
 }
 #endif

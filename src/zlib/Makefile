@@ -15,6 +15,7 @@ STATICLIB = $(BIND)\zlib.lib
 RC = rc
 CFLAGS  = -nologo -W3 -O2 -Oy- -Zi -Fd"$(BIND)\zlib" -Isrc -I../include $(LOC) $(CFLAGS) \
           -D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE
+
 !if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
 !ELSE

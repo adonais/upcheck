@@ -29,6 +29,7 @@ CFLAGS = -nologo -O2 -DCURL_STATICLIB -I. -Isrc -Iinclude -W4 -wd4127 -EHsc -c \
          -DHAVE_INET_NTOP -DHAVE_INET_PTON $(CFLAGS)
 RC_CMD_REL = rc.exe -l 0x409 -d "NDEBUG"
 LINK_CMD_LIB = link.exe -lib -nologo
+
 !if "$(APP_DEBUG)"=="1"
 CFLAGS = $(CFLAGS) $(DEBUG_L)
 !ELSE

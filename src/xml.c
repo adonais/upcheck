@@ -37,9 +37,10 @@ init_process(const char *url, curl_write_callback write_data, void *userdata)
         euapi_curl_easy_setopt(curl_handle, CURLOPT_MAXREDIRS, 3L);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
         libcurl_set_ssl(curl_handle);
-        euapi_curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 60L);
-        euapi_curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 90L);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 45L);
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 180L);
     #if APP_DEBUG
+        euapi_curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 0L);
         euapi_curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
     #endif
         // 设置代理
