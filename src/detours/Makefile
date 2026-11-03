@@ -11,7 +11,13 @@ ROOT = ..\..
 !include "$(ROOT)\system.mak"
 #######################/#######################################################
 ##
-CFLAGS=/nologo /W4 /WX /Zi /Gy /Zl /Od /utf-8 /D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR $(CFLAGS)
+CFLAGS=-nologo -W4 -WX -Zi -Gy -Zl -O1 -utf-8 -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR $(CFLAGS) -std:c++17
+
+!if "$(APP_DEBUG)"=="1"
+CFLAGS = $(CFLAGS) $(DEBUG_L)
+!ELSE
+CFLAGS = $(CFLAGS) $(RELEASE)
+!ENDIF
 
 OBJS = \
     $(OBJD)\detours.obj     \
@@ -30,7 +36,7 @@ OBJS = \
 .SUFFIXES: .cpp .h .obj
 
 .cpp{$(OBJD)}.obj:
-    $(CC) $(CFLAGS) /Fd$(BIND)\detours.pdb /Fo$(OBJD)\ /c $<
+    $(CC) $(CFLAGS) -Fd$(BIND)\detours.pdb -Fo$(OBJD)\ -c $<
 
 ##############################################################################
 
