@@ -55,6 +55,105 @@ init_process(const char *url, curl_write_callback write_data, void *userdata)
     return res;
 }
 
+static size_t
+write_json(void *buffer, size_t size, size_t nmemb, void *stream)
+{
+    size_t len = size * nmemb;
+    json_buffer *pdata = (json_buffer *)stream;
+    const char *split = "\"tag_name\": ";
+    if (pdata)
+    {
+        char *p = strstr((char *)buffer, split);
+        if (p)
+        {
+            char *terminators = NULL;
+            p += strlen(split);
+            if (*p == '"')
+            {
+                ++p;
+            }
+            terminators = strchr(p, '"');
+            if (terminators && terminators - p < 32)
+            {
+                snprintf(pdata->tag, terminators - p + 1, "%s", p);
+                printf("Upcheck: tag[%s]\n", pdata->tag);
+            }
+            split = "\"digest\": \"sha256:";
+            p = strstr((char *)buffer, split);
+            if (p)
+            {
+                p += strlen(split);
+                if (*p == '"')
+                {
+                    ++p;
+                }
+                terminators = strchr(p, '"');
+                if (terminators && terminators - p <= VALUE_LEN)
+                {
+                    snprintf(file_info.sha, terminators - p + 1, "%s", p);
+                    printf("Upcheck: sha[%s]\n", file_info.sha);
+                }
+            }
+            split = "\"browser_download_url\": ";
+            p = strstr((char *)buffer, split);
+            if (p)
+            {
+                p += strlen(split);
+                if (*p == '"')
+                {
+                    ++p;
+                }
+                terminators = strchr(p, '"');
+                if (terminators && terminators - p < 1024)
+                {
+                    snprintf(pdata->url, terminators - p + 1, "%s", p);
+                    printf("Upcheck: url[%s]\n", pdata->url);
+                }
+            }
+        }
+    }
+    return len;
+}
+
+static int
+init_updates(struct curl_slist **pheaders, const char *url, json_buffer *pjs)
+{
+    CURLcode res = 1;
+    CURL *curl = euapi_curl_easy_init ?
+                 euapi_curl_easy_init() :
+                 (libcurl_init(CURL_GLOBAL_DEFAULT) == 0 ? euapi_curl_easy_init() : NULL);
+    if (curl != NULL)
+    {
+        *pheaders = euapi_curl_slist_append(*pheaders, "Accept: application/json");
+        *pheaders = euapi_curl_slist_append(*pheaders, "Content-Type: application/json");
+        *pheaders = euapi_curl_slist_append(*pheaders, "charsets: utf-8");
+        euapi_curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *pheaders);
+        euapi_curl_easy_setopt(curl, CURLOPT_URL, url);
+        // 默认使用http/2时, 检测不到最新发布的tag ?
+        euapi_curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        euapi_curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0");
+        libcurl_set_ssl(curl);
+        euapi_curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
+        euapi_curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        euapi_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_json);
+        euapi_curl_easy_setopt(curl, CURLOPT_WRITEDATA, pjs);
+        euapi_curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 6L);
+        euapi_curl_easy_setopt(curl, CURLOPT_TIMEOUT, 8L);
+    #if APP_DEBUG
+        euapi_curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    #endif
+        // 设置代理
+        libcurl_set_proxy(curl);
+        res = euapi_curl_easy_perform(curl);
+        if (res != CURLE_OK)
+        {
+            printf("In init_updates, euapi_curl_easy_perform() failed: %s\n", euapi_curl_easy_strerror(res));
+        }
+        euapi_curl_easy_cleanup(curl);
+    }
+    return res;
+}
+
 static bool
 is_64bit_os(void)
 {
@@ -340,7 +439,7 @@ ini_query_ice(xml_buffer *pbuf, const bool upgrade)
     return res;
 }
 
-/* 连不上更新服务器或函数执行失败,返回-1 */
+/* 连不上更新服务器或函数执行失败,返回-1   */
 /* 需要更新,返回0                        */
 /* 不需要更新,返回1                      */
 int
@@ -349,6 +448,8 @@ init_resolver(void)
     char* url = NULL;
     int   res = -1;
     xml_buffer xbuf = {0};
+    json_buffer jsbuf = {0};
+    struct curl_slist *headers = NULL;
     if (*file_info.ini && !ini_read_string("update", "url", &url, file_info.ini, true))
     {
         printf("ini_read_string [%s] return false\n", file_info.ini);
@@ -359,24 +460,54 @@ init_resolver(void)
         printf("file_info.ini_uri maybe null\n");
         return res;
     }
-    if ((res = init_process(url, &write_data_callback, &xbuf)) != CURLE_OK)
+    if (file_info.moz == MOZ_FX)
     {
-        printf("init_process[%s] error, cause: %d\n", url, res);
-        res = -1;
-    }
-    else
-    {
-        if (file_info.ini_uri[0])
+        if ((res = init_process(url, &write_data_callback, &xbuf)) != CURLE_OK)
         {
-            res = ini_query_edit(&xbuf);
+            printf("init_process[%s] error, cause: %d\n", url, res);
+            res = -1;
         }
         else
         {
-            res = ini_query_ice(&xbuf, true);
+            if (file_info.ini_uri[0])
+            {
+                res = ini_query_edit(&xbuf);
+            }
+            else
+            {
+                res = ini_query_ice(&xbuf, true);
+            }
+            printf("init_resolver, res = [%d]\n", res);
         }
-        printf("init_resolver, res = [%d]\n", res);
+    }
+    else
+    {
+        res = init_updates(&headers, url, &jsbuf);
+        if (res)
+        {
+            res = -1;
+        }
+        else
+        {
+            char *pver = get_browser_version();
+            res = 1;
+            if (pver)
+            {
+                printf("we compare [%s] <===> [%s]\n", jsbuf.tag, pver);
+                if (compare_versions(jsbuf.tag, pver) > 0)
+                {
+                    res = 0;
+                    _snprintf(file_info.url, URL_LEN, "%s", jsbuf.url);
+                }
+                free(pver);
+            }
+        }
     }
     ini_safe_free(url);
     ini_safe_free(xbuf.str);
+    if (headers)
+    {
+        euapi_curl_slist_free_all(headers);
+    }
     return res;
 }

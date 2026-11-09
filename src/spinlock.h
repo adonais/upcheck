@@ -68,6 +68,13 @@ enum
     UPCHECK_READY_ERR = 2
 };
 
+typedef enum _BROWSER
+{
+    MOZ_FX = 0,
+    MOZ_EDGE,
+    MOZ_GOOGLE
+} BROWSER;
+
 typedef int (*copy_file_ptr)(LPCWSTR filepath);
 
 typedef struct _file_info_t
@@ -80,7 +87,9 @@ typedef struct _file_info_t
     WCHAR    param[MAX_PATH+1];
     WCHAR    unzip_dir[MAX_PATH+1];
     WCHAR    del[MAX_PATH+1];
+    WCHAR    ver[NAMES_LEN+1];
     HWND     remote_hwnd;
+    BROWSER  moz;
     void     *sql;
     uint32_t pid;
     uint64_t dt_local;
@@ -92,6 +101,7 @@ typedef struct _file_info_t
     char     referer[MAX_PATH+1];
     char     cookiefile[MAX_PATH+1];
     char     md5[MD5_LEN+1];
+    char     sha[VALUE_LEN+1];
     char     ini[MAX_PATH+1];
     char     url[URL_LEN+1];
     char     ini_proxy[MAX_PATH+1];
@@ -166,8 +176,10 @@ extern void init_logs(void);
 extern void enter_spinlock(void);
 extern void leave_spinlock(void);
 extern bool find_local_str(char *result, int len);
-extern bool  exec_ppv(LPCSTR wcmd, LPCSTR pcd, int flags);
-extern bool  search_process(LPCWSTR names);
+extern bool exec_ppv(LPCSTR wcmd, LPCSTR pcd, int flags);
+#ifndef EUAPI_LINK
+extern void end_process(void);
+#endif
 extern char* url_decode(const char *input);
 extern wchar_t *u16_dec_path(const wchar_t *path);
 extern WCHAR* init_file_strings(LPCWSTR names, size_t *psize);
@@ -203,6 +215,10 @@ extern wchar_t *init_win32_random(const wchar_t *prex);
 extern int find_user_local(void);
 extern errno_t wp_strncat(char *dst, const char *src, size_t number);
 extern errno_t wp_wcsncat(wchar_t *dst, const wchar_t *src, size_t number);
+
+extern bool get_file_sha256(LPCWSTR path, char **psha);
+extern char *get_browser_version(void);
+extern int compare_versions(const char *v1, const char *v2);
 
 #ifdef __cplusplus
 }

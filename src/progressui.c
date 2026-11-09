@@ -252,22 +252,35 @@ set_ui_strings(void)
     
     do
     {
-        if ((pini = init_file_strings(L"application.ini", NULL)) == NULL)
+        if (file_info.moz == MOZ_FX)
         {
-            break;
+            if ((pini = init_file_strings(L"application.ini", NULL)) == NULL)
+            {
+                break;
+            }
+            if ((app_ini = ini_utf16_utf8(pini, NULL)) == NULL)
+            {
+                break;
+            }
+            if (!ini_read_string("App", "RemotingName", &names, app_ini, true))
+            {
+                names = _strdup("Firefox");
+            }
+            MultiByteToWideChar(CP_UTF8, 0, names, -1, sUIStrings.title, MAX_PATH);
         }
-        if ((app_ini = ini_utf16_utf8(pini, NULL)) == NULL)
+        else if (file_info.moz == MOZ_EDGE)
         {
-            break;
+            wcscpy(sUIStrings.title, L"Edge");
         }
-        if (!ini_read_string("App", "RemotingName", &names, app_ini, true))
+        else if (file_info.moz == MOZ_GOOGLE)
         {
-            break;
+            wcscpy(sUIStrings.title, L"Chrome");
         }
         ret = true;
     } while(0);
     if (ret)
     {
+        
         wp_wcsncat(sUIStrings.title, L" ", MAX_PATH);
         wcsncpy(sUIStrings.info, sUIStrings.title, MAX_PATH);
         switch (find_user_local())

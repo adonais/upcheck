@@ -11,9 +11,23 @@
 
 #pragma comment(lib, "advapi32.lib")
 
+typedef DWORD(WINAPI *PFNGFVSW)(LPCWSTR, LPDWORD);
+typedef DWORD(WINAPI *PFNGFVIW)(LPCWSTR, DWORD, DWORD, LPVOID);
+typedef bool(WINAPI *PFNVQVW)(LPCVOID, LPCWSTR, LPVOID, PUINT);
+
+typedef struct _LANGANDCODEPAGE
+{
+    uint16_t wLanguage;
+    uint16_t wCodePage;
+} LANGANDCODEPAGE;
+
 volatile long g_locked = 0;
 
 static HMODULE curl_symbol = NULL;
+static PFNGFVSW pfnGetFileVersionInfoSizeW = NULL;
+static PFNGFVIW pfnGetFileVersionInfoW = NULL;
+static PFNVQVW pfnVerQueryValueW = NULL;
+
 ptr_curl_easy_strerror euapi_curl_easy_strerror = NULL;
 ptr_curl_easy_setopt euapi_curl_easy_setopt = NULL;
 ptr_curl_easy_perform euapi_curl_easy_perform = NULL;
@@ -120,10 +134,29 @@ ini_path_init(void)
     }
     GetModuleFileNameW(NULL, ini_path, MAX_PATH);
     PathRemoveFileSpecW(ini_path);
-    PathAppendW(ini_path, L"portable.ini");
-    if (!(ret = PathFileExistsW(ini_path)))
+    if (file_info.moz == MOZ_FX)
     {
-        ret = PathRemoveFileSpecW(ini_path) && PathAppendW(ini_path, L"tmemutil.ini") && PathFileExistsW(ini_path);
+        PathAppendW(ini_path, L"portable.ini");
+        if (!(ret = PathFileExistsW(ini_path)))
+        {
+            ret = PathRemoveFileSpecW(ini_path) && PathAppendW(ini_path, L"tmemutil.ini") && PathFileExistsW(ini_path);
+        }
+    }
+    else if (file_info.moz == MOZ_EDGE)
+    {
+        PathAppendW(ini_path, L"msedge++.ini");
+        if (!(ret = PathFileExistsW(ini_path)))
+        {
+            ret = PathRemoveFileSpecW(ini_path) && PathAppendW(ini_path, L"msedge++(example).ini") && PathFileExistsW(ini_path);
+        }
+    }
+    else if (file_info.moz == MOZ_GOOGLE)
+    {
+        PathAppendW(ini_path, L"chrome++.ini");
+        if (!(ret = PathFileExistsW(ini_path)))
+        {
+            ret = PathRemoveFileSpecW(ini_path) && PathAppendW(ini_path, L"chrome++(example).ini") && PathFileExistsW(ini_path);
+        }
     }
     return (ret && WideCharToMultiByte(CP_UTF8, 0, ini_path, -1, file_info.ini, MAX_PATH, NULL, NULL) > 0);
 #endif
@@ -591,6 +624,98 @@ get_file_md5(LPCWSTR path, char* md5_str)
     return res;
 }
 
+#define BUFFER_SIZE 4096
+#define SHA256_DIGEST_LENGTH 32
+#define SHA256_HEX_STRING_LENGTH (SHA256_DIGEST_LENGTH * 2 + 1) // 64 chars + null terminato
+
+/**
+ * 将二进制数据转换为十六进制字符串
+ * @param data 二进制数据指针
+ * @param length 数据长度
+ * @return 动态分配的十六进制字符串，调用者需 free()
+ */
+static char* bytes_hex(const BYTE* data, DWORD length) {
+    char* hexString = (char*)malloc(length * 2 + 1);
+    if (!hexString) return NULL;
+
+    for (DWORD i = 0; i < length; i++) {
+        sprintf(hexString + (i * 2), "%02x", data[i]);
+    }
+    hexString[length * 2] = '\0';
+    return hexString;
+}
+
+bool get_file_sha256(LPCWSTR path, char **psha)
+{
+    HCRYPTPROV hProv = 0;
+    HCRYPTHASH hHash = 0;
+    HANDLE hFile = INVALID_HANDLE_VALUE;
+    BYTE rgbBuffer[BUFFER_SIZE];
+    DWORD cbRead = 0;
+    BYTE rgbHash[SHA256_DIGEST_LENGTH];
+    DWORD cbHash = SHA256_DIGEST_LENGTH;
+    BOOL bResult = FALSE;
+
+    // 1. 打开文件
+    // 使用 GENERIC_READ 和 FILE_SHARE_READ 允许其他进程读取该文件
+    hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        printf("Error: Could not open file %s. Error Code: %lu\n", path, GetLastError());
+        return false;
+    }
+
+    // 2. 获取加密服务提供者 (CSP) 上下文
+    // PROV_RSA_AES 支持 SHA-256，CRYPT_VERIFYCONTEXT 表示我们不需要访问私钥
+    if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+        printf("Error: CryptAcquireContext failed. Error Code: %lu\n", GetLastError());
+        CloseHandle(hFile);
+        return false;
+    }
+
+    // 3. 创建 SHA-256 哈希对象
+    if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash)) {
+        printf("Error: CryptCreateHash failed. Error Code: %lu\n", GetLastError());
+        CryptReleaseContext(hProv, 0);
+        CloseHandle(hFile);
+        return false;
+    }
+
+    // 4. 分块读取文件并更新哈希
+    while (bResult = ReadFile(hFile, rgbBuffer, BUFFER_SIZE, &cbRead, NULL)) {
+        if (cbRead == 0) break; // 文件结束
+
+        if (!CryptHashData(hHash, rgbBuffer, cbRead, 0)) {
+            printf("Error: CryptHashData failed. Error Code: %lu\n", GetLastError());
+            bResult = FALSE;
+            goto cleanup;
+        }
+    }
+
+    if (!bResult) {
+        printf("Error: Reading file failed. Error Code: %lu\n", GetLastError());
+        goto cleanup;
+    }
+
+    // 5. 获取最终的哈希值
+    if (!CryptGetHashParam(hHash, HP_HASHVAL, rgbHash, &cbHash, 0)) {
+        printf("Error: CryptGetHashParam failed. Error Code: %lu\n", GetLastError());
+        bResult = FALSE;
+        goto cleanup;
+    }
+
+    // 6. 转换为十六进制字符串
+    bResult = (*psha = bytes_hex(rgbHash, cbHash)) != NULL;
+
+cleanup:
+    // 7. 清理资源
+    if (hHash) CryptDestroyHash(hHash);
+    if (hProv) CryptReleaseContext(hProv, 0);
+    if (hFile != INVALID_HANDLE_VALUE){
+        CloseHandle(hFile);
+    }
+    return !!bResult;
+}
+
 HANDLE
 create_new(LPCWSTR wcmd, LPCWSTR param, const LPCWSTR pcd, int flags, DWORD *opid, const int attached)
 {
@@ -745,33 +870,96 @@ get_file_name(LPCWSTR path)
     return NULL;
 }
 
-bool
-search_process(LPCWSTR names)
+#ifndef EUAPI_LINK
+static bool
+is_chrome_desc(LPCWSTR path)
 {
-    bool   ret = false;
-    PROCESSENTRY32W pe32 = {0};
-    HANDLE hSnapshot = INVALID_HANDLE_VALUE;
-    hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
-    if(hSnapshot == INVALID_HANDLE_VALUE)
+    WCHAR temp[MAX_PATH] = {0};
+    GetModuleFileNameW(NULL,temp, MAX_PATH - 1);
+    if (path && PathRemoveFileSpecW(temp))
     {
-        return false;
-    }
-    pe32.dwSize=sizeof(pe32);
-    if (!Process32FirstW(hSnapshot,&pe32))
-    {
-        return false;
-    }
-    do
-    {
-        if (!_wcsicmp(pe32.szExeFile, names) && pe32.th32ProcessID != GetCurrentProcessId())
+        WCHAR *processes[] = {L"Installer\\copilot_setup.exe",
+                              L"BHO\\ie_to_edge_stub.exe",
+                              L"msedge_proxy.exe",
+                              L"pwahelper.exe",
+                              L"cookie_exporter.exe",
+                              L"msedgewebview2.exe",
+                              L"msedge_pwa_launcher.exe",
+                              L"platform_experiences_helper.exe",
+                              L"mscopilot.exe",
+                              L"notification_helper.exe",
+                              L"copilotapp.exe",
+                              L"elevation_service.exe",
+                              L"identity_helper.exe",
+                              L"chrome_proxy.exe",
+                              L"%s\\os_update_handler.exe",
+                              L"%s\\chrome_pwa_launcher.exe",
+                              L"%s\\elevation_service.exe",
+                              L"%s\\elevated_tracing_service",
+                              L"%s\\notification_helper.exe"
+                             };
+        const int count = sizeof(processes)/sizeof(processes[0]);
+        for(int num = 0; num < count; ++num)
         {
-            ret = true;
-            break;
+            WCHAR browser_dir[MAX_PATH] = {0};
+            WCHAR processes_list[MAX_PATH] = {0};
+            if (wcsncmp(processes[num], L"%s", 2) == 0)
+            {
+                _snwprintf(processes_list, MAX_PATH - 1, processes[num], file_info.ver);
+            }
+            else
+            {
+                _snwprintf(processes_list, MAX_PATH - 1, L"%s", processes[num]);
+            }
+            _snwprintf(browser_dir, MAX_PATH - 1, L"%s\\%s", temp, processes_list);
+        #ifdef LOG_DEBUG
+            printf("run process path[%ls], browser_dir [%ls]\n", path, browser_dir);
+        #endif
+            if (_wcsnicmp(path, browser_dir, wcslen(browser_dir)) == 0)
+            {
+                return true;
+            }
         }
-    } while (Process32NextW(hSnapshot,&pe32));
-    CloseHandle(hSnapshot);
-    return ret;
+    }
+    return false;
 }
+
+void
+end_process(void)
+{
+    bool more;
+    PROCESSENTRY32W pe32 = {sizeof(pe32)};
+    WCHAR fullpath[MAX_PATH] = {0};
+    HANDLE handle  = NULL;
+    HANDLE hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if(hsnap == INVALID_HANDLE_VALUE)
+    {
+        return;
+    }
+    more = Process32FirstW(hsnap, &pe32);
+    while (more)
+    {
+        DWORD length = MAX_PATH;
+        if (pe32.th32ProcessID > 0x4 && 
+           (handle = OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_TERMINATE, FALSE, pe32.th32ProcessID)) != NULL &&
+           (QueryFullProcessImageName(handle, 0, fullpath, &length)) &&
+           (length > 0 && length < MAX_PATH) &&
+           (is_chrome_desc(fullpath)))
+        {
+            TerminateProcess(handle, (DWORD) -1);
+            CloseHandle(handle);
+            handle = NULL;
+        }
+        if (handle)
+        {
+            CloseHandle(handle);
+            handle = NULL;
+        }
+        more = Process32NextW(hsnap, &pe32);
+    }
+    CloseHandle(hsnap);
+}
+#endif
 
 char*
 url_decode(const char *input)
@@ -1187,7 +1375,6 @@ do_file_copy(LPCWSTR parent, copy_file_ptr fnback, const bool recurs)
     WIN32_FIND_DATAW fd = {0};
     WCHAR pathname[MAX_PATH] = {0};
     WCHAR sub[MAX_PATH] = {0};
-    BOOL  finded = TRUE;
     if(parent[wcslen(parent) -1] != '\\')
     {
         _snwprintf(pathname, MAX_PATH, L"%s\\*.*", parent);
@@ -1202,10 +1389,21 @@ do_file_copy(LPCWSTR parent, copy_file_ptr fnback, const bool recurs)
         {
             if(wcscmp(fd.cFileName, L".") && wcscmp(fd.cFileName, L".."))
             {
-                _snwprintf(sub, MAX_PATH, L"%s\\%s", parent, fd.cFileName);
+                if(parent[wcslen(parent) -1] != '\\')
+                {
+                    _snwprintf(sub, MAX_PATH, L"%s\\%s", parent, fd.cFileName);
+                }
+                else
+                {
+                    _snwprintf(sub, MAX_PATH, L"%s%s", parent, fd.cFileName);
+                }
                 if (recurs && (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
                 {
-                    do_file_copy(sub, fnback, true);
+                    if (do_file_copy(sub, fnback, true))
+                    {
+                        ret = 1;
+                        break;
+                    }
                 }
                 else if (fnback(sub))
                 {
@@ -1321,4 +1519,206 @@ wchar_t *init_win32_random(const wchar_t *prex)
     return buf;
 #undef RANDOM_LENGHT
 #undef RANDOM_BUFFER
+}
+
+static HMODULE
+init_verinfo(void) /* 初始化version.dll里面的三个函数 */
+{
+    HMODULE hver = LoadLibraryW(L"version.dll");
+    if (hver != NULL)
+    {
+        pfnGetFileVersionInfoSizeW = (PFNGFVSW) GetProcAddress(hver, "GetFileVersionInfoSizeW");
+        pfnGetFileVersionInfoW = (PFNGFVIW) GetProcAddress(hver, "GetFileVersionInfoW");
+        pfnVerQueryValueW = (PFNVQVW) GetProcAddress(hver, "VerQueryValueW");
+        if (!(pfnGetFileVersionInfoSizeW && pfnGetFileVersionInfoW && pfnVerQueryValueW))
+        {
+            FreeLibrary(hver);
+            hver = NULL;
+        }
+    }
+    return hver;
+}
+
+static bool
+get_product_name(LPCWSTR filepath, LPWSTR out_string, size_t len, char **pver)
+{
+    bool ret = false;
+    HMODULE hver = NULL;
+    LPWSTR buffer = NULL;
+    do
+    {
+        uint32_t cb = 0;
+        DWORD dw_size = 0;
+        DWORD dw_handle = 0;
+        WCHAR block[NAMES_LEN + 1] = {0};
+        if ((hver = init_verinfo()) == NULL)
+        {
+            break;
+        }
+        if ((dw_size = pfnGetFileVersionInfoSizeW(filepath, &dw_handle)) == 0)
+        {
+        #ifdef _LOGDEBUG
+            logmsg("pfnGetFileVersionInfoSizeW return false\n");
+        #endif
+            break;
+        }
+        if ((buffer = (LPWSTR)malloc(dw_size * sizeof(WCHAR))) == NULL)
+        {
+            break;
+        }
+        if (!pfnGetFileVersionInfoW(filepath, 0, dw_size, (LPVOID) buffer))
+        {
+        #ifdef _LOGDEBUG
+            logmsg("pfnpfnGetFileVersionInfoW return false\n");
+        #endif
+            break;
+        }
+        if (pver)
+        {
+            VS_FIXEDFILEINFO *pversion = NULL;
+            if (!pfnVerQueryValueW((LPCVOID) buffer, L"\\", (void **) &pversion, &cb))
+            {
+            #ifdef _LOGDEBUG
+                logmsg("pfnVerQueryValueW return false\n");
+            #endif
+                break;
+            }
+            if (pversion != NULL)
+            {
+                _snwprintf(block, NAMES_LEN, L"%d.%d.%d.%d", HIWORD(pversion->dwFileVersionMS), LOWORD(pversion->dwFileVersionMS), HIWORD(pversion->dwFileVersionLS), LOWORD(pversion->dwFileVersionLS));
+                if (pver)
+                {
+                    ret = (*pver = ini_utf16_utf8(block, NULL)) != NULL;
+                }
+            }
+        }
+        if (out_string)
+        {
+            LANGANDCODEPAGE *lpTranslate = NULL;
+            PVOID pTmp = NULL;
+            ret = false;
+            pfnVerQueryValueW((LPCVOID) buffer, L"\\VarFileInfo\\Translation", (LPVOID *) &lpTranslate, &cb);
+            if (NULL == lpTranslate)
+            {
+                break;
+            }
+            for (uint16_t i = 0; i < (cb / sizeof(LANGANDCODEPAGE)); ++i)
+            {
+                _snwprintf(block, NAMES_LEN, L"\\StringFileInfo\\%04x%04x\\ProductName", lpTranslate[i].wLanguage, lpTranslate[i].wCodePage);
+                if ((ret = pfnVerQueryValueW((LPCVOID) buffer, (LPCWSTR) block, (LPVOID *) &pTmp, &cb)))
+                {
+                    out_string[0] = L'\0';
+                    wcsncpy(out_string, (LPCWSTR) pTmp, len);
+                    if ((ret = wcslen(out_string) > 1))
+                    { 
+                        break;
+                    }
+                }
+            }
+        }
+    } while (0);
+    if (buffer)
+    {
+        free(buffer);
+    }
+    if (hver)
+    {
+        FreeLibrary(hver);
+    }
+    return ret;
+}
+
+/**
+ * 比较两个版本号字符串
+ * 
+ * @param v1 版本号字符串1, 例如 "157.0.4341.42"
+ * @param v2 版本号字符串2, 例如 "157.0.4341.43"
+ * @return 
+ *   -1: v1 < v2
+ *    0: v1 == v2
+ *    1: v1 > v2
+ */
+int compare_versions(const char* v1, const char* v2)
+{
+    if (v1 == NULL || v2 == NULL)
+    {
+        if (v1 == v2) return 0;
+        return (v1 == NULL) ? -1 : 1;
+    }
+
+    const char* p1 = v1;
+    const char* p2 = v2;
+
+    while (*p1 != '\0' || *p2 != '\0')
+    {
+        long num1 = 0;
+        long num2 = 0;
+
+        // 解析 v1 的当前段
+        if (*p1 != '\0')
+        {
+            // 跳过非数字字符（理论上应该是 '.' 或开头，但做健壮性检查）
+            while (*p1 && !isdigit((unsigned char)*p1))
+            {
+                p1++;
+            }
+            if (*p1)
+            {
+                char* endptr;
+                num1 = strtol(p1, &endptr, 10);
+                p1   = endptr;
+            }
+        }
+
+        // 解析 v2 的当前段
+        if (*p2 != '\0')
+        {
+            while (*p2 && !isdigit((unsigned char)*p2))
+            {
+                p2++;
+            }
+            if (*p2)
+            {
+                char* endptr;
+                num2 = strtol(p2, &endptr, 10);
+                p2   = endptr;
+            }
+        }
+
+        // 比较当前段的数值
+        if (num1 < num2)
+        {
+            return -1;
+        } else if (num1 > num2)
+        {
+            return 1;
+        }
+
+        // 如果数值相等，移动指针跳过当前的 '.' 分隔符，准备下一轮循环
+        if (*p1 == '.') p1++;
+        if (*p2 == '.') p2++;
+    }
+    // 所有段都比较完毕且相等
+    return 0;
+}
+
+// 必须在全局参数初始化后调用
+char *get_browser_version(void)
+{
+    WCHAR *pname = NULL;
+    char *pver = NULL;
+    if (file_info.moz == MOZ_EDGE)
+    {
+        pname = init_file_strings(L"msedge.exe", NULL);
+    }
+    else if (file_info.moz == MOZ_GOOGLE)
+    {
+        pname = init_file_strings(L"chrome.exe", NULL);
+    }
+    if (pname)
+    {
+        get_product_name(pname, NULL, NAMES_LEN, &pver);
+        free(pname);
+    }
+    return pver;
 }

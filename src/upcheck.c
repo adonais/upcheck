@@ -55,11 +55,20 @@ get_moz_hwnd(int pid)
     bool found = false;
     DWORD process_id = 0;
     int i = 40;
+    WCHAR pname[NAMES_LEN] = {0};
+    if (file_info.moz == MOZ_FX)
+    {
+        _snwprintf(pname, NAMES_LEN - 1, L"MozillaWindowClass");
+    }
+    else
+    {
+        _snwprintf(pname, NAMES_LEN - 1, L"Chrome_WidgetWin_1");
+    }
     if (!pid)
     {
         pid = file_info.pid;
     }
-    if ((hwnd = FindWindowW(L"MozillaWindowClass", NULL)) != NULL)
+    if ((hwnd = FindWindowW(pname, NULL)) != NULL)
     {
         GetWindowThreadProcessId(hwnd, &process_id);
         if (process_id == pid)
@@ -70,7 +79,7 @@ get_moz_hwnd(int pid)
     while (!found && i--)
     {
         process_id = 0;
-        if ((hwnd = FindWindowExW(NULL, hwnd, L"MozillaWindowClass", NULL)) != NULL)
+        if ((hwnd = FindWindowExW(NULL, hwnd, pname, NULL)) != NULL)
         {
             GetWindowThreadProcessId(hwnd, &process_id);
         }
@@ -180,10 +189,27 @@ init_command_data(const int args, const wchar_t **pv)
 {
     bool ret = true;
     bool found = false;
+    const int argn = args + 1;
+    int i = 1;
+    for (; i < argn - 1; ++i)
+    {
+        if (_wcsicmp(pv[i], L"-edge") == 0 || _wcsicmp(pv[i], L"-chrome") == 0)
+        {
+            if (_wcsicmp(pv[i], L"-edge") == 0)
+            {
+                file_info.moz = MOZ_EDGE;
+                break;
+            }
+            else if (_wcsicmp(pv[i], L"-chrome") == 0)
+            {
+                file_info.moz = MOZ_GOOGLE;
+                break;
+            }
+        }
+    }
     do
     {
-        const int argn = args + 1;
-        for (int i = 1; i < argn - 1; ++i)
+        for (i = 1; i < argn - 1; ++i)
         {
             if (_wcsicmp(pv[i], L"-i") == 0)
             {
@@ -269,9 +295,12 @@ init_command_data(const int args, const wchar_t **pv)
             }
             else if (_wcsicmp(pv[i], L"-u") == 0)
             {
-                VERIFY(i + 1 < argn - 1);
                 file_info.up = true;
-                _snwprintf(file_info.profd, MAX_PATH, L"%s\\compatibility.ini", pv[i + 1]);
+                if (file_info.moz == MOZ_FX)
+                {
+                    VERIFY(i + 1 < argn - 1);
+                    _snwprintf(file_info.profd, MAX_PATH, L"%s\\compatibility.ini", pv[i + 1]);
+                }
             }
             else if (_wcsicmp(pv[i], L"-h") == 0)
             {
@@ -938,6 +967,24 @@ md5_sum(const bool mdel)
 }
 
 static bool
+sha256_sum(void)
+{
+    bool res = false;
+    char *sha_str = NULL;
+    if (get_file_sha256(file_info.names, &sha_str) && stricmp(sha_str, file_info.sha) == 0)
+    {
+        printf("%S [sha256: %s]\n", file_info.names, sha_str);
+        res = true;
+    }
+    else if (!DeleteFileW(file_info.names))
+    {
+        printf("package sha256[%s] sum error! cause file [%s]\n", sha_str, file_info.sha);
+    }
+    ini_safe_free(sha_str);
+    return res;
+}
+
+static bool
 resume_download(const char *url, int64_t length, LPCWSTR path)
 {
     bool fn = false;
@@ -999,9 +1046,10 @@ init_download(const char *url, int64_t length)
         if (fill_file_name(url))
         {
             _snwprintf(sql_name, MAX_PATH, L"%s%s", file_info.names, L".sinfo");
-            if (PathFileExistsW(file_info.names) && strlen(file_info.md5) > 1 && md5_sum(false))
+            if (PathFileExistsW(file_info.names) && ((strlen(file_info.md5) > 1 && md5_sum(false)) || (strlen(file_info.sha) > 1 && sha256_sum())))
             {
                 *file_info.md5 = '\0';
+                *file_info.sha = '\0';
                 return true;
             }
             else if (PathFileExistsW(sql_name) && length > 0)
@@ -1318,6 +1366,11 @@ exist_process(LPCWSTR path, const DWORD pid)
                 break;
             }
         }
+        if (handle)
+        {
+            CloseHandle(handle);
+            handle = NULL;
+        }
         more = Process32NextW(hsnap, &pe32);
     }
     CloseHandle(hsnap);
@@ -1346,7 +1399,23 @@ update_self(LPCWSTR self, LPCWSTR sz_clone)
 static void
 clear_cache(void)
 {
-    if (file_info.profd[0] && PathFileExistsW(file_info.profd) && DeleteFileW(file_info.profd))
+    if (file_info.ver[0])
+    {
+        WCHAR *pver = init_file_strings(file_info.ver, NULL);
+        if (PathFileExistsW(pver))
+        {
+            if (file_info.moz == MOZ_EDGE)
+            {
+                DeleteFileW(pver);
+            }
+            else if (file_info.moz == MOZ_GOOGLE)
+            {
+                erase_dir(pver);
+            }
+            printf("we delete [%ls]\n", pver);
+        }
+    }
+    if (file_info.profd[0] && PathFileExistsW(file_info.profd))
     {
         // LPCWSTR kmozilla = L"SOFTWARE\\Mozilla\\Firefox\\Launcher";
         // if (RegDeleteTreeW(HKEY_CURRENT_USER, kmozilla) != ERROR_SUCCESS)
@@ -1355,6 +1424,7 @@ clear_cache(void)
         //     printf("RegDeleteTreeW failed: case[%lu].\n", GetLastError());
         // #endif
         // }
+        DeleteFileW(file_info.profd);
     }
 }
 #endif
@@ -1398,11 +1468,30 @@ update_task(void)
             Sleep(500);
             if (exist_process(file_info.process, 0))
             {
+                printf("Exist same process\n");
                 *file_info.process = 0;
                 *file_info.ini = 0;
                 goto cleanup;
             }
         }
+    #ifndef EUAPI_LINK
+        if (file_info.moz != MOZ_FX)
+        {
+            char *pver = get_browser_version();
+            if (pver)
+            {
+                MultiByteToWideChar(CP_UTF8, 0, pver, -1, file_info.ver, NAMES_LEN);
+                // 终止Edge/Chrome可能运行中的其他子进程, 函数用到了file_info.ver, 所以必须在此运行
+                end_process();
+                // 删除xxx.x.xx.xx.manifest文件, chrome则清理整个旧版本号命名的文件夹
+                if (file_info.moz == MOZ_EDGE)
+                {
+                    wp_wcsncat(file_info.ver, L".manifest", NAMES_LEN);
+                }
+            }
+            // 其实还可以通过对比update.log文件清理旧文件, 以后再说 ...
+        }
+    #endif
         if (set_ui_strings())
         {
             uint64_t numb = (uint64_t) _time64(NULL);
@@ -1452,7 +1541,11 @@ update_task(void)
             res = false;
         }
     #ifndef EUAPI_LINK
-        result = ini_write_string("update", "be_ready", NULL, file_info.ini);
+        if (file_info.ini[0])
+        {
+            result = ini_write_string("update", "be_ready", NULL, file_info.ini);
+        }
+        printf("ini_write_string[%s], result = %d, res = %d\n", file_info.ini, result, res);
     #endif
         if (result)
         {
@@ -1539,6 +1632,29 @@ wmain(int argc, wchar_t **argv)
         LocalFree(wargv);
         return UPCHECK_OK;
     }
+#if !defined(EUAPI_LINK)
+    if (argn == 6 && _wcsicmp(wargv[1], L"-ini") == 0)
+    {
+        char *path = ini_utf16_utf8(wargv[2], NULL);
+        char *sec = ini_utf16_utf8(wargv[3], NULL);
+        char *key = ini_utf16_utf8(wargv[4], NULL);
+        char *new_value = ini_utf16_utf8(wargv[5], NULL);
+        if (new_value && *new_value == 0)
+        {
+            free(new_value);
+            new_value = NULL;
+        }
+        if (path && sec && key)
+        {
+            ret = ini_write_string(sec, key, new_value, path) ? 0 : 1;
+        }
+        ini_safe_free(path);
+        ini_safe_free(sec);
+        ini_safe_free(key);
+        ini_safe_free(new_value);
+        return ret;
+    }
+#endif
 #if DLL_INJECT
     if (argn == 3 && _wcsicmp(wargv[1], L"-fix") == 0)
     {
@@ -1776,11 +1892,11 @@ wmain(int argc, wchar_t **argv)
             {
                 char *fast = NULL;
                 printf("init_resolver ok.\n");
-                if ((strstr(file_info.url, "sourceforge.net") || strstr(file_info.url, "github.com")) && (file_info.re_bind == 0))
+                if ((strstr(file_info.url, "sourceforge.net") && (file_info.re_bind == 0)))
                 {
                     file_info.re_bind = 1;
                 }
-                if (!strncmp(file_info.url, "https://sourceforge.net", strlen("https://sourceforge.net")) && ini_read_string("update", "faster", &fast, file_info.ini, true))
+                if (ini_read_string("update", "faster", &fast, file_info.ini, true))
                 {
                     char re[URL_LEN+1] = {0};
                     if (fast[strlen(fast) - 1] == '/')
@@ -1844,6 +1960,11 @@ wmain(int argc, wchar_t **argv)
             break;
         }
         if (strlen(file_info.md5) > 1 && !md5_sum(true)) // 核对文件md5值
+        {
+            ret = UPCHECK_MD5_ERR;
+            break;
+        }
+        if (strlen(file_info.sha) > 1 && !sha256_sum()) // 核对文件sha256
         {
             ret = UPCHECK_MD5_ERR;
             break;

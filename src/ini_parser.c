@@ -11,7 +11,6 @@
 #endif
 #include "ini_parser.h"
 
-#define LEN_CONTENT 260
 #define MAX_COUNT 1024
 
 #define GET_UTF8(val, GET_BYTE, ERROR)           \
@@ -1023,7 +1022,7 @@ list_section(node **pphead, char (*lpdata)[LEN_SECTION], const int line)
 }
 
 static bool
-ini_foreach_entry(node **pphead, const char *sec, char (*lpdata)[LEN_STRINGS], int line, bool get_key)
+ini_foreach_entry(node **pphead, const char *sec, char (*lpdata)[LEN_CONTENT], int line, bool get_key)
 {
     bool res = false;
     position pos = NULL;
@@ -1658,18 +1657,18 @@ inicache_read_int(const char *sec, const char *key, ini_cache *ini)
 
 bool WINAPI
 inicache_foreach_wkey(const char *sec,
-                      wchar_t (*lpdata)[LEN_STRINGS],
+                      wchar_t (*lpdata)[LEN_CONTENT],
                       const int line,
                       ini_cache *ini)
 {
     int  i = 0;
     bool res = false;
-    char (*data)[LEN_STRINGS] = NULL;
+    char (*data)[LEN_CONTENT] = NULL;
     if (!(ini && *ini))
     {
         return false;
     }
-    data = (char (*)[LEN_STRINGS])calloc(1, line * sizeof(data[0]));
+    data = (char (*)[LEN_CONTENT])calloc(1, line * sizeof(data[0]));
     if (!data)
     {
         return false;
@@ -1682,7 +1681,7 @@ inicache_foreach_wkey(const char *sec,
     }
     for (; i < line && *data[i] != '\0'; ++i)
     {
-        res = MultiByteToWideChar(CP_UTF8, 0, data[i], -1, lpdata[i], LEN_STRINGS - 1)>0;
+        res = MultiByteToWideChar(CP_UTF8, 0, data[i], -1, lpdata[i], LEN_CONTENT - 1)>0;
     }
     if (i < line)
     {
@@ -1694,7 +1693,7 @@ inicache_foreach_wkey(const char *sec,
 
 bool WINAPI
 inicache_foreach_key(const char *sec,
-                     char (*lpdata)[LEN_STRINGS],
+                     char (*lpdata)[LEN_CONTENT],
                      const int line,
                      ini_cache *ini)
 {
@@ -1714,7 +1713,7 @@ inicache_foreach_key(const char *sec,
  ************************************************************/
 bool WINAPI
 ini_foreach_key(const char *sec,
-                char (*lpdata)[LEN_STRINGS],
+                char (*lpdata)[LEN_CONTENT],
                 const int line,
                 const char *path,
                 const bool isfile)
@@ -1732,7 +1731,7 @@ ini_foreach_key(const char *sec,
 
 bool WINAPI
 ini_foreach_wkey(const char *sec,
-                wchar_t (*lpdata)[LEN_STRINGS],
+                wchar_t (*lpdata)[LEN_CONTENT],
                 const int line,
                 const char *path,
                 const bool isfile)
@@ -1750,18 +1749,18 @@ ini_foreach_wkey(const char *sec,
 
 bool WINAPI
 inicache_foreach_wstring(const char *sec,
-                         wchar_t (*lpdata)[LEN_STRINGS],
+                         wchar_t (*lpdata)[LEN_CONTENT],
                          const int line,
                          ini_cache *ini)
 {
     int  i = 0;
     bool res = false;
-    char (*data)[LEN_STRINGS] = NULL;
+    char (*data)[LEN_CONTENT] = NULL;
     if (!(ini && *ini))
     {
         return false;
     }
-    data = (char (*)[LEN_STRINGS])calloc(1, line * sizeof(data[0]));
+    data = (char (*)[LEN_CONTENT])calloc(1, line * sizeof(data[0]));
     if (!data)
     {
         return false;
@@ -1774,7 +1773,7 @@ inicache_foreach_wstring(const char *sec,
     }
     for (; i < line && *data[i] != '\0'; ++i)
     {
-        res = MultiByteToWideChar(CP_UTF8, 0, data[i], -1, lpdata[i], LEN_STRINGS - 1)>0;
+        res = MultiByteToWideChar(CP_UTF8, 0, data[i], -1, lpdata[i], LEN_CONTENT - 1)>0;
     }
     if (i < line)
     {
@@ -1786,7 +1785,7 @@ inicache_foreach_wstring(const char *sec,
 
 bool WINAPI
 inicache_foreach_string(const char *sec,
-                        char (*lpdata)[LEN_STRINGS],
+                        char (*lpdata)[LEN_CONTENT],
                         const int line,
                         ini_cache *ini)
 {
@@ -1806,7 +1805,7 @@ inicache_foreach_string(const char *sec,
  ************************************************************/
 bool WINAPI
 ini_foreach_string(const char *sec,
-                   char (*lpdata)[LEN_STRINGS],
+                   char (*lpdata)[LEN_CONTENT],
                    const int line,
                    const char *path,
                    const bool isfile)
@@ -1824,7 +1823,7 @@ ini_foreach_string(const char *sec,
 
 bool WINAPI
 ini_foreach_wstring(const char *sec,
-                    wchar_t (*lpdata)[LEN_STRINGS],
+                    wchar_t (*lpdata)[LEN_CONTENT],
                     const int line,
                     const char *path,
                     const bool isfile)

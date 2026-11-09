@@ -71,7 +71,7 @@ update_file_callback(LPCWSTR srcfile)
             {
                 p = name;
             }
-            if (_wcsicmp(name, L"readme.txt") == 0)
+            if (_wcsicmp(name, L"readme.txt") == 0 || _wcsicmp(name, L"README") == 0)
             {
                 _snwprintf(dst, BUFF_LEN - 1, L"%s\\%s", update_dst_path[1], p);
             }
@@ -88,6 +88,9 @@ update_file_callback(LPCWSTR srcfile)
             {
                 ret = 1;
             }
+        #ifdef LOG_DEBUG
+            printf("move[%ls] to [%ls], ret = %d\n", srcfile, dst, ret);
+        #endif
         }
     }
     if (dst)

@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #define LEN_SECTION 64
-#define LEN_STRINGS 128
+#define LEN_CONTENT 1024
 #define ini_safe_free(p) ((p) ? ((free((void *)(p))), ((p) = NULL)) : (void *)(p))
 
 #ifdef __cplusplus
@@ -47,14 +47,14 @@ typedef struct _list
     node *pd;
 } ini_list, *ini_cache;
 
-extern bool __stdcall ini_foreach_key(const char *sec, char (*lpdata)[LEN_STRINGS], int line, const char *path, const bool isfile);
-extern bool __stdcall ini_foreach_wkey(const char *sec, wchar_t (*lpdata)[LEN_STRINGS], int line, const char *path, const bool isfile);
-extern bool __stdcall inicache_foreach_key(const char *sec, char (*lpdata)[LEN_STRINGS], int line, ini_cache *ini);
-extern bool __stdcall inicache_foreach_wkey(const char *sec, wchar_t (*lpdata)[LEN_STRINGS], int line, ini_cache *ini);
-extern bool __stdcall ini_foreach_string(const char *sec, char (*lpdata)[LEN_STRINGS], int line, const char *path, const bool isfile);
-extern bool __stdcall ini_foreach_wstring(const char *sec, wchar_t (*lpdata)[LEN_STRINGS], int line, const char *path, const bool isfile);
-extern bool __stdcall inicache_foreach_string(const char *sec, char (*lpdata)[LEN_STRINGS], int line, ini_cache *ini);
-extern bool __stdcall inicache_foreach_wstring(const char *sec, wchar_t (*lpdata)[LEN_STRINGS], int line, ini_cache *ini);
+extern bool __stdcall ini_foreach_key(const char *sec, char (*lpdata)[LEN_CONTENT], int line, const char *path, const bool isfile);
+extern bool __stdcall ini_foreach_wkey(const char *sec, wchar_t (*lpdata)[LEN_CONTENT], int line, const char *path, const bool isfile);
+extern bool __stdcall inicache_foreach_key(const char *sec, char (*lpdata)[LEN_CONTENT], int line, ini_cache *ini);
+extern bool __stdcall inicache_foreach_wkey(const char *sec, wchar_t (*lpdata)[LEN_CONTENT], int line, ini_cache *ini);
+extern bool __stdcall ini_foreach_string(const char *sec, char (*lpdata)[LEN_CONTENT], int line, const char *path, const bool isfile);
+extern bool __stdcall ini_foreach_wstring(const char *sec, wchar_t (*lpdata)[LEN_CONTENT], int line, const char *path, const bool isfile);
+extern bool __stdcall inicache_foreach_string(const char *sec, char (*lpdata)[LEN_CONTENT], int line, ini_cache *ini);
+extern bool __stdcall inicache_foreach_wstring(const char *sec, wchar_t (*lpdata)[LEN_CONTENT], int line, ini_cache *ini);
 extern bool __stdcall ini_read_string(const char *sec, const char *key, char **buf, const char *path, const bool isfile);
 extern bool __stdcall inicache_read_string(const char *sec, const char *key, char **buf, ini_cache *ini);
 extern bool __stdcall ini_write_string(const char *sec, const char *key, const char *new_value, const char *path);
