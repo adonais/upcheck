@@ -11,24 +11,33 @@ System requirements
 Build!
 --------------------
 
-nmake clean
-nmake
+nmake clean  
+nmake  
 
 or
 
-nmake CC=clang-cl clean
-nmake CC=clang-cl
+nmake CC=clang-cl clean  
+nmake CC=clang-cl  
+
+or
+
+Support automatic injection of portable DLL after Firefox updates:
+
+nmake CC=clang-cl clean  
+nmake CC=clang-cl DLL_INJECT=1  
 
 or
 
 supports the Skylark Editor:
 
-nmake CC=clang-cl clean
-nmake CC=clang-cl EUAPI_LINK=1
+nmake CC=clang-cl clean  
+nmake CC=clang-cl EUAPI_LINK=1  
 
 --------------------
 
 about upcheck:
 
-Detect your current Iceweasel browser and checks if it is up to date.
-At the same time, it is also a download manager.
+Detect your current Iceweasel browser and checks if it is up to date.  
+Support automatic injection of portable DLL after Firefox updates.  
+Support automatic updates for Edge/Chrome portable version.  
+At the same time, it is also a download manager.  
