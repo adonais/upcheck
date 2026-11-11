@@ -1192,6 +1192,62 @@ init_download(const char *url, int64_t length)
 }
 
 static bool
+exist_process(LPCWSTR path, const DWORD pid)
+{
+    bool more;
+    bool result = false;
+    PROCESSENTRY32W pe32 = {sizeof(pe32)};
+    WCHAR fullpath[MAX_PATH] = {0};
+    HANDLE handle  = NULL;
+    HANDLE hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if(hsnap == INVALID_HANDLE_VALUE)
+    {
+        return result;
+    }
+    more = Process32FirstW(hsnap, &pe32);
+    while (more)
+    {
+        DWORD length = MAX_PATH;
+        if (pe32.th32ProcessID > 0x4 && 
+           (handle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID)) != NULL &&
+           (QueryFullProcessImageName(handle, 0, fullpath, &length)) &&
+           (length > 0 && length < MAX_PATH) &&
+           (_wcsicmp(fullpath, path) == 0))
+        {
+            if (!(pid > 0 && pe32.th32ProcessID == pid))
+            {
+                result = true;
+                break;
+            }
+        }
+        if (handle)
+        {
+            CloseHandle(handle);
+            handle = NULL;
+        }
+        more = Process32NextW(hsnap, &pe32);
+    }
+    CloseHandle(hsnap);
+    return result;
+}
+
+static inline bool
+duplicate_process_run(LPWSTR path)
+{
+    WCHAR self[MAX_PATH] = {0};
+    DWORD m = GetModuleFileNameW(NULL, self, MAX_PATH);
+    if (m > 0 && m < MAX_PATH)
+    {
+        if (path)
+        {
+            _snwprintf(path, MAX_PATH - 1, L"%s", self);
+        }
+        return exist_process(self, GetCurrentProcessId());
+    }
+    return false;
+}
+
+static bool
 share_envent_set_url(void)
 {
     bool ret = false;
@@ -1224,7 +1280,7 @@ share_envent_set_url(void)
                     strncpy(pmemory[pos], file_info.url, URL_LEN - 1);
                 }
                 share_unmap(pmemory);
-                ret = (pos != -1);
+                ret = (pos != -1) || (!duplicate_process_run(NULL));
             }
             share_close(hmap);
         }
@@ -1235,6 +1291,7 @@ share_envent_set_url(void)
 static void
 share_envent_close_url(HANDLE *phandle)
 {
+    int k = 0;
     if (file_info.url[0])
     {
         HANDLE hmap = share_open(FILE_MAP_WRITE | FILE_MAP_READ, UPCHECK_LOCK_NAME);
@@ -1249,13 +1306,21 @@ share_envent_close_url(HANDLE *phandle)
                     {
                         memset(pmemory[i], 0, sizeof(pmemory[i]));
                     }
+                    if (pmemory[i][0])
+                    {
+                        ++k;
+                    }
                 }
                 share_unmap(pmemory);
             }
             share_close(hmap);
         }
     }
-    share_close(*phandle);
+    if ((!k || !duplicate_process_run(NULL)) && phandle)
+    {   // 没有数据后, 关闭共享内存
+        share_close(*phandle);
+        printf("After no data is available, close the shared memory\n");
+    }
 }
 
 static bool
@@ -1337,46 +1402,6 @@ logs_update(const int ret)
     }
 }
 
-static bool
-exist_process(LPCWSTR path, const DWORD pid)
-{
-    bool more;
-    bool result = false;
-    PROCESSENTRY32W pe32 = {sizeof(pe32)};
-    WCHAR fullpath[MAX_PATH] = {0};
-    HANDLE handle  = NULL;
-    HANDLE hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if(hsnap == INVALID_HANDLE_VALUE)
-    {
-        return result;
-    }
-    more = Process32FirstW(hsnap, &pe32);
-    while (more)
-    {
-        DWORD length = MAX_PATH;
-        if (pe32.th32ProcessID > 0x4 && 
-           (handle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID)) != NULL &&
-           (QueryFullProcessImageName(handle, 0, fullpath, &length)) &&
-           (length > 0 && length < MAX_PATH) &&
-           (_wcsicmp(fullpath, path) == 0))
-        {
-            if (!(pid > 0 && pe32.th32ProcessID == pid))
-            {
-                result = true;
-                break;
-            }
-        }
-        if (handle)
-        {
-            CloseHandle(handle);
-            handle = NULL;
-        }
-        more = Process32NextW(hsnap, &pe32);
-    }
-    CloseHandle(hsnap);
-    return result;
-}
-
 static void
 update_self(LPCWSTR self, LPCWSTR sz_clone)
 {
@@ -1434,9 +1459,9 @@ update_task(void)
 {
     bool   res = true;
     HANDLE thread = NULL;
-    WCHAR self[MAX_PATH + 1] = { 0 };
-    WCHAR sz_clone[MAX_PATH + 1] = { 0 };
-    fn_show show = { 0 };
+    WCHAR self[MAX_PATH] = {0};
+    WCHAR sz_clone[MAX_PATH] = {0};
+    fn_show show = {0};
     if (file_info.handle > 0)
     { // 删除老的版本
         WaitForSingleObject(file_info.handle, INFINITE);
@@ -1449,7 +1474,7 @@ update_task(void)
         }
         ExitProcess(0);
     }
-    if (GetModuleFileNameW(NULL, self, MAX_PATH) > 0 && exist_process(self, GetCurrentProcessId()))
+    if (duplicate_process_run(self))
     {   // 可能同时启动了多个更新进程
         ExitProcess(0);
     }
@@ -1510,7 +1535,7 @@ update_task(void)
                     }
                     Sleep(500);
                 }
-                _snwprintf(sz_clone, MAX_PATH, L"%s_%I64u%s", self, numb, L".exe");
+                _snwprintf(sz_clone, MAX_PATH - 1, L"%s_%I64u%s", self, numb, L".exe");
                 if (PathFileExistsW(sz_clone))
                 {
                     DeleteFileW(sz_clone);
@@ -1988,16 +2013,9 @@ wmain(int argc, wchar_t **argv)
         logs_update(ret);
     }
 #endif
-    if (mapped)
+    if (mapped && (ret != UPCHECK_READY_ERR))
     {
-        if (ret == UPCHECK_READY_ERR)
-        {
-            share_close(mapped);
-        }
-        else
-        {
-            share_envent_close_url(&mapped);
-        }
+        share_envent_close_url(&mapped);
     }
     if (wcslen(file_info.process) > 1)
     {

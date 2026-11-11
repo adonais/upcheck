@@ -660,7 +660,7 @@ bool get_file_sha256(LPCWSTR path, char **psha)
     // 使用 GENERIC_READ 和 FILE_SHARE_READ 允许其他进程读取该文件
     hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        printf("Error: Could not open file %s. Error Code: %lu\n", path, GetLastError());
+        printf("Error: Could not open file, Error Code: %lu\n", GetLastError());
         return false;
     }
 
