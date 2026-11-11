@@ -1,0 +1,43 @@
+#ifndef __NET_H__
+#define __NET_H__
+
+#include <curl/curl.h>
+
+#define MAX_THREAD 32
+#define FILE_LEN 256
+#define UINT_LEN 66
+#define URL_ITERATIONS 9
+
+#define ABORT(...) (fprintf(stderr, __VA_ARGS__), exit(-1))
+#define VERIFY(x) (void)((x) || (ABORT("failed assert(%s): %s:%d\n", #x, __FILE__, __LINE__), 0))
+#define UPCHECK_LOCK_NAME "/upcheck_handle_lock__"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct _curl_node
+{
+    FILE       *fp;
+    int64_t    startidx;
+    int64_t    endidx;
+    int64_t    szdown;
+    CURLSH     *share;
+    uint32_t   tid;
+    const char *url;
+    bool       error;
+} curl_node;
+
+typedef struct _dnld_params_t
+{
+    int ret;
+    int64_t length;
+    char remote_fname[MAX_PATH+1];
+    char file_len[UINT_LEN+1];
+} dnld_params_t;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
