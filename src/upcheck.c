@@ -9,6 +9,7 @@
 #include "extractxz.h"
 #include "xml.h"
 #include <pthread.h>
+#include <signal.h>
 
 #define DOWN_NUM    10
 #define SELECT_AUTO 999
@@ -16,6 +17,7 @@
 
 static int64_t downloaded_size = 0;
 static int64_t total_size = 0;
+static int quit_flag = 0;
 
 file_info_t file_info = {0};
 
@@ -615,6 +617,10 @@ download_package(void *ptr, size_t size, size_t nmemb, void *userdata)
     curl_node *node = (curl_node *) userdata;
     size_t written = 0;
     int64_t real_size = size * nmemb;
+    if (quit_flag)
+    {
+        return 0;
+    }
     enter_spinlock();
     do
     {
@@ -964,6 +970,24 @@ md5_sum(const bool mdel)
     return res;
 }
 
+// 信号处理函数
+static void
+signal_callback(int signum)
+{
+    quit_flag = 1;
+    printf("Signal captured: %d\n", signum);
+}
+
+static bool
+register_signal(void)
+{
+    struct sigaction sa;
+    sa.sa_handler = signal_callback;            // 设置处理函数
+    sa.sa_flags = SA_RESTART;                   // 重启被中断的系统调用
+    sigemptyset(&sa.sa_mask);                   // 初始化信号集
+    return sigaction(SIGINT, &sa, NULL) == 0;   // 注册 SIGINT 信号处理
+}
+
 static bool
 resume_download(const char *url, int64_t length, const char *path)
 {
@@ -1201,7 +1225,7 @@ share_envent_set_url(void)
                     strncpy(pmemory[pos], file_info.url, URL_LEN - 1);
                 }
                 munmap(pmemory, MMAP_DATA_SIZE);
-                ret = (pos != -1) || (!duplicate_process_run());
+                ret = (pos != -1);
             }
             close(fd);
         }
@@ -1217,7 +1241,6 @@ share_envent_close_url(void)
         int fd = shm_open(UPCHECK_LOCK_NAME, O_RDWR, 0666);
         if (fd > 0)
         {
-            int k = 0;
             char (*pmemory)[URL_LEN] = (char (*)[URL_LEN])mmap(NULL, MMAP_DATA_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, SEEK_SET);
             if (pmemory)
             {
@@ -1227,21 +1250,10 @@ share_envent_close_url(void)
                     {
                         memset(pmemory[i], 0, URL_LEN);
                     }
-                    if (pmemory[i][0])
-                    {
-                        ++k;
-                    }
                 }
                 munmap(pmemory, MMAP_DATA_SIZE);
             }
             close(fd);
-            if (!k || !duplicate_process_run())
-            {   // 没有数据后, 关闭共享内存
-                if (shm_unlink(UPCHECK_LOCK_NAME) == 0)
-                {
-                    printf("After no data is available, close the shared memory\n");
-                }
-            }
         }
     }
 }
@@ -1258,7 +1270,7 @@ downloaded_lookup(void)
             if (EEXIST == errno)
             {
                 ret = share_envent_set_url();
-                printf("shared_mem_exist, we run share_envent_set_url(), ret = %d\n", ret);
+                printf("shared_mem_exist, we run share_envent_set_url(), ret = %s\n", ret ? "true" : "false");
             }
             else
             {
@@ -1533,6 +1545,13 @@ main(int argc, char **argv)
             ret = UPCHECK_URL_ERR;
             break;
         }
+        if (!register_signal())
+        {
+            *file_info.ini = '\0';
+            ret = UPCHECK_CURL_ERR;
+            printf("Registration signal error\n");
+            break;
+        }
         if (!downloaded_lookup())
         {
             *file_info.ini = '\0';
@@ -1579,6 +1598,10 @@ main(int argc, char **argv)
     if (ret != UPCHECK_READY_ERR)
     {
         share_envent_close_url();
+    }
+    if (!duplicate_process_run() && shm_unlink(UPCHECK_LOCK_NAME) == 0)
+    {   // 最后一个进程, 解除共享内存名称
+        printf("After no data is available, close the shared memory\n");
     }
     return ret;
 }
