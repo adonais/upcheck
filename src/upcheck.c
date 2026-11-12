@@ -1280,18 +1280,17 @@ share_envent_set_url(void)
                     strncpy(pmemory[pos], file_info.url, URL_LEN - 1);
                 }
                 share_unmap(pmemory);
-                ret = (pos != -1) || (!duplicate_process_run(NULL));
+                ret = (pos != -1);
             }
-            share_close(hmap);
+            CloseHandle(hmap);
         }
     }
     return ret;
 }
 
 static void
-share_envent_close_url(HANDLE *phandle)
+share_envent_close_url(void)
 {
-    int k = 0;
     if (file_info.url[0])
     {
         HANDLE hmap = share_open(FILE_MAP_WRITE | FILE_MAP_READ, UPCHECK_LOCK_NAME);
@@ -1306,20 +1305,11 @@ share_envent_close_url(HANDLE *phandle)
                     {
                         memset(pmemory[i], 0, sizeof(pmemory[i]));
                     }
-                    if (pmemory[i][0])
-                    {
-                        ++k;
-                    }
                 }
                 share_unmap(pmemory);
             }
-            share_close(hmap);
+            CloseHandle(hmap);
         }
-    }
-    if ((!k || !duplicate_process_run(NULL)) && phandle)
-    {   // 没有数据后, 关闭共享内存
-        share_close(*phandle);
-        printf("After no data is available, close the shared memory\n");
     }
 }
 
@@ -1338,7 +1328,7 @@ downloaded_lookup(HANDLE *pmapped)
         else if (ERROR_ALREADY_EXISTS == GetLastError())
         {
             ret = share_envent_set_url();
-            printf("downloaded_lookup function, ret = %d\n", ret);
+            printf("downloaded_lookup function, share_exists, ret = %d\n", ret);
         }
         else
         {   // 建立共享内存, 保存下载链接
@@ -1348,6 +1338,7 @@ downloaded_lookup(HANDLE *pmapped)
                 strncpy(g_download_url[0], file_info.url, URL_LEN - 1);
                 memcpy(phandle, g_download_url, url_size);
                 share_unmap(phandle);
+                CloseHandle(phandle);
                 ret = true;
                 printf("downloaded_lookup function, share_create ok, copy data to phandle\n");
             }
@@ -2013,9 +2004,13 @@ wmain(int argc, wchar_t **argv)
         logs_update(ret);
     }
 #endif
-    if (mapped && (ret != UPCHECK_READY_ERR))
+    if (ret != UPCHECK_READY_ERR)
     {
-        share_envent_close_url(&mapped);
+        share_envent_close_url();
+    }
+    if (mapped)
+    {
+        CloseHandle(mapped);
     }
     if (wcslen(file_info.process) > 1)
     {

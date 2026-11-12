@@ -192,7 +192,7 @@ extern HANDLE share_create(HANDLE handle, uint32_t dw_protect, size_t size, LPCT
 extern HANDLE share_open(uint32_t dw_access, LPCTSTR name);
 extern LPVOID share_map(HANDLE hmap, size_t bytes, uint32_t dw_access);
 extern void share_unmap(LPVOID memory);
-extern void share_close(HANDLE handle);
+extern void share_close(HANDLE *phandle);
 extern bool enviroment_variables_set(LPCWSTR szname, LPCWSTR sz_newval, sys_flag dw_flag);
 
 extern WCHAR *path_utf16_clone(const WCHAR *path);

@@ -1217,12 +1217,12 @@ share_unmap(LPVOID memory)
 }
 
 void
-share_close(HANDLE handle)
+share_close(HANDLE *phandle)
 {
-    if ((intptr_t)handle > 0)
+    if (phandle && (intptr_t)(*phandle) > 0)
     {
-        CloseHandle(handle);
-        handle = NULL;
+        CloseHandle(*phandle);
+        *phandle = NULL;
     }
 }
 
