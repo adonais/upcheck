@@ -7,6 +7,9 @@
 #include "ini_parser.h"
 #include "spinlock.h"
 #include "xml.h"
+#ifndef EUAPI_LINK
+#include "load_chrome.h"
+#endif
 
 #define INFO_LEN 32
 
@@ -460,6 +463,13 @@ init_resolver(void)
         printf("file_info.ini_uri maybe null\n");
         return res;
     }
+#ifndef EUAPI_LINK
+    if (!chrome_faster(file_info.ini, &url))
+    {
+        printf("chrome_faster return false\n");
+        return res;
+    }
+#endif
     if (file_info.moz == MOZ_FX)
     {
         if ((res = init_process(url, &write_data_callback, &xbuf)) != CURLE_OK)
@@ -480,6 +490,7 @@ init_resolver(void)
             printf("init_resolver, res = [%d]\n", res);
         }
     }
+#ifndef EUAPI_LINK
     else
     {
         res = init_updates(&headers, url, &jsbuf);
@@ -503,6 +514,7 @@ init_resolver(void)
             }
         }
     }
+#endif
     ini_safe_free(url);
     ini_safe_free(xbuf.str);
     if (headers)

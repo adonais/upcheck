@@ -1500,6 +1500,8 @@ getw_cwd(LPWSTR lpstr, DWORD wlen)
     return (i > 0 && i < (int)wlen);
 }
 
+#ifndef EUAPI_LINK
+
 wchar_t *init_win32_random(const wchar_t *prex)
 {
 #define RANDOM_LENGHT 8
@@ -1722,3 +1724,5 @@ char *get_browser_version(void)
     }
     return pver;
 }
+
+#endif

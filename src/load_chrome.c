@@ -73,21 +73,33 @@ bool
 chrome_faster(const char *ini, char **purl)
 {
     char *fast = NULL;
-    if (!(purl && *purl))
+    char *realurl = purl ? *purl : file_info.url;
+    if (!realurl || !realurl[0])
     {
         return false;
     }
-    if (ini_read_string("update", "faster", &fast, ini, true))
+    if (ini && ini[0] && ini_read_string("update", "faster", &fast, ini, true))
     {
         char re[URL_LEN+1] = {0};
         if (fast[strlen(fast) - 1] == '/')
         {
             fast[strlen(fast) - 1] = 0;
         }
-        _snprintf(re, URL_LEN, "%s/%s", fast, *purl);
-        free(fast);
-        free(*purl);
-        return ((*purl = _strdup(re)) != NULL);
+        if (!purl)
+        {
+            _snprintf(re, URL_LEN, "%s/%s", fast, file_info.url);
+            _snprintf(file_info.url, URL_LEN, "%s", re);
+            printf("Redirect to [%s]\n", file_info.url);
+            free(fast);
+        }
+        else
+        {
+            _snprintf(re, URL_LEN, "%s/%s", fast, *purl);
+            free(*purl);
+            free(fast);
+            printf("Redirect to [%s]\n", re);
+            return ((*purl = _strdup(re)) != NULL);
+        }
     }
     return true;
 }

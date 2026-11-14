@@ -1906,24 +1906,21 @@ wmain(int argc, wchar_t **argv)
             ret = init_resolver();
             if (ret == 0)
             {
-                char *fast = NULL;
                 printf("init_resolver ok.\n");
                 if ((strstr(file_info.url, "sourceforge.net") && (file_info.re_bind == 0)))
                 {
                     file_info.re_bind = 1;
                 }
-                if (ini_read_string("update", "faster", &fast, file_info.ini, true))
+            #ifndef EUAPI_LINK
+                if (!chrome_faster(file_info.ini, NULL))
                 {
-                    char re[URL_LEN+1] = {0};
-                    if (fast[strlen(fast) - 1] == '/')
-                    {
-                        fast[strlen(fast) - 1] = 0;
-                    }
-                    _snprintf(re, URL_LEN, "%s/%s", fast, file_info.url);
-                    _snprintf(file_info.url, URL_LEN, "%s", re);
-                    printf("Redirect to [%s]\n", file_info.url);
-                    free(fast);
+                    *file_info.ini = '\0';
+                    *file_info.process = L'\0';
+                    ret = UPCHECK_CURL_ERR;
+                    printf("chrome_faster error.\n");
+                    break;
                 }
+            #endif
             }
             else if (ret > 0)
             {
